@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 
 class DataSet(metaclass=ABCMeta):
     """DataSet
-
+    
     Attributes
     ----------
     title : str
@@ -27,8 +27,14 @@ class DataSet(metaclass=ABCMeta):
     fs : int
         sampling frequency at signal acquisition
 
-    paradigm :
+    paradigm : object
         dataset experiment info
+
+    subjects : object
+        subjects information
+
+    doi : str
+        doi of the dataset published paper
 
 
     Methods
@@ -38,8 +44,6 @@ class DataSet(metaclass=ABCMeta):
     load_raw()
 
     generate_set()
-
-    get_path()
 
     """
     def __init__(self):

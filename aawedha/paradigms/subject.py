@@ -2,7 +2,7 @@
     Subjects information class
 """
 
-class Subject:
+class Subject(object):
     """
         Attributes
         ----------
@@ -24,8 +24,8 @@ class Subject:
         Methods
         -------
     """
-
-    def __init__(self, id='S', gender='M', age=18, handedness='R', condition='healthy')
+    
+    def __init__(self, id='S', gender='M', age=18, handedness='R', condition='healthy'):
         self.id = id
         self.gender = gender
         self.age = age

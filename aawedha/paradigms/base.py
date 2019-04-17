@@ -4,7 +4,7 @@
 from abc import ABCMeta, abstractmethod
 
 class Paradigm(metaclass=ABCMeta):
-"""
+    """
     Paradigms:
 
     Attributes
@@ -35,7 +35,7 @@ class Paradigm(metaclass=ABCMeta):
 
     Methods
     -------
-"""
+    """
 
     def __init__(self, title=None, control=None, stimulation=0, 
                     break_duration=0, repetition=0, stimuli=0, stim_type=None, phrase=None):
