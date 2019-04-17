@@ -4,6 +4,9 @@ from aawedha.analysis.preprocess import bandpass
 import numpy as np
 import pandas as pd
 import glob
+import pickle
+import os
+import gzip
 
 class Inria_ERN(DataSet):
     """
@@ -62,25 +65,45 @@ class Inria_ERN(DataSet):
         Y = labels.reshape((n_subjects, epochs))
         return X, Y  # : 4-D array : (subject, samples, channels, epoch)
 
-    def generate_set(self, load_path=None, epoch=1,band=[1.0, 40.0], order=5):
+    def generate_set(self, load_path=None, epoch=1, band=[1.0, 40.0], 
+                        order=5, save_folder=None):
         """
         """
         self.epochs, self.y = self.load_raw(load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=16)
         self.paradigm = self._get_paradigm()
         
-        return 'mazal_chuia'
+        # save dataset
+        # save_folder = '/data/inria_ern'
+        if not os.path.isdir(save_folder):
+            os.mkdir(save_folder)
+        fileName = save_folder + '/inria_ern.pkl'
+        f = gzip.open(fileName, 'wb')
+        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
+        f.close()
+
+    def load_set(self, fileName=None):
+        """
+        """
+        if os.path.exists(fileName):
+            f = gzip.open(fileName, 'rb')
+            data = pickle.load(f)
+        else:
+            raise FileNotFoundError
+        f.close()
+        return data  
+        
 
     def _get_events(self):
         NotImplementedError
 
     def _get_subjects(self, n_subjects=0):
         return [subject.Subject(id='S'+str(s),gender='M',age=0, handedness='')
-                     for s in range(1, n_subjects+1)]
+                    for s in range(1, n_subjects+1)]
 
     def _get_paradigm(self):
         return erp.ERP(title='ERP_ERN', stimulation=60, break_duration=50, repetition=12,
-        phrase='', flashing_mode='RC')
+                    phrase='', flashing_mode='RC')
 
     
 
