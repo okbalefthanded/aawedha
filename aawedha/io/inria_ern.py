@@ -19,20 +19,17 @@ class Inria_ERN(DataSet):
     """
 
     def __init__(self):
-        self.title = 'Inria_ERN'
-        self.epochs = []
-        self.y = []
-        self.events = []
-        self.ch_names = ['Fp1', 'Fp2', 'AF7','F3', 'AF4','F8','F7','F5','F3','F1',
+        super().__init__(title='Inria_ERN',
+                        ch_names=['Fp1', 'Fp2', 'AF7','F3', 'AF4','F8','F7','F5','F3','F1',
                        'Fz', 'F2', 'F4', 'F6','F8','FT7','FC5','FC3','FC1',
                        'FCz', 'FC2', 'FC4', 'FC6', 'FT8','T7','C5','C3','C1',
                        'Cz','C2','C4','C6','T8','TP7','CP5','CP3','CP1','CPz',
                        'CP2','CP4','CP6','TP8','P7', 'P5','P3','P1','Pz',
-                       'P2','P4','P6','P8','PO7','POz','P08','O1','O2']
-        self.fs = 200
-        self.paradigm = None 
-        self.subjects = []
-        self.doi =  'http://dx.doi.org/10.1155/2012/578295'
+                       'P2','P4','P6','P8','PO7','POz','P08','O1','O2'], 
+                       fs=200, 
+                       doi = 'http://dx.doi.org/10.1155/2012/578295'
+                       )      
+      
 
 
     def load_raw(self, path=None, epoch_duration=1, band=[1.0, 40.0], order=5):
@@ -93,6 +90,8 @@ class Inria_ERN(DataSet):
         f.close()
         return data  
         
+    def get_path(self):
+        NotImplementedError
 
     def _get_events(self):
         NotImplementedError

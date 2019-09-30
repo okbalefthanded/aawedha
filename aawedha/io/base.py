@@ -46,8 +46,16 @@ class DataSet(metaclass=ABCMeta):
     generate_set()
 
     """
-    def __init__(self):
-        pass
+    def __init__(self, title='', ch_names=[], fs=None, doi=''):
+        self.epochs = []
+        self.y = []
+        self.events = []
+        self.paradigm = None
+        self.subjects = []
+        self.title = title
+        self.ch_names = ch_names
+        self.fs = fs
+        self.doi = doi
 
     @abstractmethod
     def load_set(self):
