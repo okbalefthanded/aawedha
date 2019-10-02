@@ -81,7 +81,6 @@ class PhysioNet_MI(DataSet):
         self.paradigm = self._get_paradigm()
         
         # save dataset
-        # save_folder = '/data/physionet'
         if not os.path.isdir(save_folder):
             os.mkdir(save_folder)
         fileName = save_folder + '/physionet_mi.pkl'
