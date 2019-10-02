@@ -5,7 +5,6 @@ from mne import Epochs, pick_types, events_from_annotations
 from mne import set_log_level
 from mne.io import concatenate_raws, read_raw_edf
 import numpy as np
-import pandas as pd
 import glob
 import pickle
 import os
@@ -58,7 +57,7 @@ class PhysioNet_MI(DataSet):
             # strip channel names of "." characters
             raw.rename_channels(lambda x: x.strip('.'))
             # Apply band-pass filter
-            raw.filter(low_pass, high_pass, method='iir', iir_params=dict(order=f_order))
+            raw.filter(low_pass, high_pass, method='iir', iir_params=dict(order=f_order, ftype='butter'))
             events, _ = events_from_annotations(raw, event_id=ev_id)
             picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False,
                                 exclude='bads')            
