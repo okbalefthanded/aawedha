@@ -1,5 +1,6 @@
 from aawedha.io.base import DataSet
-from aawedha.paradigms import erp, subject
+from aawedha.paradigms.erp import ERP
+from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass
 import numpy as np
 import pandas as pd
@@ -97,11 +98,11 @@ class Inria_ERN(DataSet):
         NotImplementedError
 
     def _get_subjects(self, n_subjects=0):
-        return [subject.Subject(id='S'+str(s),gender='M',age=0, handedness='')
+        return [Subject(id='S'+str(s),gender='M',age=0, handedness='')
                     for s in range(1, n_subjects+1)]
 
     def _get_paradigm(self):
-        return erp.ERP(title='ERP_ERN', stimulation=60, break_duration=50, repetition=12,
+        return ERP(title='ERP_ERN', stimulation=60, break_duration=50, repetition=12,
                     phrase='', flashing_mode='RC')
 
     
