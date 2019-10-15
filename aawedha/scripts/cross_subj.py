@@ -1,10 +1,13 @@
 '''
  - main script for evaluating a model(s) on a dataset (s)
 '''
-
-
 from aawedha.io.physionet_mi import Inria_ERN
 from aawedha.evaluation.single_subject import CrossSubject
+from aawedha.models.EEGModels import EEGNet
+from tf.keras.metrics import AUC
+import numpy as np
+
+
 # generate set : convert raw EEG to a multisubject dataset:
 # RUN ONCE
 # aawedha DataSet Obeject: 
@@ -30,10 +33,18 @@ prt = [14,1,1]
 evl = CrossSubject(n_subjects=subjects, partition=prt, 
                     dataset=ds1)
 evl.generate_split(nfolds=30)
+subjects, samples, channels, trials = evl.dataset.epochs.shape
+n_classes = np.unique(evl.dataset.y).size
+
 # select a model
+evl.model = EEGNet(nb_classes = n_classes, Chans = channels, Samples = samples, 
+                   dropoutRate = 0.5, kernLength = 32, F1 = 8, D = 2, F2 = 16, 
+                   dropoutType = 'Dropout')
 
+evl.model.compile(loss='binary_crossentropy', 
+              optimizer='adam', 
+              metrics = ['accuracy', AUC()]
+              )
 # train model
-# evl.run_evaluation()
-# evaluate model
-
+evl.run_evaluation()
 # save model

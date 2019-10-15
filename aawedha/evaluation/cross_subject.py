@@ -1,5 +1,7 @@
 from aawedha.evaluation.base import Evaluation
+from sklearn.metrics import roc_auc_score
 import numpy as np
+import tensorflow.keras.utils as np_utils
 import random
 
 class CrossSubject(Evaluation):
@@ -22,10 +24,6 @@ class CrossSubject(Evaluation):
             # error : wrong partition
             raise AssertionError('Wrong partition scheme', self.partition)
 
-        #for _ in range(nfolds):
-        #    tmp = np.array(random.sample(range(self.n_subjects), self.n_subjects))
-        #    folds.append([tmp[:train_phase], tmp[train_phase:train_phase+val_phase], tmp[-test_phase:]])
-
         self.folds = self.get_folds(nfolds, self.n_subjects, train_phase, val_phase, test_phase)
 
 
@@ -40,10 +38,9 @@ class CrossSubject(Evaluation):
         for fold in range(self.folds):
             res_per_fold = self._cross_subject(fold)
             res.append(res_per_fold)        
+        
         # Aggregate results
-        res = np.array(res)
-        # self.results['results_acc'] = res[:,0]
-        # self.results['results_auc'] = res[:,1] 
+        res = np.array(res)      
         self.results = self.results_reports(res)  
 
     def _cross_subject(self, fold):
@@ -75,18 +72,16 @@ class CrossSubject(Evaluation):
         X_val = self.transform_scale(X_val, mu, sigma)
         X_test = self.transform_scale(X_test, mu, sigma)
         #
-        cws = class_weights(np.argmax(Y_train, axis=1))
+        cws = self.class_weights(np.argmax(Y_train, axis=1))
         # evaluate model on subj on all folds
     
         self.model.fit(X_train, Y_train, batch_size = 16, epochs = 300, 
               verbose = 0, validation_data=(X_val, Y_val),
               class_weight = cws)
             # train/val
-        probs = model.predict(X_test)
+        probs = self.model.predict(X_test)
         preds = probs.argmax(axis = -1)  
         acc   = np.mean(preds == Y_test.argmax(axis=-1))
-        auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
-        res.append([acc, auc_score])
-        res = np.array(res)     
-        return res
+        auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)    
+        return np.array([acc, auc_score])
         

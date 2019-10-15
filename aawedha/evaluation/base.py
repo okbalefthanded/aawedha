@@ -30,8 +30,18 @@ class Evaluation(object):
         '''
         pass
 
-    def results_reports(self):
-        pass   
+    def results_reports(self, res):
+        '''
+        '''
+        results = {}
+        mean_res = res.mean(axis=0)
+        results['acc'] = mean_res[:,0]
+
+        if res.size == 2: 
+            # binary classification
+            results['auc'] = mean_res[:,1]
+        
+        return results   
 
     def get_folds(self, nfolds, population, tr, vl, ts):
         '''

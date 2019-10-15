@@ -37,13 +37,9 @@ class SingleSubject(Evaluation):
         val_phase = val_phase * part
         test_phase = test_phase * part
   
-        # for _ in range(nfolds):
-        #    tmp = np.array(random.sample(range(n_trials), n_trials))
-        #    folds.append([tmp[:train_phase], tmp[train_phase:train_phase+val_phase], tmp[-test_phase:]])
-
         self.folds = self.get_folds(nfolds, n_trials, train_phase, val_phase, test_phase)
 
-    def run_evaluation(self):
+    def run_evaluation(self, subject=None):
         '''
         '''        
         # generate folds if folds are empty
@@ -51,15 +47,20 @@ class SingleSubject(Evaluation):
             self.folds = self.generate_split(nfolds=30)
         # 
         res = []
-        for subj in range(self.n_subjects):
+
+        if subject:
+            operations = [subject]
+        else:    
+            operations = range(self.n_subjects)
+
+        for subj in operations:
             res_per_subject, avg_res = self._single_subject(subj)
             res.append(res_per_subject)        
-        # Aggregate results
-        res = np.array(res)
         
+        # Aggregate results
+        res = np.array(res)        
         self.results = self.results_reports(res)
-        # self.results['results_acc'] = res[:,0]
-        # self.results['results_auc'] = res[:,1]    
+ 
 
     def _single_subject(self, subj):
         '''
@@ -91,7 +92,7 @@ class SingleSubject(Evaluation):
             # evaluate model on subj on all folds
             # rename the fit method
             self.model.fit(X_train, Y_train, batch_size = 16, epochs = 300, 
-                            verbose = 2, validation_data=(X_val, Y_val),
+                            verbose = 0, validation_data=(X_val, Y_val),
                             class_weight = class_weights)
             # train/val                
             # test 
