@@ -33,7 +33,8 @@ class Inria_ERN(DataSet):
       
 
 
-    def load_raw(self, path=None, epoch_duration=1, band=[1.0, 40.0], order=5):
+    def load_raw(self, path=None, epoch_duration=1, 
+                  band=[1.0, 40.0], order=5):
         """
         """
         list_of_files = glob.glob(path + 'Data_*.csv')

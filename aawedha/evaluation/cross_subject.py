@@ -35,7 +35,7 @@ class CrossSubject(Evaluation):
             self.folds = self.generate_split(nfolds=30)
         # 
         res = []
-        for fold in range(self.folds):
+        for fold in range(len(self.folds)):
             res_per_fold = self._cross_subject(fold)
             res.append(res_per_fold)        
         
@@ -74,7 +74,7 @@ class CrossSubject(Evaluation):
         #
         cws = self.class_weights(np.argmax(Y_train, axis=1))
         # evaluate model on subj on all folds
-    
+        
         self.model.fit(X_train, Y_train, batch_size = 16, epochs = 300, 
               verbose = 0, validation_data=(X_val, Y_val),
               class_weight = cws)

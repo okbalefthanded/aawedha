@@ -28,7 +28,7 @@ class Paradigm(metaclass=ABCMeta):
         number of stimulus presented in the experiment.
 
     stim_type: str
-        stimulus presented to subject (ERP) / type of stimulations used in the experiment (SSVEP) 
+        stimulus presented to subject (ERP) / type of stimulations used in the experiment (SSVEP) / type of cue presented before task (MI) 
 
     phrase : str
         sequence of characters to be spelled by the subject during the experiments
