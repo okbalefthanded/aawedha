@@ -39,29 +39,31 @@ class Comp_IV_2a(DataSet):
 
     def load_raw(self, path=None, mode='', 
                   epoch_duration=2, 
-                  band=[4.0, 40.0], order=3):
+                  band=[4.0, 40.0], 
+                  order=3):
         '''
         '''
         set_log_level(verbose=False)
         epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
-        labels_folder = load_path + '/true_labels'
+        labels_folder = path + '/true_labels'
 
         if mode == 'train':
             data_files = glob.glob(path + '/*T.gdf')
-            labels_files = glob.glob(path + '/*T.mat')
-        else mode == 'test':
+            labels_files = glob.glob(labels_folder + '/*T.mat')
+        elif mode == 'test':
             data_files = glob.glob(path + '/*E.gdf')
-            labels_files = glob.glob(path + '/*E.mat')
+            labels_files = glob.glob(labels_folder + '/*E.mat')
         
         data_files.sort()
-        labels_files.sort()        
-        subjects = range(9)
+        labels_files.sort()
+
+        subjects = range(len(data_files))
         X = []
         Y = []
 
         for subj in subjects:
             x, y = self._get_epoched(data_files[subj], 
-                                     labels_filesdata_files[subj],
+                                     labels_files[subj],
                                      epoch_duration,
                                      band,
                                      order)
@@ -74,11 +76,12 @@ class Comp_IV_2a(DataSet):
         return X, Y
 
     def generate_set(self, load_path=None, epoch=2,
-                    band=[4.,40.], order=3, 
+                    band=[4.,40.], 
+                    order=3, 
                     save_folder=None):
         '''
         '''        
-        self.epochs, self.y = self.load_raw(load_path, 'train'
+        self.epochs, self.y = self.load_raw(load_path, 'train',
                                            epoch, band, 
                                            order
                                            )
@@ -91,7 +94,6 @@ class Comp_IV_2a(DataSet):
         self.paradigm = self._get_paradigm()
         
         # save dataset
-        # save_folder = '/data/inria_ern'
         if not os.path.isdir(save_folder):
             os.mkdir(save_folder)
         fileName = save_folder + '/comp_IV_2a.pkl'
@@ -137,7 +139,7 @@ class Comp_IV_2a(DataSet):
         signal = bandpass(signal, band, self.fs, order=order)
         # epoch
         epochs = eeg_epoch(signal.T, dur, ev_pos)
-        self.subjects.append._get_subjects(raw._raw_extras[0]['subject_info'])
+        self.subjects.append(self._get_subjects(raw._raw_extras[0]['subject_info']))
         
         return epochs, y
 

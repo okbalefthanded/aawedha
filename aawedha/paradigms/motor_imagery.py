@@ -43,8 +43,9 @@ class MotorImagery(Paradigm):
                     repetition=72, 
                     stimuli=4, 
                     phrase=None,
-                    stim_type='Arrow Cue/Beep'):
-    super().__init__(title, 
-    control, stimulation, break_duration, repetition,
-                        stimuli, stim_type, phrase)         
+                    stim_type='Arrow Cue/Beep'
+                ):
+        super().__init__(title, control, stimulation, 
+                     break_duration, repetition,
+                     stimuli, stim_type, phrase)         
         
