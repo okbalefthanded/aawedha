@@ -1,7 +1,7 @@
 from aawedha.evaluation.base import Evaluation
 from sklearn.metrics import roc_auc_score
 import numpy as np
-import tensorflow.keras.utils as np_utils
+import tensorflow.keras.utils as tf_utils
 import random
 
 class CrossSubject(Evaluation):
@@ -51,8 +51,13 @@ class CrossSubject(Evaluation):
         subjects, samples, channels, trials = x.shape  
         y = self.dataset.y
         x = x.transpose((0,3,2,1))
-        y = np_utils.to_categorical(y)
         #
+        classes = np.unique(y)
+        if np.isin(0, classes):
+            y = tf_utils.to_categorical(y)
+        else:
+            y = tf_utils.to_categorical(y-1)
+        
         if  len(self.partition) == 3:      
             tr, val, ts = self.partition
         else :
@@ -61,12 +66,18 @@ class CrossSubject(Evaluation):
         #        
         X_train = x[self.folds[fold][0],:,:,:].reshape((tr*trials,kernels,channels,samples))
         X_val   = x[self.folds[fold][1],:,:,:].reshape((val*trials,kernels,channels,samples))
-        X_test  = x[self.folds[fold][2],:,:,:].reshape((ts*trials,kernels,channels,samples))
     
         Y_train = y[self.folds[fold][0],:].reshape((tr*trials,2))
         Y_val   = y[self.folds[fold][1],:].reshape((val*trials,2))
-        Y_test  = y[self.folds[fold][2],:].reshape((ts*trials,2))
-    
+        
+        if hasattr(self.dataset, 'test_epochs'):
+            trs = self.dataset.test_epochs.shape[3]
+            X_test = self.dataset.test_epochs.reshape((trs,kernels,channels,samples))
+            Y_test = tf_utils.to_categorical(self.dataset.test_y)
+        else:
+            X_test  = x[self.folds[fold][2],:,:,:].reshape((ts*trials,kernels,channels,samples))
+            Y_test  = y[self.folds[fold][2],:].reshape((ts*trials,2))
+
         # normalize data
         X_train, mu, sigma = self.fit_scale(X_train)
         X_val = self.transform_scale(X_val, mu, sigma)

@@ -70,14 +70,17 @@ class Evaluation(object):
         '''
         cl_weights = {}
         classes = np.unique(y)
-        n_classes = classes.size
-        if n_classes == 2:
-            n_perclass = [np.sum(y==cl) for cl in classes]
-            n_samples = np.sum(n_perclass)
-            ws = np.array([np.ceil(n_samples / cl).astype(int) for cl in n_perclass])
-            cl_weights = {classes[ws == ws.max()].item():ws.max(), classes[ws < ws.max()].item():1}
+        n_perclass = [np.sum(y==cl) for cl in classes]
+        n_samples = np.sum(n_perclass)
+        ws = np.array([np.ceil(n_samples / cl).astype(int) for cl in n_perclass])
+        if np.unique(ws).size == 1:
+            # balanced classes
+            cl_weights = {cl:1 for cl in classes}
         else:
-            #TODO
-            pass
+            # unbalanced classes
+            if classes.size == 2:
+                cl_weights = {classes[ws == ws.max()].item():ws.max(), classes[ws < ws.max()].item():1}
+            else:
+                cl_weights = {cl:ws[idx] for idx,cl in enumerate(classes)}
         return cl_weights
 

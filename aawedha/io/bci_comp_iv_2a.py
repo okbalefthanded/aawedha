@@ -72,7 +72,7 @@ class Comp_IV_2a(DataSet):
         
         samples, channels, trials = X[0].shape
         X = np.array(X)
-        Y = np.array(y)
+        Y = np.array(Y)
         return X, Y
 
     def generate_set(self, load_path=None, epoch=2,

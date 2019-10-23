@@ -1,5 +1,5 @@
 from aawedha.evaluation.base import Evaluation
-from tensorflow.keras import utils as np_utils
+from tensorflow.keras import utils as tf_utils
 from sklearn.metrics import roc_auc_score
 import numpy as np
 import random 
@@ -72,17 +72,28 @@ class SingleSubject(Evaluation):
         x = x.transpose((2,1,0))
         kernels = 1 # 
         x = x.reshape((trials, kernels, channels, samples))
-        y = np_utils.to_categorical(y)  
+        # 
+        classes = np.unique(y)
+        if np.isin(0, classes):
+            y = tf_utils.to_categorical(y)
+        else:
+            y = tf_utils.to_categorical(y-1)
         res = []             
         # get in the fold!!!
         for fold in range(len(self.folds)):
             X_train = x[self.folds[fold][0],:,:,:]
             X_val   = x[self.folds[fold][1],:,:,:]
-            X_test  = x[self.folds[fold][2],:,:,:]
-            
             Y_train = y[self.folds[fold][0]]
             Y_val   = y[self.folds[fold][1]]
-            Y_test  = y[self.folds[fold][2]]
+
+            if hasattr(self.dataset, 'test_epochs'):
+                trs = self.dataset.test_epochs.shape[3]
+                X_test  = self.dataset.test_epochs.reshape((trs, kernels, channels, samples))
+                Y_test  = tf_utils.to_categorical(self.dataset.test_y)
+            else:
+                X_test  = x[self.folds[fold][2],:,:,:]
+                Y_test  = y[self.folds[fold][2]]          
+            
             # normalize data
             X_train, mu, sigma = self.fit_scale(X_train)
             X_val = self.transform_scale(X_val, mu, sigma)
