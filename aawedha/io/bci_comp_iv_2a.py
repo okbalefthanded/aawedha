@@ -118,11 +118,11 @@ class Comp_IV_2a(DataSet):
         '''
         returns  epoch, y
         '''
-
         Left = 769
         Right = 770
         Foot  = 771
         Tongue = 772
+        Unkown = 783
         raw = read_raw_edf(data_file)
         lb = loadmat(label_file)
         y = lb['classlabel'].ravel()
@@ -132,15 +132,14 @@ class Comp_IV_2a(DataSet):
         events_raw = raw._raw_extras[0]['events']
         events_pos = events_raw[1]
         events_desc = events_raw[2]
-        ev_idx = (events_desc == Left) | (events_desc == Right) |(events_desc == Foot) | (events_desc == Tongue)
+        ev_idx = (events_desc == Left) | (events_desc == Right) |(events_desc == Foot) | (events_desc == Tongue)  | (events_desc == Unkown) 
         ev_desc = events_desc[ev_idx]
         ev_pos = events_pos[ev_idx]
         # filter
         signal = bandpass(signal, band, self.fs, order=order)
         # epoch
-        epochs = eeg_epoch(signal.T, dur, ev_pos)
+        epochs = eeg_epoch(signal.T, dur, ev_pos)        
         self.subjects.append(self._get_subjects(raw._raw_extras[0]['subject_info']))
-        
         return epochs, y
 
     def _get_labels(self):

@@ -63,7 +63,8 @@ class CrossSubject(Evaluation):
         else :
             # TODO
             pass  
-        #        
+        # 
+        res = []   
         X_train = x[self.folds[fold][0],:,:,:].reshape((tr*trials,kernels,channels,samples))
         X_val   = x[self.folds[fold][1],:,:,:].reshape((val*trials,kernels,channels,samples))
     
@@ -72,7 +73,8 @@ class CrossSubject(Evaluation):
         
         if hasattr(self.dataset, 'test_epochs'):
             trs = self.dataset.test_epochs.shape[3]
-            X_test = self.dataset.test_epochs.reshape((trs,kernels,channels,samples))
+            X_test = self.dataset.test_epochs.transpose((0,3,2,1))
+            X_test = X_test.reshape((trs , kernels , channels , samples))
             Y_test = tf_utils.to_categorical(self.dataset.test_y)
         else:
             X_test  = x[self.folds[fold][2],:,:,:].reshape((ts*trials,kernels,channels,samples))
@@ -93,6 +95,9 @@ class CrossSubject(Evaluation):
         probs = self.model.predict(X_test)
         preds = probs.argmax(axis = -1)  
         acc   = np.mean(preds == Y_test.argmax(axis=-1))
-        auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)    
-        return np.array([acc, auc_score])
+        res.append(acc)
+        if classes.size == 2:
+            auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
+            res.append(auc_score)                    
+        return np.array(res)
         

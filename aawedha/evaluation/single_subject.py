@@ -88,7 +88,8 @@ class SingleSubject(Evaluation):
 
             if hasattr(self.dataset, 'test_epochs'):
                 trs = self.dataset.test_epochs.shape[3]
-                X_test  = self.dataset.test_epochs.reshape((trs, kernels, channels, samples))
+                X_test = self.dataset.test_epochs[subj,:,:,:].transpose((2,1,0))
+                X_test  = X_test.reshape((trs, kernels, channels, samples))
                 Y_test  = tf_utils.to_categorical(self.dataset.test_y)
             else:
                 X_test  = x[self.folds[fold][2],:,:,:]
@@ -110,8 +111,10 @@ class SingleSubject(Evaluation):
             probs = self.model.predict(X_test)
             preds = probs.argmax(axis = -1)  
             acc   = np.mean(preds == Y_test.argmax(axis=-1))
-            auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
-            res.append([acc, auc_score])    
+            res.append(acc)
+            if classes.size == 2:
+                auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
+                res.append(auc_score)                
         
         # res = []  # shape: (n_folds, 2)           
         # average performance on all folds
