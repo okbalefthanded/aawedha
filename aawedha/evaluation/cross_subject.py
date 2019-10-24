@@ -1,7 +1,6 @@
 from aawedha.evaluation.base import Evaluation
 from sklearn.metrics import roc_auc_score
 import numpy as np
-import tensorflow.keras.utils as tf_utils
 import random
 
 class CrossSubject(Evaluation):
@@ -53,11 +52,7 @@ class CrossSubject(Evaluation):
         x = x.transpose((0,3,2,1))
         #
         classes = np.unique(y)
-        if np.isin(0, classes):
-            y = tf_utils.to_categorical(y)
-        else:
-            y = tf_utils.to_categorical(y-1)
-        
+        y = self.labels_to_categorical(y)        
         if  len(self.partition) == 3:      
             tr, val, ts = self.partition
         else :
@@ -75,7 +70,8 @@ class CrossSubject(Evaluation):
             trs = self.dataset.test_epochs.shape[3]
             X_test = self.dataset.test_epochs.transpose((0,3,2,1))
             X_test = X_test.reshape((trs , kernels , channels , samples))
-            Y_test = tf_utils.to_categorical(self.dataset.test_y)
+            # Y_test = tf_utils.to_categorical(self.dataset.test_y)
+            Y_test = self.labels_to_categorical(self.dataset.test_y)
         else:
             X_test  = x[self.folds[fold][2],:,:,:].reshape((ts*trials,kernels,channels,samples))
             Y_test  = y[self.folds[fold][2],:].reshape((ts*trials,2))
@@ -89,7 +85,7 @@ class CrossSubject(Evaluation):
         # evaluate model on subj on all folds
         
         self.model.fit(X_train, Y_train, batch_size = 16, epochs = 300, 
-              verbose = 0, validation_data=(X_val, Y_val),
+              verbose = self.verbose, validation_data=(X_val, Y_val),
               class_weight = cws)
             # train/val
         probs = self.model.predict(X_test)

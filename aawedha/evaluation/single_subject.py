@@ -1,5 +1,4 @@
 from aawedha.evaluation.base import Evaluation
-from tensorflow.keras import utils as tf_utils
 from sklearn.metrics import roc_auc_score
 import numpy as np
 import random 
@@ -74,11 +73,9 @@ class SingleSubject(Evaluation):
         x = x.reshape((trials, kernels, channels, samples))
         # 
         classes = np.unique(y)
-        if np.isin(0, classes):
-            y = tf_utils.to_categorical(y)
-        else:
-            y = tf_utils.to_categorical(y-1)
-        res = []             
+        y = self.labels_to_categorical(y)
+        res = []           
+          
         # get in the fold!!!
         for fold in range(len(self.folds)):
             X_train = x[self.folds[fold][0],:,:,:]
@@ -90,7 +87,8 @@ class SingleSubject(Evaluation):
                 trs = self.dataset.test_epochs.shape[3]
                 X_test = self.dataset.test_epochs[subj,:,:,:].transpose((2,1,0))
                 X_test  = X_test.reshape((trs, kernels, channels, samples))
-                Y_test  = tf_utils.to_categorical(self.dataset.test_y)
+                #Y_test  = tf_utils.to_categorical(self.dataset.test_y)
+                Y_test = self.labels_to_categorical(self.dataset.test_y)
             else:
                 X_test  = x[self.folds[fold][2],:,:,:]
                 Y_test  = y[self.folds[fold][2]]          
@@ -104,7 +102,7 @@ class SingleSubject(Evaluation):
             # evaluate model on subj on all folds
             # rename the fit method
             self.model.fit(X_train, Y_train, batch_size = 16, epochs = 300, 
-                            verbose = 0, validation_data=(X_val, Y_val),
+                            verbose = self.verbose, validation_data=(X_val, Y_val),
                             class_weight = class_weights)
             # train/val                
             # test 
