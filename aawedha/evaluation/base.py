@@ -59,14 +59,18 @@ class Evaluation(object):
 
         folds = []
         if hasattr(self.dataset, 'test_epochs'):
-            if exclude_subj:
-                # fully cross-subject, no subject train data in fold
-                # nfolds x nsubjects
-                pass
-            else:
-                # nfolds
-                pass
+            # independent test set
+            # list : nfolds : [nsubjects_train] [nsubjects_val] 
+             for subj in range(self.n_subjects):
+                    selection = np.arange(0, self.n_subjects)
+                    if exclude_subj:
+                        # fully cross-subject, no subject train data in fold
+                        selection = np.delete(selection, subj)
+                    for fold in range(nfolds): 
+                        np.random.shuffle(selection)                           
+                        folds.append([np.array(selection[:tr]), np.array(selection[tr:])])      
         else:
+            # generate folds for test set from one set
             for _ in range(nfolds):
                 tmp = np.array(random.sample(range(population), population))
                 folds.append([tmp[:tr], tmp[tr:tr+vl], tmp[-ts:]])

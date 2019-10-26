@@ -6,7 +6,7 @@ import random
 class CrossSubject(Evaluation):
 
 
-    def generate_split(self, nfolds=30):
+    def generate_split(self, nfolds=30, excl=True):
         '''
         '''
         # folds = []
@@ -23,7 +23,7 @@ class CrossSubject(Evaluation):
             # error : wrong partition
             raise AssertionError('Wrong partition scheme', self.partition)
 
-        self.folds = self.get_folds(nfolds, self.n_subjects, train_phase, val_phase, test_phase)
+        self.folds = self.get_folds(nfolds, self.n_subjects, train_phase, val_phase, test_phase, exclude_subj=excl)
 
 
     def run_evaluation(self):
@@ -52,29 +52,28 @@ class CrossSubject(Evaluation):
         x = x.transpose((0,3,2,1))
         #
         classes = np.unique(y)
-        y = self.labels_to_categorical(y)        
+        y = self.labels_to_categorical(y) 
+        tr, val = self.partition[0], self.partition[1] # n_subjects per train/val        
         if  len(self.partition) == 3:      
-            tr, val, ts = self.partition
-        else :
-            # TODO
-            pass  
+            ts = self.partition[2]        
         # 
         res = []   
         X_train = x[self.folds[fold][0],:,:,:].reshape((tr*trials,kernels,channels,samples))
         X_val   = x[self.folds[fold][1],:,:,:].reshape((val*trials,kernels,channels,samples))
-    
-        Y_train = y[self.folds[fold][0],:].reshape((tr*trials,2))
-        Y_val   = y[self.folds[fold][1],:].reshape((val*trials,2))
+
+        ctg_dim = y.shape[2]
+        Y_train = y[self.folds[fold][0],:].reshape((tr*trials, ctg_dim))
+        Y_val   = y[self.folds[fold][1],:].reshape((val*trials, ctg_dim))
         
         if hasattr(self.dataset, 'test_epochs'):
             trs = self.dataset.test_epochs.shape[3]
             X_test = self.dataset.test_epochs.transpose((0,3,2,1))
-            X_test = X_test.reshape((trs , kernels , channels , samples))
+            X_test = X_test.reshape((trs*self.n_subjects , kernels , channels , samples))
             # Y_test = tf_utils.to_categorical(self.dataset.test_y)
-            Y_test = self.labels_to_categorical(self.dataset.test_y)
+            Y_test = self.labels_to_categorical(self.dataset.test_y.reshape((self.n_subjects*trs)))
         else:
             X_test  = x[self.folds[fold][2],:,:,:].reshape((ts*trials,kernels,channels,samples))
-            Y_test  = y[self.folds[fold][2],:].reshape((ts*trials,2))
+            Y_test  = y[self.folds[fold][2],:].reshape((ts*trials, ctg_dim))
 
         # normalize data
         X_train, mu, sigma = self.fit_scale(X_train)
