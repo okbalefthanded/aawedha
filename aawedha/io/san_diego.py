@@ -18,7 +18,7 @@ class SanDiego(DataSet):
         Detecting Steady-State Visual Evoked Potentials,"
         PLoS One, vol.10, no.10, e140703, 2015.
     '''
-    def ___init__(self):
+    def __init__(self):
         super().__init__(title='San_Diego',
                        ch_names=['PO7','PO3','POz','PO4','PO8','O1','Oz','O2'], 
                        fs=256, 
@@ -42,7 +42,8 @@ class SanDiego(DataSet):
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             eeg = eeg[onset:onset+epoch_duration, :, :, :]
             samples, channels, blocks, targets = eeg.shape
-            y = np.tile(np.arange(1, targets+1), blocks)
+            y = np.tile(np.arange(1, targets+1), (blocks,1))
+            y = y.reshape((1,blocks*targets),order='F') 
             X.append(eeg.reshape((samples, channels, blocks*targets)))
             Y.append(y)
 
@@ -81,7 +82,7 @@ class SanDiego(DataSet):
 
     def _get_paradigm(self):
         return SSVEP(title='SSVEP_JFPM', stimulation=4000, break_duration=1000, repetition=15,
-                    stimilui=12, phrase='',
+                    stimuli=12, phrase='',
                     stim_type='ON_OFF', frequencies=[9.25, 11.25, 13.25, 9.75, 11.75, 13.75, 10.25, 
                     12.25, 14.25, 10.75, 12.75, 14.75], 
                     phase=[0.0, 0.0, 0.0, 0.5*np.pi, 0.5*np.pi, 0.5*np.pi, 
