@@ -26,7 +26,7 @@ class SanDiego(DataSet):
                        )  
 
     def load_raw(self, path=None, epoch_duration=1, 
-                  band=[5.0, 45.0], order=6):
+                  band=[5.0, 45.0], order=6, augment=False):
         list_of_files = glob.glob(path + 's*.mat')
         list_of_files.sort() 
 
@@ -35,25 +35,36 @@ class SanDiego(DataSet):
         n_subjects = 10               
         X = []
         Y = []
+        augmented = 0
 
         for subj in range(n_subjects):
             data = loadmat(list_of_files[subj])
             eeg = data['eeg'].transpose((2,1,3,0)) #samples, channels, trials, targets
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
-            eeg = eeg[onset:onset+epoch_duration, :, :, :]
-            samples, channels, blocks, targets = eeg.shape
-            y = np.tile(np.arange(1, targets+1), (blocks,1))
-            y = y.reshape((1,blocks*targets),order='F') 
+            if augment:
+                augmented = 4
+                v = [eeg[onset+(stride*self.fs):onset+(stride*self.fs)+epoch_duration, :, :, :] for stride in range(augmented)]
+                eeg = np.concatenate(v, axis=2)
+                samples, channels, blocks, targets = eeg.shape
+                y = np.tile(np.arange(1, targets+1), (int(blocks/augmented),1))
+                y = np.tile(y, (1,augmented))
+                y = y.reshape((1,blocks*targets),order='F')
+            else:
+                eeg = eeg[onset:onset+epoch_duration, :, :, :]                
+                samples, channels, blocks, targets = eeg.shape
+                y = np.tile(np.arange(1, targets+1), (blocks,1))
+                y = y.reshape((1,blocks*targets),order='F') 
+            
             X.append(eeg.reshape((samples, channels, blocks*targets)))
             Y.append(y)
 
         X = np.array(X)
-        Y = np.array(Y)
+        Y = np.array(Y).squeeze()
         return X, Y
 
     def generate_set(self, load_path=None, epoch=1, band=[5.0, 45.0], 
-                        order=6, save_folder=None):
-        self.epochs, self.y = self.load_raw(load_path, epoch, band, order)
+                        order=6, save_folder=None, augment=False):
+        self.epochs, self.y = self.load_raw(load_path, epoch, band, order, augment)
         self.subjects = self._get_subjects(n_subjects=10)
         self.paradigm = self._get_paradigm()
         
