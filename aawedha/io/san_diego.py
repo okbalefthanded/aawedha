@@ -55,7 +55,7 @@ class SanDiego(DataSet):
                 y = np.tile(np.arange(1, targets+1), (blocks,1))
                 y = y.reshape((1,blocks*targets),order='F') 
             
-            X.append(eeg.reshape((samples, channels, blocks*targets)))
+            X.append(eeg.reshape((samples, channels, blocks*targets),order='F'))
             Y.append(y)
 
         X = np.array(X)
