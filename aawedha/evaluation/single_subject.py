@@ -36,7 +36,7 @@ class SingleSubject(Evaluation):
         val_phase = val_phase * part
         test_phase = test_phase * part
   
-        self.folds = self.get_folds(nfolds, n_trials, train_phase, val_phase, test_phase)
+        self.folds = self.get_folds(nfolds, n_trials, train_phase, val_phase, test_phase, exclude_subj=False)
 
     def run_evaluation(self, subject=None):
         '''

@@ -2,10 +2,11 @@
 Base class for evaluations
 
 '''
-from tensorflow.keras.utils import to_categorical 
+from tensorflow.keras.utils import to_categorical
 import numpy as np
 import random
 import abc
+import os
 
 class Evaluation(object):
 
@@ -119,3 +120,15 @@ class Evaluation(object):
             y = to_categorical(y-1)
         return y
 
+    def save_model(self, folderpath=None):
+        '''
+        '''
+        if not os.path.isdir('trained'):
+            os.mkdir('trained')
+        if not folderpath:            
+           folderpath = 'trained' 
+        prdg = self.dataset.paradigm.title
+        dt = self.dataset.title
+        filepath = folderpath + '/' + '_'.join(['model',prdg,dt,'.h5'])    
+        self.model.save(filepath)
+        
