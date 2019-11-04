@@ -52,19 +52,20 @@ class Tsinghua(DataSet):
             eeg = data['data'].transpose((1,0,2,3))
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
-                # TODO
                 augmented = 4
+                tg = eeg.shape[2]
                 v = [eeg[onset+(stride*self.fs):onset+(stride*self.fs)+epoch_duration, :, :, :] for stride in range(augmented)]
                 eeg = np.concatenate(v, axis=2)
                 samples, channels, targets, blocks = eeg.shape
-                y = np.tile(np.arange(1, targets+1), (int(blocks/augmented),1))
-                y = np.tile(y, (1,augmented))
-                y = y.reshape((1,blocks*targets),order='F')
+                y = np.tile(np.arange(1, tg+1), (1, augmented))
+                y = np.tile(y, (1,blocks))
+                del v #saving some RAM
             else:
                 eeg = eeg[onset:epoch_duration, :, :, :]                
                 samples, channels, targets, blocks = eeg.shape
-                y = np.tile(np.arange(1, targets+1), (1,blocks))
+                y = np.tile(np.arange(1, targets+1), (1,blocks))            
             
+            del data #saving some RAM
             X.append(eeg.reshape((samples, channels, blocks*targets),order='F'))
             Y.append(y)
 
