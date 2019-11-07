@@ -29,21 +29,28 @@ class Inria_ERN(DataSet):
                        'P2','P4','P6','P8','PO7','POz','P08','O1','O2'], 
                        fs=200, 
                        doi = 'http://dx.doi.org/10.1155/2012/578295'
-                       )      
-      
+                       )
+        self.test_epochs = []
+        self.test_y = []
+        self.test_events = []
 
 
     def load_raw(self, path=None, epoch_duration=1, 
                   band=[1.0, 40.0], order=5):
         """
         """
-        list_of_files = glob.glob(path + 'Data_*.csv')
-        list_of_files.sort() 
+        list_of_tr_files = glob.glob(path + '/train/Data_*.csv')
+        list_of_tr_files.sort() 
 
-        n_subjects = 16
+        list_of_ts_files = glob.glob(path + '/test/Data_*.csv')
+        list_of_ts_files.sort() 
+
+
+        n_subjects = 26
         epoch_duration = round(epoch_duration * self.fs) 
         channels = len(self.ch_names)
         epochs = 340
+        '''
         X = []
 
         for f in list_of_files:
@@ -57,18 +64,53 @@ class Inria_ERN(DataSet):
                 X.append(signal[idx:idx+epoch_duration, :])
             
             del sig # saving some RAM 
+        '''
+        X = self._get_epoched(list_of_tr_files, epoch_duration, band, order)
+        X_test = self._get_epoched(list_of_ts_files, epoch_duration, band, order)
+        
+        train_subjects = 16
+        test_subjects = 10
+    
+        samples = X[0].shape[0]
+        # X = np.array(X).transpose((2,1,0)).reshape((n_subjects, epoch_duration, channels, epochs))
+        # X = np.array(X).transpose((2,1,0)).reshape((n_subjects, epoch_duration, channels, epochs), order='F')
+        X = np.array(X).reshape((train_subjects, epochs, samples, channels), order='F').transpose((0,2,3,1)) 
+        X_test = np.array(X_test).reshape((test_subjects, epochs, samples, channels), order='F').transpose((0,2,3,1)) 
 
-        X = np.array(X).transpose((2,1,0)).reshape((n_subjects, epoch_duration, channels, epochs))
+        labels = np.genfromtxt(path + '/train//TrainLabels.csv',delimiter=',',skip_header=1)[:,1]
+        Y = labels.reshape((train_subjects, epochs))
+        labels_test = np.genfromtxt(path+'/test//true_labels.csv',delimiter=',')
+        Y_test = labels_test.reshape((test_subjects, epochs))
+        
+        return X, Y, X_test, Y_test  # : 4-D array : (subject, samples, channels, epoch)
 
-        labels = np.genfromtxt(path + 'TrainLabels.csv',delimiter=',',skip_header=1)[:,1]
-        Y = labels.reshape((n_subjects, epochs))
-        return X, Y  # : 4-D array : (subject, samples, channels, epoch)
+    def _get_epoched(self, files_list=None,
+                    epoch=1, band=[1.,40.], order=5):
+        '''
+        '''
+        if not files_list:
+            return None
+        
+        X = []
+        for f in files_list:
+            sig = np.array(pd.io.parsers.read_csv(f))
+            eeg = sig[:,1:-2]
+            trigger = sig[:,-1]
+            signal = bandpass(eeg, band, self.fs, order)
+            idxFeedback = np.where(trigger==1)[0]
+
+            for idx in idxFeedback:
+                X.append(signal[idx:idx+epoch, :])
+            
+            del sig # saving some RAM 
+
+        return X
 
     def generate_set(self, load_path=None, epoch=1, band=[1.0, 40.0], 
                         order=5, save_folder=None):
         """
         """
-        self.epochs, self.y = self.load_raw(load_path, epoch, band, order)
+        self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=16)
         self.paradigm = self._get_paradigm()
         

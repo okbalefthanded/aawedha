@@ -33,13 +33,20 @@ class CrossSubject(Evaluation):
         if not self.folds:
             self.folds = self.generate_split(nfolds=30)
         # 
-        res = []
+        res_acc = []
+        res_auc = []
+
         for fold in range(len(self.folds)):
-            res_per_fold = self._cross_subject(fold)
-            res.append(res_per_fold)        
+            acc_per_fold, auc_per_fold = self._cross_subject(fold)
+            res_acc.append(acc_per_fold)
+            if auc_per_fold:
+                res_auc.append(auc_per_fold)          
         
         # Aggregate results
-        res = np.array(res)      
+        if res_auc:
+            res = np.array([res_acc, res_auc])
+        else:
+            res = np.array(res_acc)      
         self.results = self.results_reports(res)  
 
     def _cross_subject(self, fold):
@@ -57,7 +64,8 @@ class CrossSubject(Evaluation):
         if  len(self.partition) == 3:      
             ts = self.partition[2]        
         # 
-        res = []   
+        res_acc = []               
+        res_auc = []   
         X_train = x[self.folds[fold][0],:,:,:].reshape((tr*trials,kernels,channels,samples))
         X_val   = x[self.folds[fold][1],:,:,:].reshape((val*trials,kernels,channels,samples))
 
@@ -90,9 +98,11 @@ class CrossSubject(Evaluation):
         probs = self.model.predict(X_test)
         preds = probs.argmax(axis = -1)  
         acc   = np.mean(preds == Y_test.argmax(axis=-1))
-        res.append(acc)
+
+        res_acc.append(acc)
         if classes.size == 2:
             auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
-            res.append(auc_score)                    
-        return np.array(res)
+            res_auc.append(auc_score)                     
+        
+        return res_acc, res_auc
         

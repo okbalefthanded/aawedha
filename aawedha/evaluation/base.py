@@ -40,36 +40,44 @@ class Evaluation(object):
         '''
         '''
         results = {}
-        print(f'raw results : {res}')
-        mean_res = res.mean(axis=0)
-        if mean_res.ndim == 2:
-            results['acc'] = mean_res[:,0]
-        else:
-            results['acc'] = mean_res[0]
-
-        if res.size == 2: 
-            # binary classification
-            results['auc'] = mean_res[:,1]
         
-        print(f'results : {results}')
+        # mean_res = res.mean(axis=0)
+        print(f' res dims {res.ndim}')
+        print(f' res shape {res.shape}')
+        
+        if res.ndim == 2:
+            means = res.mean(axis=1)
+            results['acc'] = means[0]
+            results['acc_mean'] = res[0]
+            results['auc'] = means[1]
+            results['auc_mean'] = res[1]
+        else:
+            results['acc'] = res
+            results['acc_mean'] = res.mean()
+
         return results   
 
     def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
         '''
         '''
-
         folds = []
-        if hasattr(self.dataset, 'test_epochs'):
-            # independent test set
-            # list : nfolds : [nsubjects_train] [nsubjects_val] 
-             for subj in range(self.n_subjects):
+        if hasattr(self.dataset, 'test_epochs'):            
+            if self.__class__.__name__ == 'CrossSubject':
+                # independent test set
+                # list : nfolds : [nsubjects_train] [nsubjects_val] 
+                for subj in range(self.n_subjects):
                     selection = np.arange(0, self.n_subjects)
                     if exclude_subj:
                         # fully cross-subject, no subject train data in fold
                         selection = np.delete(selection, subj)
                     for fold in range(nfolds): 
                         np.random.shuffle(selection)                           
-                        folds.append([np.array(selection[:tr]), np.array(selection[tr:])])      
+                        folds.append([np.array(selection[:tr]), np.array(selection[tr:])])            
+            elif self.__class__.__name__ == 'SingleSubject':
+                # generate folds for test set from one set
+                for _ in range(nfolds):
+                    tmp = np.array(random.sample(range(population), population))
+                    folds.append([tmp[:tr], tmp[tr:tr+vl], tmp[-ts:]])      
         else:
             # generate folds for test set from one set
             for _ in range(nfolds):
