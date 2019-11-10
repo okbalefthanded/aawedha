@@ -54,6 +54,11 @@ class SingleSubject(Evaluation):
         if hasattr(self.dataset, 'test_epochs'):
             if train_subjects == self.dataset.test_epochs.shape[0]:
                 independent_test = True
+            else:
+                # concatenate train & test data
+                # test data are different subjects 
+                n_subj  = self._fuse_data()
+                self.n_subjects = n_subj
 
         if subject:
             operations = [subject]
@@ -71,6 +76,10 @@ class SingleSubject(Evaluation):
         # res_acc = np.array(res_acc)
         if res_auc:
             res = np.array([res_acc, res_auc])
+            print(f' Aggregating : Acc raw : {res_acc}')
+            print(f' Aggregating : AUC raw : {res_auc}')
+            print(f' Aggregating : res raw : {res}')
+            print(f' Aggregating : shape : {res.shape}')
         else:
             res = np.array(res_acc)
             
@@ -125,13 +134,20 @@ class SingleSubject(Evaluation):
             probs = self.model.predict(X_test)
             preds = probs.argmax(axis = -1)  
             acc   = np.mean(preds == Y_test.argmax(axis=-1))
-            res_acc.append(acc)
+            res_acc.append(acc.item())
             if classes.size == 2:
                 auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
-                res_auc.append(auc_score)                
+                res_auc.append(auc_score.item())                
         
         # res = []  # shape: (n_folds, 2)           
         # average performance on all folds
         # res_acc = np.array(res_acc)             
         return res_acc, res_auc # res.mean(axis=0)
-            
+
+    def _fuse_data(self):
+        '''
+        '''
+        self.dataset.epochs = np.vstack((self.dataset.epochs, self.dataset.test_epochs))
+        self.dataset.y = np.vstack((self.dataset.y, self.dataset.test_y))
+        return self.dataset.epochs.shape[0] 
+        

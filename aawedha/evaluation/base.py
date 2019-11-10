@@ -40,20 +40,18 @@ class Evaluation(object):
         '''
         '''
         results = {}
-        
-        # mean_res = res.mean(axis=0)
-        print(f' res dims {res.ndim}')
-        print(f' res shape {res.shape}')
-        
-        if res.ndim == 2:
-            means = res.mean(axis=1)
+                
+        if res.ndim == 3:
+            # res : (metric, subjects, folds)
+            means = res.mean(axis=-1) # mean across folds
             results['acc'] = means[0]
-            results['acc_mean'] = res[0]
+            results['acc_mean'] = means[0].mean()
             results['auc'] = means[1]
-            results['auc_mean'] = res[1]
+            results['auc_mean'] = means[1].mean()
         else:
-            results['acc'] = res
-            results['acc_mean'] = res.mean()
+            # res : (subjects, folds)
+            results['acc'] = res.mean(axis=-1) # mean across folds
+            results['acc_mean'] = res.mean() # mean across subjects
 
         return results   
 
