@@ -106,8 +106,9 @@ class Inria_ERN(DataSet):
 
         return X
 
-    def generate_set(self, load_path=None, epoch=1, band=[1.0, 40.0], 
-                        order=5, save_folder=None):
+    def generate_set(self, load_path=None, epoch=1, 
+                    band=[1.0, 40.0], 
+                    order=5, save_folder=None):
         """
         """
         self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(load_path, epoch, band, order)
