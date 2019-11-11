@@ -50,21 +50,7 @@ class Inria_ERN(DataSet):
         epoch_duration = round(epoch_duration * self.fs) 
         channels = len(self.ch_names)
         epochs = 340
-        '''
-        X = []
-
-        for f in list_of_files:
-            sig = np.array(pd.io.parsers.read_csv(f))
-            eeg = sig[:,1:-2]
-            trigger = sig[:,-1]
-            signal = bandpass(eeg, band, self.fs, order)
-            idxFeedback = np.where(trigger==1)[0]
-
-            for idx in idxFeedback:
-                X.append(signal[idx:idx+epoch_duration, :])
-            
-            del sig # saving some RAM 
-        '''
+    
         X = self._get_epoched(list_of_tr_files, epoch_duration, band, order)
         X_test = self._get_epoched(list_of_ts_files, epoch_duration, band, order)
         
@@ -114,26 +100,7 @@ class Inria_ERN(DataSet):
         self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=16)
         self.paradigm = self._get_paradigm()
-        
-        # save dataset
-        # save_folder = '/data/inria_ern'
-        if not os.path.isdir(save_folder):
-            os.mkdir(save_folder)
-        fileName = save_folder + '/inria_ern.pkl'
-        f = gzip.open(fileName, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
-        f.close()
-
-    def load_set(self, fileName=None):
-        """
-        """
-        if os.path.exists(fileName):
-            f = gzip.open(fileName, 'rb')
-            data = pickle.load(f)
-        else:
-            raise FileNotFoundError
-        f.close()
-        return data  
+        self.save_set(save_folder)
         
     def get_path(self):
         NotImplementedError

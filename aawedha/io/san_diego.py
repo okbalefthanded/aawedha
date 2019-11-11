@@ -49,14 +49,18 @@ class SanDiego(DataSet):
                 y = np.tile(np.arange(1, targets+1), (int(blocks/augmented),1))
                 y = np.tile(y, (1,augmented))
                 y = y.reshape((1,blocks*targets),order='F')
+                del v
             else:
                 eeg = eeg[onset:onset+epoch_duration, :, :, :]                
                 samples, channels, blocks, targets = eeg.shape
                 y = np.tile(np.arange(1, targets+1), (blocks,1))
                 y = y.reshape((1,blocks*targets),order='F') 
             
+            del data # save some RAM
+
             X.append(eeg.reshape((samples, channels, blocks*targets),order='F'))
             Y.append(y)
+            
 
         X = np.array(X)
         Y = np.array(Y).squeeze()
@@ -67,26 +71,8 @@ class SanDiego(DataSet):
         self.epochs, self.y = self.load_raw(load_path, epoch, band, order, augment)
         self.subjects = self._get_subjects(n_subjects=10)
         self.paradigm = self._get_paradigm()
-        
-        # save dataset
-        if not os.path.isdir(save_folder):
-            os.mkdir(save_folder)
-        fileName = save_folder + '/san_diego.pkl'
-        f = gzip.open(fileName, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
-        f.close()
-
-    def load_set(self, fileName=None):
-        """
-        """
-        if os.path.exists(fileName):
-            f = gzip.open(fileName, 'rb')
-            data = pickle.load(f)
-        else:
-            raise FileNotFoundError
-        f.close()
-        return data
-
+        self.save_set(save_folder)
+  
     def _get_subjects(self, n_subjects=0):
         return [Subject(id='S'+str(s),gender='M',age=0, handedness='')
                     for s in range(1, n_subjects+1)]

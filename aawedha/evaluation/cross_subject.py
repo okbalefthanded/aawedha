@@ -46,7 +46,8 @@ class CrossSubject(Evaluation):
         if res_auc:
             res = np.array([res_acc, res_auc])
         else:
-            res = np.array(res_acc)      
+            res = np.array(res_acc)   
+               
         self.results = self.results_reports(res)  
 
     def _cross_subject(self, fold):

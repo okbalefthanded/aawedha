@@ -25,7 +25,7 @@ class Comp_IV_2a(DataSet):
 
     """
     def __init__(self):
-        super().__init__(title='Comp IV 2a',
+        super().__init__(title='Comp_IV_2a',
                         ch_names=['Fz','FC3','FC1','FCz',
                         'FC2','FC4','C5','C3','C1','Cz',
                         'C2','C4','C6','CP3','CP1','CPz',
@@ -92,31 +92,14 @@ class Comp_IV_2a(DataSet):
                                            )
         
         self.paradigm = self._get_paradigm()
-        
-        # save dataset
-        if not os.path.isdir(save_folder):
-            os.mkdir(save_folder)
-        fileName = save_folder + '/comp_IV_2a.pkl'
-        f = gzip.open(fileName, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
-        f.close()
-
-    def load_set(self, fileName=None):
-        if os.path.exists(fileName):
-            f = gzip.open(fileName, 'rb')
-            data = pickle.load(f)
-        else:
-            raise FileNotFoundError
-        f.close()
-        return data 
-
+        self.save_set(save_folder)
+     
     def get_path(self):
         NotImplementedError
 
     def _get_epoched(self, data_file, label_file, 
                      dur, band, order):
         '''
-        returns  epoch, y
         '''
         Left = 769
         Right = 770

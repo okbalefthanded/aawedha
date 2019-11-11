@@ -61,25 +61,7 @@ class FreiburgOnline(DataSet):
         self.epochs, self.y = self.load_raw(load_path)
         self.subjects = self._get_subjects(n_subjects=13)
         self.paradigm = self._get_paradigm()
-
-        if not os.path.isdir(save_folder):
-            os.mkdir(save_folder)
-        file_name = save_folder + '/freiburg_erp_online.pkl'
-        f = gzip.open(file_name, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
-        f.close()
-        
-
-    def load_set(self, file_name=None):
-        '''
-        '''
-        if os.path.exists(file_name):
-            f = gzip.open(file_name, 'rb')
-            data = pickle.load(f)
-        else:
-            raise FileNotFoundError
-        f.close()
-        return data  
+        self.save_set(save_folder)
 
     def _get_subjects(self, n_subjects=0):
         '''

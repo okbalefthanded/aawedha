@@ -76,10 +76,6 @@ class SingleSubject(Evaluation):
         # res_acc = np.array(res_acc)
         if res_auc:
             res = np.array([res_acc, res_auc])
-            print(f' Aggregating : Acc raw : {res_acc}')
-            print(f' Aggregating : AUC raw : {res_auc}')
-            print(f' Aggregating : res raw : {res}')
-            print(f' Aggregating : shape : {res.shape}')
         else:
             res = np.array(res_acc)
             
@@ -139,10 +135,8 @@ class SingleSubject(Evaluation):
                 auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
                 res_auc.append(auc_score.item())                
         
-        # res = []  # shape: (n_folds, 2)           
-        # average performance on all folds
-        # res_acc = np.array(res_acc)             
-        return res_acc, res_auc # res.mean(axis=0)
+        # res = []  # shape: (n_folds, 2)        
+        return res_acc, res_auc 
 
     def _fuse_data(self):
         '''

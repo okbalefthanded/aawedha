@@ -2,6 +2,9 @@
     Base class for datasets
 """
 from abc import ABCMeta, abstractmethod
+import os
+import gzip
+import pickle
 
 
 class DataSet(metaclass=ABCMeta):
@@ -78,6 +81,33 @@ class DataSet(metaclass=ABCMeta):
     @abstractmethod
     def get_path(self):
         pass
+
+    def save_set(self, save_folder=None):
+        '''
+        '''
+        # save dataset
+        if not os.path.isdir(save_folder):
+            os.mkdir(save_folder)
+
+        if not self.title:
+            self.title = 'unnamed_set'
+
+        fname = save_folder + '/' + self.title +'.pkl'
+        f = gzip.open(fname, 'wb')
+        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
+        f.close()
+        # log if verbose
+
+    def load_set(self, file_name=None):
+        '''
+        '''
+        if os.path.exists(file_name):
+            f = gzip.open(file_name, 'rb')
+            data = pickle.load(f)
+        else:
+            raise FileNotFoundError
+        f.close()
+        return data  
 
 
 

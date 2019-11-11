@@ -47,6 +47,7 @@ class Tsinghua(DataSet):
         X = []
         Y = []
         augmented = 0
+        
         for subj in range(n_subjects):
             data = loadmat(list_of_files[indices==subj][0])
             eeg = data['data'].transpose((1,0,2,3))
@@ -83,26 +84,7 @@ class Tsinghua(DataSet):
                                              augment)
         self.subjects = self._get_subjects(path=load_path)
         self.paradigm = self._get_paradigm()                                     
-         # save dataset
-        if not os.path.isdir(save_folder):
-            os.mkdir(save_folder)
-        fileName = save_folder + '/tsinghua.pkl'
-        f = gzip.open(fileName, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
-        f.close()
-
-    
-    def load_set(self, fileName=None):
-        '''
-        '''
-        if os.path.exists(fileName):
-            f = gzip.open(fileName, 'rb')
-            data = pickle.load(f)
-        else:
-            raise FileNotFoundError
-        f.close()
-        return data
-
+        self.save_set(save_folder)
 
     def _get_subjects(self, n_subject=0, path=None):
         '''
