@@ -10,7 +10,6 @@ import numpy as np
 import glob
 import pickle
 import os
-import gzip
 
 
 class Comp_IV_2a(DataSet):

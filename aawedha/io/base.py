@@ -3,7 +3,7 @@
 """
 from abc import ABCMeta, abstractmethod
 import os
-import gzip
+import sys
 import pickle
 
 
@@ -93,8 +93,9 @@ class DataSet(metaclass=ABCMeta):
             self.title = 'unnamed_set'
 
         fname = save_folder + '/' + self.title +'.pkl'
-        f = gzip.open(fname, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
+        print(f'Saving dataset {self.title} to destination: {fname}')        
+        f = open(fname, 'wb')
+        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)                
         f.close()
         # log if verbose
 
@@ -102,7 +103,7 @@ class DataSet(metaclass=ABCMeta):
         '''
         '''
         if os.path.exists(file_name):
-            f = gzip.open(file_name, 'rb')
+            f = open(file_name, 'rb')
             data = pickle.load(f)
         else:
             raise FileNotFoundError

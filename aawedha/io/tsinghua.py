@@ -4,11 +4,11 @@ from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass
 from scipy.io import loadmat
 import numpy as np
+import os
+import re
+import sys
 import glob
 import pickle
-import os
-import gzip
-import re
 
 
 class Tsinghua(DataSet):
@@ -51,13 +51,14 @@ class Tsinghua(DataSet):
         for subj in range(n_subjects):
             data = loadmat(list_of_files[indices==subj][0])
             eeg = data['data'].transpose((1,0,2,3))
+            del data
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
                 augmented = 4
                 tg = eeg.shape[2]
                 v = [eeg[onset+(stride*self.fs):onset+(stride*self.fs)+epoch_duration, :, :, :] for stride in range(augmented)]
                 eeg = np.concatenate(v, axis=2)
-                samples, channels, targets, blocks = eeg.shape
+                samples, channels, targets, blocks = eeg.shape                
                 y = np.tile(np.arange(1, tg+1), (1, augmented))
                 y = np.tile(y, (1,blocks))
                 del v #saving some RAM
@@ -66,9 +67,10 @@ class Tsinghua(DataSet):
                 samples, channels, targets, blocks = eeg.shape
                 y = np.tile(np.arange(1, targets+1), (1,blocks))            
             
-            del data #saving some RAM
             X.append(eeg.reshape((samples, channels, blocks*targets),order='F'))
             Y.append(y)
+            del eeg
+            del y
 
         X = np.array(X)
         Y = np.array(Y).squeeze()
@@ -83,7 +85,7 @@ class Tsinghua(DataSet):
                                              epoch, band, order,
                                              augment)
         self.subjects = self._get_subjects(path=load_path)
-        self.paradigm = self._get_paradigm()                                     
+        self.paradigm = self._get_paradigm()                                   
         self.save_set(save_folder)
 
     def _get_subjects(self, n_subject=0, path=None):

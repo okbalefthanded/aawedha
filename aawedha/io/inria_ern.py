@@ -7,7 +7,7 @@ import pandas as pd
 import glob
 import pickle
 import os
-import gzip
+
 
 class Inria_ERN(DataSet):
     """
