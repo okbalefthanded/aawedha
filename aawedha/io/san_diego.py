@@ -65,7 +65,8 @@ class SanDiego(DataSet):
         Y = np.array(Y).squeeze()
         return X, Y
 
-    def generate_set(self, load_path=None, epoch=1, band=[5.0, 45.0], 
+    def generate_set(self, load_path=None, epoch=1, 
+                        band=[5.0, 45.0], 
                         order=6, save_folder=None, augment=False):
         self.epochs, self.y = self.load_raw(load_path, epoch, band, order, augment)
         self.subjects = self._get_subjects(n_subjects=10)
