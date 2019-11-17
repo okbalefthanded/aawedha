@@ -28,8 +28,7 @@ class SingleSubject(Evaluation):
             test_phase = self.partition[2]    
         else:
             # error : wrong partition
-            raise AssertionError('Wrong partition scheme', self.partition)
-    
+            raise AssertionError('Wrong partition scheme', self.partition)    
         
         part = np.round(n_trials / np.sum(self.partition)).astype(int)
   
@@ -50,11 +49,11 @@ class SingleSubject(Evaluation):
         res_auc = []
 
         independent_test = False
-        equal_subjects = self._get_n_subj()
+        # equal_subjects = self._get_n_subj()
 
         if hasattr(self.dataset, 'test_epochs'):
 
-            if equal_subjects:
+            if self._equale_subjects():
                 independent_test = True
             else:
                 # concatenate train & test data
@@ -88,8 +87,6 @@ class SingleSubject(Evaluation):
         '''
         '''
         # prepare data
-        #x = self.dataset.epochs[subj, :, :, :]
-        #y = self.dataset.y[subj, :]
         x = self.dataset.epochs[subj][:, :, :]
         y = self.dataset.y[subj][:]
         samples, channels, trials = x.shape
@@ -103,21 +100,7 @@ class SingleSubject(Evaluation):
         res_auc = []
         # get in the fold!!!
         for fold in range(len(self.folds)):
-            '''
-            X_train = x[self.folds[fold][0],:,:,:]
-            X_val   = x[self.folds[fold][1],:,:,:]
-            Y_train = y[self.folds[fold][0]]
-            Y_val   = y[self.folds[fold][1]]
-            
-            if indie:
-                trs = self.dataset.test_epochs.shape[3]
-                X_test = self.dataset.test_epochs[subj,:,:,:].transpose((2,1,0))
-                X_test  = X_test.reshape((trs, kernels, channels, samples))
-                Y_test = self.labels_to_categorical(self.dataset.test_y)
-            else:
-                X_test  = x[self.folds[fold][2],:,:,:]
-                Y_test  = y[self.folds[fold][2]]          
-            '''
+            #
             split = self._split_set(x, y, subj, fold, indie)
             # normalize data
             X_train, mu, sigma = self.fit_scale(split['X_train'])
@@ -126,11 +109,12 @@ class SingleSubject(Evaluation):
             #
             Y_train = split['Y_train']
             Y_test  = split['Y_test']
+            Y_val   = split['Y_val']
             #
             class_weights = self.class_weights(np.argmax(Y_train, axis=1))
             # evaluate model on subj on all folds
             # rename the fit method
-            self.model.fit(X_train, Y_train, batch_size = 64, epochs = 500, 
+            self.model_history = self.model.fit(X_train, Y_train, batch_size = 64, epochs = 500, 
                             verbose = self.verbose, validation_data=(X_val, Y_val),
                             class_weight = class_weights)
             # train/val                
@@ -149,11 +133,17 @@ class SingleSubject(Evaluation):
     def _fuse_data(self):
         '''
         '''
-        self.dataset.epochs = np.vstack((self.dataset.epochs, self.dataset.test_epochs))
-        self.dataset.y = np.vstack((self.dataset.y, self.dataset.test_y))
-        return self.dataset.epochs.shape[0] 
+        # TODO : when epochs/y/test_epochs/y_test are lists???
+        # make lists of lists
+        if type(self.dataset.epochs) is list:
+            # TODO
+            pass
+        else:
+            self.dataset.epochs = np.vstack((self.dataset.epochs, self.dataset.test_epochs))
+            self.dataset.y = np.vstack((self.dataset.y, self.dataset.test_y))
+        return self.dataset.epochs.shape[0] # n_subject 
 
-    def _get_n_subj(self):
+    def _equale_subjects(self):
         '''
         '''
         ts = 0
@@ -168,8 +158,8 @@ class SingleSubject(Evaluation):
         # folds[0][0][0] : inconsistent fold subject trials
         # folds[0][0] : same trials numbers for all subjects
         split = {}
-        trials, kernel, channels, samples = x.shape
-        kernels = 1
+        trials, kernels, channels, samples = x.shape
+        
         if type(self.dataset.epochs) is list:
             f = self.folds[fold][subj][:]
         else:

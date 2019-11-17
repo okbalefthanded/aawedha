@@ -53,6 +53,11 @@ class CrossSubject(Evaluation):
     def _cross_subject(self, fold):
         '''
         '''
+        # 
+        res_acc = []               
+        res_auc = []
+        split = self._split_set(fold)
+        '''
         kernels = 1
         x = self.dataset.epochs
         subjects, samples, channels, trials = x.shape  
@@ -64,9 +69,7 @@ class CrossSubject(Evaluation):
         tr, val = self.partition[0], self.partition[1] # n_subjects per train/val        
         if  len(self.partition) == 3:      
             ts = self.partition[2]        
-        # 
-        res_acc = []               
-        res_auc = []   
+           
         X_train = x[self.folds[fold][0],:,:,:].reshape((tr*trials,kernels,channels,samples))
         X_val   = x[self.folds[fold][1],:,:,:].reshape((val*trials,kernels,channels,samples))
 
@@ -83,7 +86,7 @@ class CrossSubject(Evaluation):
         else:
             X_test  = x[self.folds[fold][2],:,:,:].reshape((ts*trials,kernels,channels,samples))
             Y_test  = y[self.folds[fold][2],:].reshape((ts*trials, ctg_dim))
-
+        '''
         # normalize data
         X_train, mu, sigma = self.fit_scale(X_train)
         X_val = self.transform_scale(X_val, mu, sigma)
@@ -92,7 +95,7 @@ class CrossSubject(Evaluation):
         cws = self.class_weights(np.argmax(Y_train, axis=1))
         # evaluate model on subj on all folds
         
-        self.model.fit(X_train, Y_train, batch_size = 16, epochs = 300, 
+        self.model_history = self.model.fit(X_train, Y_train, batch_size = 96, epochs = 500, 
               verbose = self.verbose, validation_data=(X_val, Y_val),
               class_weight = cws)
             # train/val
@@ -106,4 +109,53 @@ class CrossSubject(Evaluation):
             res_auc.append(auc_score)                     
         
         return res_acc, res_auc
+
+    def _split_set(self, fold):
+        '''
+        '''
+        split = {}
+        kernels = 1
+        if type(self.dataset.epochs) is list:
+            # TODO
+            x = [self.dataset.epochs[idx] for idx in self.folds[]]
+            pass
+        else:
+            # TODO 
+            x = self.dataset.epochs
+            subjects, samples, channels, trials = x.shape  
+            y = self.dataset.y
+            x = x.transpose((0,3,2,1))
+            #
+            classes = np.unique(y)
+            y = self.labels_to_categorical(y) 
+            tr, val = self.partition[0], self.partition[1] # n_subjects per train/val        
+            if  len(self.partition) == 3:      
+                ts = self.partition[2]        
+           
+            X_train = x[self.folds[fold][0],:,:,:].reshape((tr*trials,kernels,channels,samples))
+            X_val   = x[self.folds[fold][1],:,:,:].reshape((val*trials,kernels,channels,samples))
+
+            ctg_dim = y.shape[2]
+            Y_train = y[self.folds[fold][0],:].reshape((tr*trials, ctg_dim))
+            Y_val   = y[self.folds[fold][1],:].reshape((val*trials, ctg_dim))    
+               
+        if hasattr(self.dataset, 'test_epochs'):
+            trs = self.dataset.test_epochs.shape[3]
+            X_test = self.dataset.test_epochs.transpose((0,3,2,1))
+            X_test = X_test.reshape((trs*self.n_subjects , kernels , channels , samples))
+            # Y_test = tf_utils.to_categorical(self.dataset.test_y)
+            Y_test = self.labels_to_categorical(self.dataset.test_y.reshape((self.n_subjects*trs)))
+        else:
+            X_test  = x[self.folds[fold][2],:,:,:].reshape((ts*trials,kernels,channels,samples))
+            Y_test  = y[self.folds[fold][2],:].reshape((ts*trials, ctg_dim)) 
+
+        split['X_train'] = X_train
+        split['X_val']   = X_val
+        split['X_test']  = X_test
+        split['Y_train'] = Y_train
+        split['Y_val']   = Y_val
+        split['Y_test']  = Y_test      
+
+        return split
+
         

@@ -21,6 +21,7 @@ class Evaluation(object):
         self.dataset = dataset
         self.model = model
         self.results = {} # dict 
+        self.model_history = {}
         self.verbose = verbose
         
 
