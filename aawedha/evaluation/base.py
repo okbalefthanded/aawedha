@@ -72,10 +72,32 @@ class Evaluation(object):
                         np.random.shuffle(selection)                           
                         folds.append([np.array(selection[:tr]), np.array(selection[tr:])])            
             elif self.__class__.__name__ == 'SingleSubject':
+                # generate folds for test set from one set                
+                pop = population
+                t = tr
+                v = vl
+                s = ts                    
                 # generate folds for test set from one set
-                for _ in range(nfolds):
-                    tmp = np.array(random.sample(range(population), population))
-                    folds.append([tmp[:tr], tmp[tr:tr+vl], tmp[-ts:]])      
+                for f in range(nfolds):
+                    if type(population) is np.ndarray:
+                        # inconsistent numbers of trials among subjects          
+                        sbj = []
+                        for subj in range(self.n_subjects):            
+                            pop = population[subj]
+                            t = tr[subj]
+                            v = vl[subj]
+                            s = ts[subj]
+                            tmp = np.array(random.sample(range(pop), pop))            
+                            sbj.append([tmp[:t], tmp[t:t+v], tmp[-s:]]) 
+                        folds.append(sbj)
+                    else: 
+                        # same numbers of trials for all subjects         
+                        tmp = np.array(random.sample(range(pop), pop))
+                        folds.append([tmp[:t], tmp[t:t+v], tmp[-s:]])            
+                              
+                #for _ in range(nfolds):
+                #    tmp = np.array(random.sample(range(population), population))
+                #    folds.append([tmp[:tr], tmp[tr:tr+vl], tmp[-ts:]])                         
         else:
             # generate folds for test set from one set
             for _ in range(nfolds):
@@ -83,7 +105,7 @@ class Evaluation(object):
                 folds.append([tmp[:tr], tmp[tr:tr+vl], tmp[-ts:]])
         
         return folds
-
+ 
     def fit_scale(self, X):
         mu = X.mean(axis=0)
         sigma = X.std(axis=0)

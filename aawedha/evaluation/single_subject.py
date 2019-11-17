@@ -16,7 +16,7 @@ class SingleSubject(Evaluation):
   
         if type(self.dataset.y) is list:
             # 
-            pass
+            n_trials = np.array([self.dataset.y[i].shape[0] for i in range(self.n_subjects)])
         else:
             n_trials = self.dataset.y.shape[1]
 
@@ -30,6 +30,7 @@ class SingleSubject(Evaluation):
             # error : wrong partition
             raise AssertionError('Wrong partition scheme', self.partition)
     
+        
         part = np.round(n_trials / np.sum(self.partition)).astype(int)
   
         train_phase = train_phase * part
@@ -49,10 +50,11 @@ class SingleSubject(Evaluation):
         res_auc = []
 
         independent_test = False
-        train_subjects = self.dataset.epochs.shape[0]
+        equal_subjects = self._get_n_subj()
 
         if hasattr(self.dataset, 'test_epochs'):
-            if train_subjects == self.dataset.test_epochs.shape[0]:
+
+            if equal_subjects:
                 independent_test = True
             else:
                 # concatenate train & test data
@@ -86,8 +88,10 @@ class SingleSubject(Evaluation):
         '''
         '''
         # prepare data
-        x = self.dataset.epochs[subj, :, :, :]
-        y = self.dataset.y[subj, :]
+        #x = self.dataset.epochs[subj, :, :, :]
+        #y = self.dataset.y[subj, :]
+        x = self.dataset.epochs[subj][:, :, :]
+        y = self.dataset.y[subj][:]
         samples, channels, trials = x.shape
         x = x.transpose((2,1,0))
         kernels = 1 # 
@@ -99,12 +103,12 @@ class SingleSubject(Evaluation):
         res_auc = []
         # get in the fold!!!
         for fold in range(len(self.folds)):
+            '''
             X_train = x[self.folds[fold][0],:,:,:]
             X_val   = x[self.folds[fold][1],:,:,:]
             Y_train = y[self.folds[fold][0]]
             Y_val   = y[self.folds[fold][1]]
-
-            # if hasattr(self.dataset, 'test_epochs'):
+            
             if indie:
                 trs = self.dataset.test_epochs.shape[3]
                 X_test = self.dataset.test_epochs[subj,:,:,:].transpose((2,1,0))
@@ -113,11 +117,15 @@ class SingleSubject(Evaluation):
             else:
                 X_test  = x[self.folds[fold][2],:,:,:]
                 Y_test  = y[self.folds[fold][2]]          
-            
+            '''
+            split = self._split_set(x, y, subj, fold, indie)
             # normalize data
-            X_train, mu, sigma = self.fit_scale(X_train)
-            X_val = self.transform_scale(X_val, mu, sigma)
-            X_test = self.transform_scale(X_test, mu, sigma)
+            X_train, mu, sigma = self.fit_scale(split['X_train'])
+            X_val = self.transform_scale(split['X_val'], mu, sigma)
+            X_test = self.transform_scale(split['X_test'], mu, sigma)
+            #
+            Y_train = split['Y_train']
+            Y_test  = split['Y_test']
             #
             class_weights = self.class_weights(np.argmax(Y_train, axis=1))
             # evaluate model on subj on all folds
@@ -144,4 +152,48 @@ class SingleSubject(Evaluation):
         self.dataset.epochs = np.vstack((self.dataset.epochs, self.dataset.test_epochs))
         self.dataset.y = np.vstack((self.dataset.y, self.dataset.test_y))
         return self.dataset.epochs.shape[0] 
+
+    def _get_n_subj(self):
+        '''
+        '''
+        ts = 0
+        tr = len(self.dataset.epochs)
+        if hasattr(self.dataset, 'test_epochs'):          
+            ts = len(self.dataset.test_epochs)                   
+        return tr == ts
+
+    def _split_set(self, x=None, y=None, subj=0, fold=0, indie=False):
+        '''
+        '''
+        # folds[0][0][0] : inconsistent fold subject trials
+        # folds[0][0] : same trials numbers for all subjects
+        split = {}
+        trials, kernel, channels, samples = x.shape
+        kernels = 1
+        if type(self.dataset.epochs) is list:
+            f = self.folds[fold][subj][:]
+        else:
+            f = self.folds[fold][:]
+            
+        X_train = x[f[0],:,:,:]
+        X_val   = x[f[1],:,:,:]
+        Y_train = y[f[0]]
+        Y_val   = y[f[1]]
+        if indie:
+            trs = self.dataset.test_epochs[0].shape[2]
+            X_test = self.dataset.test_epochs[subj][:,:,:].transpose((2,1,0))
+            X_test  = X_test.reshape((trs, kernels, channels, samples))
+            Y_test = self.labels_to_categorical(self.dataset.test_y[subj][:])
+        else:
+            X_test  = x[f[2],:,:,:]
+            Y_test  = y[f[2]]
+
+        split['X_train'] = X_train
+        split['X_val']   = X_val
+        split['X_test']  = X_test
+        split['Y_train'] = Y_train
+        split['Y_val']   = Y_val
+        split['Y_test']  = Y_test
+        
+        return split
         
