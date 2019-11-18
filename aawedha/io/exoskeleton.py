@@ -87,7 +87,10 @@ class Exoskeleton(DataSet):
         '''
         OVTK_StimulationId_VisualStimulationStart = 32779
         labels = [33024, 33025, 33026, 33027]
-        epoch = np.array(epoch).astype(int) * self.fs
+        if len(epoch) == 2:
+            epoch = np.array(epoch).astype(int) * self.fs
+        else:
+            epoch = np.array([0, epoch]).astype(int) * self.fs
         x = []
         y = []
         for sess in records:
@@ -101,7 +104,15 @@ class Exoskeleton(DataSet):
             y.append(desc - 33023)
             pos = event_pos[event_type == OVTK_StimulationId_VisualStimulationStart] 
             raw_signal = bandpass(raw_signal, band, self.fs, order)
-            x.append(eeg_epoch(raw_signal, epoch, pos))        
+            if augment:
+                stimulation = 5 * self.fs
+                augmented = np.floor(stimulation /np.diff(epoch))[0].astype(int)
+                epoch = [epoch + np.diff(epoch)*i for i in range(augmented)] 
+                v = [eeg_epoch(raw_signal, epoch + np.diff(epoch)*i, pos) for i in range(augmented)] 
+                eeg = np.concatenate(v, axis=2)
+            else:
+                eps = eeg_epoch(raw_signal, epoch, pos)
+            x.append(eps)        
         
         if len(x) > 1:
             x = np.concatenate(x, axis=-1)          
