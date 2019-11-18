@@ -87,7 +87,7 @@ class Exoskeleton(DataSet):
         '''
         OVTK_StimulationId_VisualStimulationStart = 32779
         labels = [33024, 33025, 33026, 33027]
-        if len(epoch) == 2:
+        if type(epoch) is list:
             epoch = np.array(epoch).astype(int) * self.fs
         else:
             epoch = np.array([0, epoch]).astype(int) * self.fs
@@ -101,18 +101,19 @@ class Exoskeleton(DataSet):
             event_type = df['event_type'].reshape((df['event_type'].shape[0]))
             desc_idx = np.logical_or.reduce([event_type == lb for lb in labels])
             desc = event_type[desc_idx]
-            y.append(desc - 33023)
+            # y.append(desc - 33023)
             pos = event_pos[event_type == OVTK_StimulationId_VisualStimulationStart] 
             raw_signal = bandpass(raw_signal, band, self.fs, order)
             if augment:
                 stimulation = 5 * self.fs
                 augmented = np.floor(stimulation /np.diff(epoch))[0].astype(int)
-                epoch = [epoch + np.diff(epoch)*i for i in range(augmented)] 
                 v = [eeg_epoch(raw_signal, epoch + np.diff(epoch)*i, pos) for i in range(augmented)] 
-                eeg = np.concatenate(v, axis=2)
+                epchs = np.concatenate(v, axis=2)
+                y.append(np.tile(desc-33023, augmented))
             else:
-                eps = eeg_epoch(raw_signal, epoch, pos)
-            x.append(eps)        
+                y.append(desc - 33023)
+                epchs = eeg_epoch(raw_signal, epoch, pos)
+            x.append(epchs)        
         
         if len(x) > 1:
             x = np.concatenate(x, axis=-1)          
