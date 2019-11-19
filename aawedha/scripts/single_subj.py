@@ -1,12 +1,11 @@
 '''
  - main script for evaluating a model(s) on a dataset (s)
 '''
-from aawedha.io.inria_ern import Inria_ERN 
+from aawedha.io.bci_comp_iv_2a import Comp_IV_2a 
 from aawedha.evaluation.single_subject import SingleSubject
-from aawedha.paradigms.erp import ERP
+from aawedha.paradigms.motor_imagery import MotorImagery
 from aawedha.paradigms.subject import Subject
 from aawedha.models.EEGModels import EEGNet
-from tensorflow.keras.metrics import AUC
 import numpy as np
 
 from tensorflow.keras import backend as K
@@ -17,27 +16,30 @@ K.set_image_data_format('channels_first')
 # X : data tensor : (subjects, samples, channels, trials)
 # Y : labels :      (subjects, trials) 
 
-
+'''
 data_folder = 'drive/My Drive/data/inria_data'
 save_path = 'drive/inria_data/epoched/'
 t= [0. , 1.25]
 ds = Inria_ERN()
 ds.generate_set(load_path=data_folder, epoch=t, 
                 save_folder=save_path)
+'''
 
 
-# load dataset
-f = 'data/inria_dataset/epoched/inria_ern.pkl'
+# load epoched dataset
+f = 'data/comp_IV_2a/epoched/Comp_IV_2a.pkl'
 
-dt = Inria_ERN().load_set(f)
+dt = Comp_IV_2a().load_set(f)
 subjects, samples, channels, trials = dt.epochs.shape
 n_classes = np.unique(dt.y).size
 prt = [2,1,1]
 
-subject = 3 # subject number
+# subject = 3 # subject number
 
-evl = SingleSubject(n_subjects=subjects, partition=prt, dataset=dt)
-evl.generate_split(nfolds=1) #nfolds=30
+# Signle Subject evaluation
+prt = [2,1,1]
+evl = SingleSubject(n_subjects=subjects, partition=prt, dataset=dt, verbose=2)
+evl.generate_split(nfolds=1) #nfolds=10
 
 # select a model
 evl.model = EEGNet(nb_classes = n_classes, Chans = channels, Samples = samples, 
@@ -45,11 +47,15 @@ evl.model = EEGNet(nb_classes = n_classes, Chans = channels, Samples = samples,
                    dropoutType = 'Dropout'
                    )
 
-evl.model.compile(loss='binary_crossentropy', 
+evl.model.compile(loss='categorical_crossentropy', 
                   optimizer='adam', 
-                  metrics = ['accuracy', AUC()]
-                )
+                  metrics = ['accuracy']
+                  )
 # train/test model
-evl.run_evaluation(subject)
+evl.run_evaluation()
+# evl.run_evaluation(subject) # specific subject
 #
-print(f'Subject N: {subject+1} Acc: {evl.results["acc"]} AUC: {evl.results["auc"]}')
+# print(f'Subject N: {subject+1} Acc: {evl.results["acc"]} ')
+print(f' Acc: {evl.results["acc"]} ')
+
+# Visualize learning curves
