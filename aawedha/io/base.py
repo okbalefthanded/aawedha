@@ -61,20 +61,10 @@ class DataSet(metaclass=ABCMeta):
         self.doi = doi
 
     @abstractmethod
-    def load_set(self):
-        """
-         load saved dataset
-        :parameter:
-
-        :return:
-        Continuous EEG data object
-        """
-        pass
-
-    @abstractmethod
     def load_raw(self):
         pass
-
+    
+    @abstractmethod
     def generate_set(self):
         pass
 

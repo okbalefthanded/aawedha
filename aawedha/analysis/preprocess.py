@@ -12,7 +12,7 @@ def eeg_epoch(eeg, epoch_length, markers):
       input  
           : eeg : continuous eeg : 2D numpy array samples x channels
           : epoch_length : 1D numpy array (size 2 )epoch start and stop in samples
-          : markers : event markers in samples 1D array 1,n_markers
+          : markers : event markers onset in samples 1D array 1,n_markers
       
       output 
           : eeg_epochs : 3D array of epoched EEG : samples x channels x trials (Fortran ordering aka MATLAB format)
