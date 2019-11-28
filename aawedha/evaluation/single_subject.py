@@ -1,4 +1,5 @@
 from aawedha.evaluation.base import Evaluation
+from sklearn.model_selection import KFold
 from sklearn.metrics import roc_auc_score
 import numpy as np
 import random 
@@ -7,7 +8,7 @@ import random
 class SingleSubject(Evaluation):
 
     
-    def generate_split(self, nfolds=30):
+    def generate_split(self, nfolds=30, strategy='Kfold'):
         '''
         '''
         # folds = []
@@ -35,8 +36,11 @@ class SingleSubject(Evaluation):
         train_phase = train_phase * part
         val_phase = val_phase * part
         test_phase = test_phase * part
-  
-        self.folds = self.get_folds(nfolds, n_trials, train_phase, val_phase, test_phase, exclude_subj=False)
+
+        if strategy == 'Kfold':
+            self.folds = self._get_folds(nfolds, n_trials, train_phase, val_phase, test_phase)
+        elif strategy == 'Shuffle':
+            self.folds = self.get_folds(nfolds, n_trials, train_phase, val_phase, test_phase, exclude_subj=False)
 
     def run_evaluation(self, subject=None):
         '''
@@ -186,4 +190,34 @@ class SingleSubject(Evaluation):
         split['Y_test']  = Y_test
         
         return split
+
+    def _get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0):
+        '''
+        '''
+        if type(n_trials) is np.ndarray:
+            t = [np.arange(n) for n in n_trials]
+            sbj = []
+            folds = [] 
+            sbj = [self._get_split(nfolds, n, tr, vl) for n in t]    
+            folds.append(sbj)
+        else:
+            t = np.arange(n_trials)
+            folds = self._get_split(nfolds, t, tr, vl)
+        
+        return folds
+
+    def _get_split(self, nfolds, t, tr, vl):
+        '''
+        '''
+        folds = []
+        cv = KFold(n_splits=nfolds)
+        for train, test in cv.split(t):
+            if len(self.partition) == 2:
+                # independent test set
+                folds.append([train, test])
+            elif len(self.partition) ==3:
+                # generate test set from the entire set
+                folds.append([train[:tr], train[tr:tr+vl], test])
+            
+        return folds
         

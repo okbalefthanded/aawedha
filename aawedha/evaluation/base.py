@@ -78,7 +78,6 @@ class Evaluation(object):
                 t = tr
                 v = vl
                 s = ts                    
-                # generate folds for test set from one set
                 for f in range(nfolds):
                     if type(population) is np.ndarray:
                         # inconsistent numbers of trials among subjects          
@@ -105,8 +104,8 @@ class Evaluation(object):
                 tmp = np.array(random.sample(range(population), population))
                 folds.append([tmp[:tr], tmp[tr:tr+vl], tmp[-ts:]])
         
-        return folds
- 
+        return folds 
+        
     def fit_scale(self, X):
         mu = X.mean(axis=0)
         sigma = X.std(axis=0)
