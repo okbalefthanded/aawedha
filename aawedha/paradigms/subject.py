@@ -2,13 +2,14 @@
     Subjects information class
 """
 
+
 class Subject(object):
     """
         Attributes
         ----------
         id : str
             subject identifier
-        
+
         gender : str
             subject gender : M / F
 
@@ -24,8 +25,9 @@ class Subject(object):
         Methods
         -------
     """
-    
-    def __init__(self, id='S', gender='M', age=18, handedness='R', condition='healthy'):
+
+    def __init__(self, id='S', gender='M', age=18,
+                 handedness='R', condition='healthy'):
         self.id = id
         self.gender = gender
         self.age = age

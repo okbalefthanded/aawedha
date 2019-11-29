@@ -3,13 +3,12 @@
 """
 from abc import ABCMeta, abstractmethod
 import os
-import sys
 import pickle
 
 
 class DataSet(metaclass=ABCMeta):
     """DataSet
-    
+
     Attributes
     ----------
     title : str
@@ -49,6 +48,7 @@ class DataSet(metaclass=ABCMeta):
     generate_set()
 
     """
+
     def __init__(self, title='', ch_names=[], fs=None, doi=''):
         self.epochs = []
         self.y = []
@@ -63,7 +63,7 @@ class DataSet(metaclass=ABCMeta):
     @abstractmethod
     def load_raw(self):
         pass
-    
+
     @abstractmethod
     def generate_set(self):
         pass
@@ -82,10 +82,10 @@ class DataSet(metaclass=ABCMeta):
         if not self.title:
             self.title = 'unnamed_set'
 
-        fname = save_folder + '/' + self.title +'.pkl'
-        print(f'Saving dataset {self.title} to destination: {fname}')        
+        fname = save_folder + '/' + self.title + '.pkl'
+        print(f'Saving dataset {self.title} to destination: {fname}')
         f = open(fname, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)                
+        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         f.close()
         # log if verbose
 
@@ -98,11 +98,4 @@ class DataSet(metaclass=ABCMeta):
         else:
             raise FileNotFoundError
         f.close()
-        return data  
-
-
-
-
-
-
-
+        return data

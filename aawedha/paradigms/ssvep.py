@@ -1,8 +1,9 @@
 """
-    SSVEP paradigm 
+    SSVEP paradigm
 
 """
 from aawedha.paradigms.base import Paradigm
+
 
 class SSVEP(Paradigm):
     """
@@ -34,17 +35,18 @@ class SSVEP(Paradigm):
 
     frequencies : list
         frequencies presented at each stimuli in Hz
-    
+
     phase : list
         phase of each frequency in rad
 
     Methods
     -------
     """
-    def __init__(self, title='SSVEP', control='Sync', stimulation=4000, 
-                    break_duration=4000, repetition=10, stimuli=4, phrase='1234',
-                        stim_type='ON_OFF', frequencies=['7.5','8.57','10','12'], phase=None):
+
+    def __init__(self, title='SSVEP', control='Sync', stimulation=4000,
+                 break_duration=4000, repetition=10, stimuli=4, phrase='1234',
+                 stim_type='ON_OFF', frequencies=['7.5', '8.57', '10', '12'], phase=None):
         super().__init__(title, control, stimulation, break_duration, repetition,
-                        stimuli, stim_type, phrase)        
+                         stimuli, stim_type, phrase)
         self.frequencies = frequencies
         self.phase = phase

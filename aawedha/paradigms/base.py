@@ -3,6 +3,7 @@
 """
 from abc import ABCMeta, abstractmethod
 
+
 class Paradigm(metaclass=ABCMeta):
     """
     Paradigms:
@@ -28,7 +29,7 @@ class Paradigm(metaclass=ABCMeta):
         number of stimulus presented in the experiment.
 
     stim_type: str
-        stimulus presented to subject (ERP) / type of stimulations used in the experiment (SSVEP) / type of cue presented before task (MI) 
+        stimulus presented to subject (ERP) / type of stimulations used in the experiment (SSVEP) / type of cue presented before task (MI)
 
     phrase : str
         sequence of characters to be spelled by the subject during the experiments
@@ -37,8 +38,8 @@ class Paradigm(metaclass=ABCMeta):
     -------
     """
 
-    def __init__(self, title=None, control=None, stimulation=0, 
-                    break_duration=0, repetition=0, stimuli=0, stim_type=None, phrase=None):
+    def __init__(self, title=None, control=None, stimulation=0,
+                 break_duration=0, repetition=0, stimuli=0, stim_type=None, phrase=None):
         self.title = title
         self.control = control
         self.stimulation = stimulation

@@ -23,12 +23,13 @@ class Comp_IV_2a(DataSet):
         2012. Available: http://journal.frontiersin.org/article/10.3389/fnins.2012.00055
 
     """
+
     def __init__(self):
         super().__init__(title='Comp_IV_2a',
-                        ch_names=['Fz','FC3','FC1','FCz',
-                        'FC2','FC4','C5','C3','C1','Cz',
-                        'C2','C4','C6','CP3','CP1','CPz',
-                        'CP2','CP4','P1','Pz','P2','POz'], 
+                         ch_names=['Fz', 'FC3', 'FC1', 'FCz',
+                                   'FC2', 'FC4', 'C5', 'C3', 'C1', 'Cz',
+                                   'C2', 'C4', 'C6', 'CP3', 'CP1', 'CPz',
+                                   'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz'],
                          fs=250,
                          doi='https://doi.org/10.3389/fnins.2012.00055'
                          )
@@ -36,14 +37,15 @@ class Comp_IV_2a(DataSet):
         self.test_y = []
         self.test_events = []
 
-    def load_raw(self, path=None, mode='', 
-                  epoch_duration=2, 
-                  band=[4.0, 40.0], 
-                  order=3):
+    def load_raw(self, path=None, mode='',
+                 epoch_duration=2,
+                 band=[4.0, 40.0],
+                 order=3):
         '''
         '''
         set_log_level(verbose=False)
-        epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
+        epoch_duration = np.round(
+            np.array(epoch_duration) * self.fs).astype(int)
         labels_folder = path + '/true_labels'
 
         if mode == 'train':
@@ -52,7 +54,7 @@ class Comp_IV_2a(DataSet):
         elif mode == 'test':
             data_files = glob.glob(path + '/*E.gdf')
             labels_files = glob.glob(labels_folder + '/*E.mat')
-        
+
         data_files.sort()
         labels_files.sort()
 
@@ -61,67 +63,71 @@ class Comp_IV_2a(DataSet):
         Y = []
 
         for subj in subjects:
-            x, y = self._get_epoched(data_files[subj], 
+            x, y = self._get_epoched(data_files[subj],
                                      labels_files[subj],
                                      epoch_duration,
                                      band,
                                      order)
             X.append(x)
-            Y.append(y)         
-        
+            Y.append(y)
+
         samples, channels, trials = X[0].shape
         X = np.array(X)
         Y = np.array(Y)
         return X, Y
 
     def generate_set(self, load_path=None, epoch=2,
-                    band=[4.,40.], 
-                    order=3, 
-                    save_folder=None):
+                     band=[4., 40.],
+                     order=3,
+                     save_folder=None):
         '''
-        '''        
+        '''
         self.epochs, self.y = self.load_raw(load_path, 'train',
-                                           epoch, band, 
-                                           order
-                                           )
+                                            epoch, band,
+                                            order
+                                            )
 
-        self.test_epochs, self.test_y = self.load_raw(load_path, 
-                                           'test', epoch, 
-                                           band, order
-                                           )
-        
+        self.test_epochs, self.test_y = self.load_raw(load_path,
+                                                      'test', epoch,
+                                                      band, order
+                                                      )
+
         self.paradigm = self._get_paradigm()
         self.save_set(save_folder)
-     
+
     def get_path(self):
         NotImplementedError
 
-    def _get_epoched(self, data_file, label_file, 
+    def _get_epoched(self, data_file, label_file,
                      dur, band, order):
         '''
         '''
         Left = 769
         Right = 770
-        Foot  = 771
+        Foot = 771
         Tongue = 772
         Unkown = 783
         raw = read_raw_edf(data_file)
         lb = loadmat(label_file)
         y = lb['classlabel'].ravel()
 
-        signal = np.divide(raw.get_data()[:22,:].T, raw._raw_extras[0]['units'][:22]).T # keep EEG channels only, multiple by gain
+        # keep EEG channels only, multiple by gain
+        signal = np.divide(
+            raw.get_data()[:22, :].T, raw._raw_extras[0]['units'][:22]).T
         # get events
         events_raw = raw._raw_extras[0]['events']
         events_pos = events_raw[1]
         events_desc = events_raw[2]
-        ev_idx = (events_desc == Left) | (events_desc == Right) |(events_desc == Foot) | (events_desc == Tongue)  | (events_desc == Unkown) 
+        ev_idx = (events_desc == Left) | (events_desc == Right) | (
+            events_desc == Foot) | (events_desc == Tongue) | (events_desc == Unkown)
         ev_desc = events_desc[ev_idx]
         ev_pos = events_pos[ev_idx]
         # filter
         signal = bandpass(signal, band, self.fs, order=order)
         # epoch
-        epochs = eeg_epoch(signal.T, dur, ev_pos)        
-        self.subjects.append(self._get_subjects(raw._raw_extras[0]['subject_info']))
+        epochs = eeg_epoch(signal.T, dur, ev_pos)
+        self.subjects.append(self._get_subjects(
+            raw._raw_extras[0]['subject_info']))
         return epochs, y
 
     def _get_labels(self):
@@ -131,21 +137,20 @@ class Comp_IV_2a(DataSet):
 
     def _get_subjects(self, raw_subject_info):
         '''
-        '''        
+        '''
         return Subject(id=raw_subject_info['id'],
                        gender=raw_subject_info['sex'],
                        age=raw_subject_info['age'],
                        handedness=raw_subject_info['handedness'],
-                       condition=raw_subject_info['medication'] 
+                       condition=raw_subject_info['medication']
                        )
 
     def _get_paradigm(self):
         '''
         '''
-        return MotorImagery(title='Comp_IV_2a', 
-                            stimulation=3000, 
-                            break_duration=2000, 
-                            repetition=72, stimuli=4, 
+        return MotorImagery(title='Comp_IV_2a',
+                            stimulation=3000,
+                            break_duration=2000,
+                            repetition=72, stimuli=4,
                             phrase=''
                             )
-    
