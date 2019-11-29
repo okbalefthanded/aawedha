@@ -1,6 +1,8 @@
 from aawedha.evaluation.base import Evaluation
 from sklearn.model_selection import KFold
-from sklearn.metrics import roc_auc_score
+# from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_curve, auc
+from tensorflow.keras.callbacks import EarlyStopping
 import numpy as np
 import random 
 
@@ -42,7 +44,7 @@ class SingleSubject(Evaluation):
         elif strategy == 'Shuffle':
             self.folds = self.get_folds(nfolds, n_trials, train_phase, val_phase, test_phase, exclude_subj=False)
 
-    def run_evaluation(self, subject=None):
+    def run_evaluation(self, subject=None, clbs=[]):
         '''
         '''        
         # generate folds if folds are empty
@@ -50,7 +52,7 @@ class SingleSubject(Evaluation):
             self.folds = self.generate_split(nfolds=30)
         # 
         res_acc = []
-        res_auc = []
+        res_auc, res_tp, res_fp = [], [], []
 
         independent_test = False
         # equal_subjects = self._get_n_subj()
@@ -72,22 +74,32 @@ class SingleSubject(Evaluation):
 
         for subj in operations:
             # res_per_subject, avg_res = self._single_subject(subj, independent_test)
-            acc_per_subject, auc_per_subject = self._single_subject(subj, independent_test)
-            res_acc.append(acc_per_subject)
-            if auc_per_subject:
-                res_auc.append(auc_per_subject)        
+            # acc_per_subject, auc_per_subject, fp, tp = self._single_subject(subj, independent_test, clbs)
+            rets = self._single_subject(subj, independent_test, clbs)
+            if type(rets[0]) is tuple:
+                res_acc.append([elm[0] for elm in rets])
+                res_auc.append([elm[1] for elm in rets])
+                res_fp.append([elm[2] for elm in rets])
+                res_tp.append([elm[3] for elm in rets])              
+            else:
+                res_acc.append(rets)       
         
         # Aggregate results
-        # res_acc = np.array(res_acc)
-        if res_auc:
-            res = np.array([res_acc, res_auc])
+        
+        tfpr = {}
+        if res_auc: 
+            res = {}
+            res['acc'] = res_acc
+            res['auc'] = res_auc           
+            tfpr['fp'] = res_fp
+            tfpr['tp'] = res_tp
         else:
-            res = np.array(res_acc)
+            res = np.array(res_acc)       
             
-        self.results = self.results_reports(res)
+        self.results = self.results_reports(res, tfpr)
  
 
-    def _single_subject(self, subj, indie=False):
+    def _single_subject(self, subj, indie=False, clbs=[]):
         '''
         '''
         # prepare data
@@ -100,8 +112,9 @@ class SingleSubject(Evaluation):
         # 
         classes = np.unique(y)
         y = self.labels_to_categorical(y)
-        res_acc = []               
-        res_auc = []
+        # res_acc = []               
+        # res_auc = []
+        rets = []
         # get in the fold!!!
         for fold in range(len(self.folds)):
             #
@@ -120,19 +133,14 @@ class SingleSubject(Evaluation):
             # rename the fit method
             self.model_history = self.model.fit(X_train, Y_train, batch_size = 64, epochs = 500, 
                             verbose = self.verbose, validation_data=(X_val, Y_val),
-                            class_weight = class_weights)
-            # train/val                
-            # test 
+                            class_weight = class_weights, callbacks=clbs)
+            
             probs = self.model.predict(X_test)
-            preds = probs.argmax(axis = -1)  
-            acc   = np.mean(preds == Y_test.argmax(axis=-1))
-            res_acc.append(acc.item())
-            if classes.size == 2:
-                auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
-                res_auc.append(auc_score.item())                
-        
+            rets.append(self.measure_performance(Y_test, probs))            
+
+        return rets  
         # res = []  # shape: (n_folds, 2)        
-        return res_acc, res_auc 
+        
 
     def _fuse_data(self):
         '''

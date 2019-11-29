@@ -1,11 +1,13 @@
 '''
  - main script for evaluating a model(s) on a dataset (s)
 '''
-from aawedha.io.bci_comp_iv_2a import Comp_IV_2a 
+from aawedha.io.inria_ern import Inria_ERN 
 from aawedha.evaluation.single_subject import SingleSubject
-from aawedha.paradigms.motor_imagery import MotorImagery
+from aawedha.paradigms.erp import ERP
 from aawedha.paradigms.subject import Subject
 from aawedha.models.EEGModels import EEGNet
+from tensorflow.keras.metrics import AUC
+
 import numpy as np
 
 from tensorflow.keras import backend as K
@@ -29,10 +31,9 @@ ds.generate_set(load_path=data_folder, epoch=t,
 # load epoched dataset
 f = 'data/comp_IV_2a/epoched/Comp_IV_2a.pkl'
 
-dt = Comp_IV_2a().load_set(f)
+dt = Inria_ERN().load_set(f)
 subjects, samples, channels, trials = dt.epochs.shape
 n_classes = np.unique(dt.y).size
-prt = [2,1,1]
 
 # subject = 3 # subject number
 
@@ -53,9 +54,10 @@ evl.model.compile(loss='categorical_crossentropy',
                   )
 # train/test model
 evl.run_evaluation()
-# evl.run_evaluation(subject) # specific subject
-#
+
+print(f'Results : {evl.results}')
+
 # print(f'Subject N: {subject+1} Acc: {evl.results["acc"]} ')
-print(f' Acc: {evl.results["acc"]} ')
+# print(f' Acc: {evl.results["acc"]} ')
 
 # Visualize learning curves

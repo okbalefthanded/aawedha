@@ -3,6 +3,7 @@ Base class for evaluations
 
 '''
 from tensorflow.keras.utils import to_categorical
+from sklearn.metrics import roc_curve, auc, confusion_matrix
 import numpy as np
 import random
 import abc
@@ -20,6 +21,7 @@ class Evaluation(object):
         self.folds = folds
         self.dataset = dataset
         self.model = model
+        self.cm = [] # confusion matrix per fold
         self.results = {} # dict 
         self.model_history = {}
         self.verbose = verbose
@@ -37,22 +39,54 @@ class Evaluation(object):
         '''
         pass
 
-    def results_reports(self, res):
+    
+    def measure_performance(self, Y_test, probs):
+        '''
+        '''
+        preds = probs.argmax(axis=-1)
+        y_true =  Y_test.argmax(axis=-1)
+        classes = Y_test.shape[1]
+        acc   = np.mean(preds == y_true) 
+       
+        self.cm.append(confusion_matrix(Y_test.argmax(axis=-1), preds))
+
+        if classes == 2:            
+            fp_rate, tp_rate, thresholds = roc_curve(y_true, probs[:,1])
+            auc_score  = auc(fp_rate, tp_rate)
+            return acc.item(), auc_score.item(), fp_rate, tp_rate
+        else:
+            return acc.item()
+
+        
+    
+    def results_reports(self, res, tfpr={}):
         '''
         '''
         results = {}
                 
-        if res.ndim == 3:
+        if tfpr:
             # res : (metric, subjects, folds)
-            means = res.mean(axis=-1) # mean across folds
-            results['acc'] = means[0]
-            results['acc_mean'] = means[0].mean()
-            results['auc'] = means[1]
-            results['auc_mean'] = means[1].mean()
+            # means = res.mean(axis=-1) # mean across folds
+            r1 = np.array(res['acc'])
+            results['acc'] = r1
+            results['acc_mean_per_fold'] = r1.mean(axis=0)
+            results['acc_mean_per_subj'] = r1.mean(axis=1)
+            results['acc_mean'] = r1.mean()
+            
+            r2 = np.array(res['auc'])
+            results['auc'] = r2
+            results['auc_mean_per_fold'] = r2.mean(axis=0)
+            results['auc_mean_per_subj'] = r2.mean(axis=1)
+            results['auc_mean'] = r2.mean()
+            
+            results['fpr'] = tfpr['fp']
+            results['tpr'] = tfpr['tp']
         else:
             # res : (subjects, folds)
-            results['acc'] = res.mean(axis=-1) # mean across folds
-            results['acc_mean'] = res.mean() # mean across subjects
+            results['acc'] = res
+            results['acc_mean_per_fold'] = res.mean(axis=0) # mean across folds
+            results['acc_mean_per_subject'] = res.mean(axis=1) # mean across subjects and folds
+            results['acc_mean'] = res.mean()
 
         return results   
 
@@ -119,6 +153,7 @@ class Evaluation(object):
         X = np.divide(X, sigma[None,:,:])
         return X
 
+    
     def class_weights(self, y):
         '''
         '''
@@ -147,7 +182,7 @@ class Evaluation(object):
         else:
             y = to_categorical(y-1)
         return y
-
+    
     def save_model(self, folderpath=None):
         '''
         '''

@@ -26,31 +26,37 @@ class CrossSubject(Evaluation):
         self.folds = self.get_folds(nfolds, self.n_subjects, train_phase, val_phase, test_phase, exclude_subj=excl)
 
 
-    def run_evaluation(self):
+    def run_evaluation(self, clbs=[]):
         '''
         '''
         # generate folds if folds are empty
         if not self.folds:
             self.folds = self.generate_split(nfolds=30)
         # 
-        res_acc = []
-        res_auc = []
+        res_acc , res_auc = [], []
+        res_tp, res_fp = [], []
 
         for fold in range(len(self.folds)):
-            acc_per_fold, auc_per_fold = self._cross_subject(fold)
-            res_acc.append(acc_per_fold)
-            if auc_per_fold:
-                res_auc.append(auc_per_fold)          
+            rets = self._cross_subject(fold,clbs)
+            if type(rets) is tuple:
+                res_acc.append(rets[0])
+                res_auc.append(rets[1]) 
+                res_fp.append(rets[2])
+                res_tp.append(rets[3])
+            else:
+                res_acc.append(rets)            
         
         # Aggregate results
         if res_auc:
             res = np.array([res_acc, res_auc])
+            tfpr = np.array([res_fp, res_tp])
         else:
-            res = np.array(res_acc)   
+            res = np.array(res_acc)
+            tfpr = []   
                
-        self.results = self.results_reports(res)  
+        self.results = self.results_reports(res, tfpr)  
 
-    def _cross_subject(self, fold):
+    def _cross_subject(self, fold, clbs=[]):
         '''
         '''
         # 
@@ -71,18 +77,12 @@ class CrossSubject(Evaluation):
         
         self.model_history = self.model.fit(X_train, Y_train, batch_size = 96, epochs = 500, 
               verbose = self.verbose, validation_data=(X_val, Y_val),
-              class_weight = cws)
+              class_weight = cws, callbacks=clbs)
             # train/val
         probs = self.model.predict(X_test)
-        preds = probs.argmax(axis = -1)  
-        acc   = np.mean(preds == Y_test.argmax(axis=-1))
-
-        res_acc.append(acc)
-        if classes.size == 2:
-            auc_score = roc_auc_score(Y_test.argmax(axis=-1), preds)
-            res_auc.append(auc_score)                     
-        
-        return res_acc, res_auc
+        rets = self.measure_performance(Y_test, probs)            
+     
+        return rets
 
     def _split_set(self, fold):
         '''
