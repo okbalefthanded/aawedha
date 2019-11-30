@@ -54,7 +54,6 @@ class SingleSubject(Evaluation):
         res_auc, res_tp, res_fp = [], [], []
 
         independent_test = False
-        # equal_subjects = self._get_n_subj()
 
         if hasattr(self.dataset, 'test_epochs'):
 
@@ -72,10 +71,7 @@ class SingleSubject(Evaluation):
             operations = range(self.n_subjects)
 
         for subj in operations:
-            # res_per_subject, avg_res = self._single_subject(subj,
-            # independent_test)
-            # acc_per_subject, auc_per_subject, fp, tp = self._single_subject
-            # (subj, independent_test, clbs)
+            #
             rets = self._single_subject(subj, independent_test, clbs)
             if isinstance(rets[0], tuple):
                 res_acc.append([elm[0] for elm in rets])
@@ -151,15 +147,6 @@ class SingleSubject(Evaluation):
                 (self.dataset.epochs, self.dataset.test_epochs))
             self.dataset.y = np.vstack((self.dataset.y, self.dataset.test_y))
         return self.dataset.epochs.shape[0]  # n_subject
-
-    def _equale_subjects(self):
-        '''
-        '''
-        ts = 0
-        tr = len(self.dataset.epochs)
-        if hasattr(self.dataset, 'test_epochs'):
-            ts = len(self.dataset.test_epochs)
-        return tr == ts
 
     def _split_set(self, x=None, y=None, subj=0, fold=0, indie=False):
         '''

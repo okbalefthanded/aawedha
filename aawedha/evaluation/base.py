@@ -12,19 +12,19 @@ import os
 
 class Evaluation(object):
 
-    def __init__(self, n_subjects=0, partition=[], folds=[], dataset=None,
+    def __init__(self, dataset=None, partition=[], folds=[],
                  model=None, verbose=2):
         '''
         '''
-        self.n_subjects = n_subjects
+        self.dataset = dataset
         self.partition = partition
         self.folds = folds
-        self.dataset = dataset
         self.model = model
         self.cm = []  # confusion matrix per fold
         self.results = {}  # dict
         self.model_history = {}
         self.verbose = verbose
+        self.n_subjects = self._get_n_subjects()
 
     @abc.abstractmethod
     def generate_split(self, nfolds):
@@ -189,3 +189,21 @@ class Evaluation(object):
         dt = self.dataset.title
         filepath = folderpath + '/' + '_'.join(['model', prdg, dt, '.h5'])
         self.model.save(filepath)
+
+    def _equale_subjects(self):
+        '''
+        '''
+        ts = 0
+        tr = len(self.dataset.epochs)
+        if hasattr(self.dataset, 'test_epochs'):
+            ts = len(self.dataset.test_epochs)
+        return tr == ts
+
+    def _get_n_subjects(self):
+        '''
+        '''
+        ts = len(self.dataset.test_epochs) if hasattr(self.dataset, 'test_epochs') else 0
+        if self._equale_subjects():
+            return len(self.dataset.epochs)
+        else:
+            return len(self.dataset.eposh) + ts
