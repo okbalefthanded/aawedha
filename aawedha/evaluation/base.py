@@ -20,6 +20,7 @@ class Evaluation(object):
         self.partition = partition
         self.folds = folds
         self.model = model
+        self.predictions = []
         self.cm = []  # confusion matrix per fold
         self.results = {}  # dict
         self.model_history = {}
@@ -41,6 +42,7 @@ class Evaluation(object):
     def measure_performance(self, Y_test, probs):
         '''
         '''
+        self.predictions.append(probs)  # ()
         preds = probs.argmax(axis=-1)
         y_true = Y_test.argmax(axis=-1)
         classes = Y_test.shape[1]
@@ -58,6 +60,13 @@ class Evaluation(object):
     def results_reports(self, res, tfpr={}):
         '''
         '''
+        folds = len(self.folds)
+        subjects = self._get_n_subjects()
+        examples = len(self.predictions[0])
+        dim = len(self.predictions[0][0])
+        self.predictions = np.array(self.predictions).reshape(
+                            (subjects, folds, examples, dim))
+        #
         results = {}
         #
         if tfpr:

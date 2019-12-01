@@ -114,6 +114,11 @@ class SingleSubject(Evaluation):
             X_train, mu, sigma = self.fit_scale(split['X_train'])
             X_val = self.transform_scale(split['X_val'], mu, sigma)
             X_test = self.transform_scale(split['X_test'], mu, sigma)
+            '''
+            X_train = split['X_train']
+            X_val = split['X_val']
+            X_test = split['X_test']
+            '''
             #
             Y_train = split['Y_train']
             Y_test = split['Y_test']
