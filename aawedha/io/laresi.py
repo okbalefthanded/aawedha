@@ -249,6 +249,7 @@ class LaresiEEG(DataSet):
         signal = bandpass(signal, band, self.fs, order)
         cnt[info['session_interval'][0]:info['session_interval'][1], :] = signal
         eps = eeg_epoch(cnt, epoch, info['pos'])
+        self.events = info['desc']
         return eps
 
     @abstractmethod
@@ -277,6 +278,15 @@ class LaresiERP(LaresiEEG):
         end = raw_pos[raw_desc == OV_TrialStop]
         erp_start = np.round(start[::2] * self.fs).astype(int)
         erp_end = np.round(end[::2] * self.fs).astype(int)
+        
+        evs = np.unique(raw_desc)
+        stimuli = np.sum(np.logical_and(
+                evs > Base_Stimulations, evs < OV_Target))
+        id_stim = np.logical_and(
+                raw_desc > Base_Stimulations, raw_desc <= Base_Stimulations + stimuli)
+        stim_mrk = np.round(raw_pos[id_stim] * self.fs).astype(int)
+        stim_m = raw_desc[id_stim]     
+
         erp_tr = np.logical_or(raw_desc == OV_Target, raw_desc == OV_NonTarget)
         erp_mrk = np.round(raw_pos[erp_tr] * self.fs).astype(int)
 
@@ -285,11 +295,15 @@ class LaresiERP(LaresiEEG):
         y_erp[y_erp == OV_NonTarget] = 0
 
         erp_epochs = []
-
+        desc = []
         epoch = np.round(np.array(epoch) * self.fs).astype(int)
 
         for tr in range(len(erp_start)):
-            # filter, epoch, append
+            # filter, epoch, append 
+            desc_idx = np.logical_and(
+                stim_mrk >= erp_start[tr], stim_mrk <= erp_end[tr])         
+            desc.append(stim_m[desc_idx] - Base_Stimulations)
+
             idx = np.logical_and(
                 erp_mrk >= erp_start[tr], erp_mrk <= erp_end[tr])
             mrk = erp_mrk[idx] - erp_start[tr]
@@ -301,6 +315,8 @@ class LaresiERP(LaresiEEG):
         blocks = len(erp_epochs)
         eps = np.array(erp_epochs).transpose((1, 2, 3, 0)).reshape(
             (samples, channels, trials * blocks))
+
+        self.test_events = desc
 
         return eps, y_erp
 
