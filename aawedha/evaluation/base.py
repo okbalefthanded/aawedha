@@ -61,11 +61,12 @@ class Evaluation(object):
         '''
         '''
         folds = len(self.folds)
-        subjects = self._get_n_subjects()
+        # subjects = self._get_n_subjects()
+        # subjects = len(self.predictions)
         examples = len(self.predictions[0])
         dim = len(self.predictions[0][0])
         self.predictions = np.array(self.predictions).reshape(
-                            (subjects, folds, examples, dim))
+                            (self.n_subjects, folds, examples, dim))
         #
         results = {}
         #
@@ -215,4 +216,4 @@ class Evaluation(object):
         if self._equale_subjects():
             return len(self.dataset.epochs)
         else:
-            return len(self.dataset.eposh) + ts
+            return len(self.dataset.epochs) + ts
