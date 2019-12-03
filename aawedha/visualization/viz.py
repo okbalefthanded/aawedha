@@ -94,14 +94,15 @@ def plot_subjects_perf(results={}):
     y = iter([-1, 1])
     fig, ax = plt.subplots()
     for lb in labels:
-        rects = ax.bar(x + (width/2)*next(y), results[lb], width, label=lb)
-        for rect in rects:
-            height = rect.get_height()
-            ax.annotate('{0:.2f}'.format(height),
-                        xy=(rect.get_x() + rect.get_width() / 2, height),
-                        xytext=(0, 3),  # 3 points vertical offset
-                        textcoords="offset points",
-                        ha='center', va='bottom')
+        if lb in results:
+            rects = ax.bar(x + (width/2)*next(y), results[lb], width, label=lb)
+            for rect in rects:
+                height = rect.get_height()
+                ax.annotate('{0:.2f}'.format(height),
+                            xy=(rect.get_x() + rect.get_width() / 2, height),
+                            xytext=(0, 3),  # 3 points vertical offset
+                            textcoords="offset points",
+                            ha='center', va='bottom')
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_ylabel('')
     ax.set_title('Performance per subject')

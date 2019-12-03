@@ -93,7 +93,7 @@ class Evaluation(object):
             # mean across folds
             results['acc_mean_per_fold'] = res.mean(axis=0)
             # mean across subjects and folds
-            results['acc_mean_per_subject'] = res.mean(axis=1)
+            results['acc_mean_per_subj'] = res.mean(axis=1)
             results['acc_mean'] = res.mean()
 
         return results
