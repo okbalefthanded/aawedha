@@ -25,13 +25,16 @@ class CrossSubject(Evaluation):
             nfolds, self.n_subjects, train_phase, val_phase,
             test_phase, exclude_subj=excl)
 
-    def run_evaluation(self, clbs=[]):
+    def run_evaluation(self, clbs=[], flatten=False):
         '''
         '''
         # generate folds if folds are empty
         if not self.folds:
             self.folds = self.generate_split(nfolds=30)
         #
+        if flatten:
+            self.dataset.flatten()
+            
         res_acc, res_auc = [], []
         res_tp, res_fp = [], []
 

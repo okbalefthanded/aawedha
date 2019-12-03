@@ -43,7 +43,7 @@ class SingleSubject(Evaluation):
                                         val_phase, test_phase,
                                         exclude_subj=False)
 
-    def run_evaluation(self, subject=None, clbs=[]):
+    def run_evaluation(self, subject=None, clbs=[], flatten=False):
         '''
         '''
         # generate folds if folds are empty
@@ -70,6 +70,10 @@ class SingleSubject(Evaluation):
         else:
             operations = range(self.n_subjects)
 
+        if flatten:
+            #
+            self.dataset.flatten()
+        
         for subj in operations:
             #
             rets = self._single_subject(subj, independent_test, clbs)
@@ -97,13 +101,18 @@ class SingleSubject(Evaluation):
         '''
         '''
         # prepare data
-        x = self.dataset.epochs[subj][:, :, :]
-        y = self.dataset.y[subj][:]
-        samples, channels, trials = x.shape
-        x = x.transpose((2, 1, 0))
         kernels = 1  #
-        x = x.reshape((trials, kernels, channels, samples))
-        #
+        if self.dataset.epochs.ndim == 4:
+            x = self.dataset.epochs[subj][:, :, :]            
+            samples, channels, trials = x.shape
+            x = x.transpose((2, 1, 0)).reshape((trials, kernels, channels, samples))
+        elif self.dataset.epochs.ndim == 3:
+            x = self.dataset.epochs[subj][:, :]
+            samples, trials = x.shape
+            x = x.transpose((1, 0)).reshape((trials, kernels, samples))
+
+        # x = x.reshape((trials, kernels, channels, samples))
+        y = self.dataset.y[subj][:]
         y = self.labels_to_categorical(y)
         rets = []
         # get in the fold!!!
@@ -126,7 +135,6 @@ class SingleSubject(Evaluation):
             #
             class_weights = self.class_weights(np.argmax(Y_train, axis=1))
             # evaluate model on subj on all folds
-            # rename the fit method
             self.model_history = self.model.fit(X_train, Y_train,
                                                 batch_size=64, epochs=500,
                                                 verbose=self.verbose,
@@ -159,25 +167,42 @@ class SingleSubject(Evaluation):
         # folds[0][0][0] : inconsistent fold subject trials
         # folds[0][0] : same trials numbers for all subjects
         split = {}
-        trials, kernels, channels, samples = x.shape
         #
         if isinstance(self.dataset.epochs, list):
             f = self.folds[fold][subj][:]
         else:
             f = self.folds[fold][:]
-        #
+        if x.ndim == 4:
+            trials, kernels, channels, samples = x.shape       
+        elif x.ndim == 3:
+            trials, kernels, samples = x.shape
+        '''
         X_train = x[f[0], :, :, :]
         X_val = x[f[1], :, :, :]
         Y_train = y[f[0]]
         Y_val = y[f[1]]
+        '''
+        X_train = x[f[0]]
+        X_val = x[f[1]]
+        Y_train = y[f[0]]
+        Y_val = y[f[1]]
         if indie:
-            trs = self.dataset.test_epochs[0].shape[2]
-            X_test = self.dataset.test_epochs[subj][:, :, :].transpose(
-                (2, 1, 0))
-            X_test = X_test.reshape((trs, kernels, channels, samples))
+            if self.dataset.test_epochs.ndim == 3:
+                sbj, s, t = self.dataset.test_epochs.shape
+                #self.dataset.test_epochs = self.dataset.test_epochs.reshape((sbj, s, 1, t)) 
+                X_test = self.dataset.test_epochs[subj].transpose((1, 0))
+                X_test = X_test.reshape((t, kernels, samples))
+            elif self.dataset.test_epochs.ndim == 4: 
+                trs = self.dataset.test_epochs[0].shape[2]
+                X_test = self.dataset.test_epochs[subj][:, :, :].transpose((2, 1, 0))
+                X_test = X_test.reshape((trs, kernels, channels, samples))            
+            
             Y_test = self.labels_to_categorical(self.dataset.test_y[subj][:])
         else:
+            '''
             X_test = x[f[2], :, :, :]
+            '''
+            X_test = x[f[2]]
             Y_test = y[f[2]]
 
         split['X_train'] = X_train

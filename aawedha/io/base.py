@@ -99,3 +99,25 @@ class DataSet(metaclass=ABCMeta):
             raise FileNotFoundError
         f.close()
         return data
+
+    def flatten(self):
+        '''
+        '''
+        if type(self.epochs) is list:
+            self.epochs = [self._reshape(ep) for ep in self.epochs]
+            if hasattr(self, 'test_epochs'):
+              self.test_epochs = [self._reshape(ep) for ep in self.test_epochs]
+        else:            
+            self.epochs = self._reshape(self.epochs)
+            if hasattr(self, 'test_epochs'):
+              self.test_epochs = self._reshape(self.test_epochs)
+
+    def _reshape(self, tensor=None):
+        '''
+        '''
+        if tensor.ndim == 4:
+            subjects, samples, channels, trials = tensor.shape
+            return tensor.reshape((subjects, samples*channels, trials))
+        elif tensor.ndim == 3:
+            samples, channels, trials = tensor.shape
+            return tensor.reshape((samples*channels, trials))         
