@@ -3,3 +3,5 @@ pandas
 mne
 tensorflow
 keras
+matplotlib
+seaborn
