@@ -106,11 +106,26 @@ class DataSet(metaclass=ABCMeta):
         if type(self.epochs) is list:
             self.epochs = [self._reshape(ep) for ep in self.epochs]
             if hasattr(self, 'test_epochs'):
-              self.test_epochs = [self._reshape(ep) for ep in self.test_epochs]
+                self.test_epochs = [self._reshape(ep) for ep in self.test_epochs]
         else:            
             self.epochs = self._reshape(self.epochs)
             if hasattr(self, 'test_epochs'):
-              self.test_epochs = self._reshape(self.test_epochs)
+                self.test_epochs = self._reshape(self.test_epochs)
+
+    def recover_dim(self):
+        '''
+        '''
+        channels = len(self.ch_names)
+        if type(self.epochs) is list:            
+            self.epochs = [ep.reshape((ep.shape[0]/ channels, channels, ep.shape[1])) for ep in self.epochs]
+            if hasattr(self, 'test_epochs'):
+                self.test_epochs = [ep.reshape((ep.shape[0]/ channels, channels, ep.shape[1])) for ep in self.test_epochs]
+        else:
+            subjects, samples, trials = self.epochs.shape            
+            self.epochs = self.epochs.reshape((subjects, samples/channels, channels, trials))
+            if hasattr(self, 'test_epochs'):
+                subjects, samples, trials = self.test_epochs.shape            
+                self.test_epochs = self.test_epochs.reshape((subjects, samples/channels, channels, trials))               
 
     def _reshape(self, tensor=None):
         '''

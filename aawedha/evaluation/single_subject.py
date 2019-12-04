@@ -84,6 +84,11 @@ class SingleSubject(Evaluation):
                 res_tp.append([elm[3] for elm in rets])
             else:
                 res_acc.append(rets)
+        
+        if flatten:
+            #
+            self.dataset.recover_dim()
+            
         # Aggregate results
         tfpr = {}
         if res_auc:
