@@ -43,7 +43,7 @@ class SingleSubject(Evaluation):
                                         val_phase, test_phase,
                                         exclude_subj=False)
 
-    def run_evaluation(self, subject=None, clbs=[], flatten=False):
+    def run_evaluation(self, subject=None):
         '''
         '''
         # generate folds if folds are empty
@@ -56,7 +56,6 @@ class SingleSubject(Evaluation):
         independent_test = False
 
         if hasattr(self.dataset, 'test_epochs'):
-
             if self._equale_subjects():
                 independent_test = True
             else:
@@ -69,14 +68,13 @@ class SingleSubject(Evaluation):
             operations = [subject]
         else:
             operations = range(self.n_subjects)
+        #
+        if not self.model_compiled:
+            self._compile_model()
 
-        if flatten:
-            #
-            self.dataset.flatten()
-        
         for subj in operations:
             #
-            rets = self._single_subject(subj, independent_test, clbs)
+            rets = self._single_subject(subj, independent_test)
             if isinstance(rets[0], tuple):
                 res_acc.append([elm[0] for elm in rets])
                 res_auc.append([elm[1] for elm in rets])
@@ -84,12 +82,11 @@ class SingleSubject(Evaluation):
                 res_tp.append([elm[3] for elm in rets])
             else:
                 res_acc.append(rets)
-            
+
             if self.log:
                 self.logger.debug(f' Subj : {subj} ACC: {res_acc[-1]:.2f} AUC: {res_auc[-1]:.2f}')
-                
-        
-        if flatten:
+
+        if self.dataset.ndim == 3:
             #
             self.dataset.recover_dim()
 
@@ -106,13 +103,13 @@ class SingleSubject(Evaluation):
         #
         self.results = self.results_reports(res, tfpr)
 
-    def _single_subject(self, subj, indie=False, clbs=[]):
+    def _single_subject(self, subj, indie=False):
         '''
         '''
         # prepare data
         kernels = 1  #
         if self.dataset.epochs.ndim == 4:
-            x = self.dataset.epochs[subj][:, :, :]            
+            x = self.dataset.epochs[subj][:, :, :]
             samples, channels, trials = x.shape
             x = x.transpose((2, 1, 0)).reshape((trials, kernels, channels, samples))
         elif self.dataset.epochs.ndim == 3:
@@ -144,14 +141,19 @@ class SingleSubject(Evaluation):
             #
             class_weights = self.class_weights(np.argmax(Y_train, axis=1))
             # evaluate model on subj on all folds
+            self.model_history, probs = self._eval_model(X_train, Y_train,
+                                                         X_val, Y_val, X_test,
+                                                         class_weights)
+            '''
             self.model_history = self.model.fit(X_train, Y_train,
                                                 batch_size=64, epochs=500,
                                                 verbose=self.verbose,
                                                 validation_data=(X_val, Y_val),
                                                 class_weight=class_weights,
                                                 callbacks=clbs)
+            '''
             #
-            probs = self.model.predict(X_test)
+            # probs = self.model.predict(X_test)
             rets.append(self.measure_performance(Y_test, probs))
 
         return rets
@@ -182,7 +184,7 @@ class SingleSubject(Evaluation):
         else:
             f = self.folds[fold][:]
         if x.ndim == 4:
-            trials, kernels, channels, samples = x.shape       
+            trials, kernels, channels, samples = x.shape
         elif x.ndim == 3:
             trials, kernels, samples = x.shape
 
@@ -193,14 +195,14 @@ class SingleSubject(Evaluation):
         if indie:
             if self.dataset.test_epochs.ndim == 3:
                 sbj, s, t = self.dataset.test_epochs.shape
-                #self.dataset.test_epochs = self.dataset.test_epochs.reshape((sbj, s, 1, t)) 
+                # self.dataset.test_epochs = self.dataset.test_epochs.reshape((sbj, s, 1, t))
                 X_test = self.dataset.test_epochs[subj].transpose((1, 0))
                 X_test = X_test.reshape((t, kernels, samples))
-            elif self.dataset.test_epochs.ndim == 4: 
+            elif self.dataset.test_epochs.ndim == 4:
                 trs = self.dataset.test_epochs[0].shape[2]
                 X_test = self.dataset.test_epochs[subj][:, :, :].transpose((2, 1, 0))
-                X_test = X_test.reshape((trs, kernels, channels, samples))            
-            
+                X_test = X_test.reshape((trs, kernels, channels, samples))
+
             Y_test = self.labels_to_categorical(self.dataset.test_y[subj][:])
         else:
             X_test = x[f[2]]
@@ -241,4 +243,3 @@ class SingleSubject(Evaluation):
                 # generate test set from the entire set
                 folds.append([train[:tr], train[tr:tr + vl], test])
         return folds
-

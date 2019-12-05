@@ -2,6 +2,7 @@
     Base class for datasets
 """
 from abc import ABCMeta, abstractmethod
+import numpy as np
 import os
 import pickle
 
@@ -149,6 +150,14 @@ class DataSet(metaclass=ABCMeta):
             if hasattr(self, 'test_epochs'):
                 subjects, samples, trials = self.test_epochs.shape
                 self.test_epochs = self.test_epochs.reshape((subjects, samples/channels, channels, trials))
+
+    def get_n_classes(self):
+        '''
+        '''
+        if isinstance(self.y, list):
+            return len(np.unique(self.y[0]))
+        else:
+            return len(np.unique(self.y))
 
     def _reshape(self, tensor=None):
         '''

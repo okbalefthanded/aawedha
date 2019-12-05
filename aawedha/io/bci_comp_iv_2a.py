@@ -2,14 +2,11 @@ from aawedha.io.base import DataSet
 from aawedha.paradigms.motor_imagery import MotorImagery
 from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
-from mne import Epochs, pick_types, events_from_annotations
 from mne import set_log_level
-from mne.io import concatenate_raws, read_raw_edf
 from scipy.io import loadmat
 import numpy as np
 import glob
-import pickle
-import os
+from mne.io.edf.edf import read_raw_edf
 
 
 class Comp_IV_2a(DataSet):
@@ -118,8 +115,7 @@ class Comp_IV_2a(DataSet):
         events_raw = raw._raw_extras[0]['events']
         events_pos = events_raw[1]
         events_desc = events_raw[2]
-        ev_idx = (events_desc == Left) | (events_desc == Right) | (
-            events_desc == Foot) | (events_desc == Tongue) | (events_desc == Unkown)
+        ev_idx = (events_desc == Left) | (events_desc == Right) | (events_desc == Foot) | (events_desc == Tongue) | (events_desc == Unkown)
         ev_desc = events_desc[ev_idx]
         ev_pos = events_pos[ev_idx]
         # filter

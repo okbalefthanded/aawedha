@@ -3,6 +3,7 @@ Base class for evaluations
 
 '''
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.metrics import AUC
 from aawedha.utils.utils import log
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 import numpy as np
@@ -15,7 +16,7 @@ import os
 class Evaluation(object):
 
     def __init__(self, dataset=None, partition=[], folds=[],
-                 model=None, verbose=2, log=False):
+                 model=None, verbose=2, lg=False):
         '''
         '''
         self.dataset = dataset
@@ -28,12 +29,14 @@ class Evaluation(object):
         self.model_history = {}
         self.verbose = verbose
         self.n_subjects = self._get_n_subjects()
-        self.log = log
+        self.log = lg
         if self.log:
-            now = datetime.datetime.now().strftime('%c').replace(' ','_')
-            f = 'logs/'+'_'.join([self.__class__.__name__, dataset.title, now, '.log']) 
+            now = datetime.datetime.now().strftime('%c').replace(' ', '_')
+            f = 'logs/'+'_'.join([self.__class__.__name__,
+                                  dataset.title, now, '.log'])
             self.logger = log(fname=f, logger_name='eval_log')
-        else: self.logger = None
+        else:
+            self.logger = None
         self.model_compiled = False
         self.model_config = {}
 
@@ -213,8 +216,9 @@ class Evaluation(object):
     def set_model(self, model=None, model_config={}):
         '''
         '''
-        pass
-    
+        self.model = model
+        self.model_config = model_config
+
     def _equale_subjects(self):
         '''
         '''
@@ -236,11 +240,55 @@ class Evaluation(object):
     def _compile_model(self):
         '''
         '''
-        pass
+        if not self.model_config:
+            # some nice default configs
+            khsara, opt, mets = self._get_compile_configs()
+        else:
+            khsara = self.model_config['loss']
+            opt = self.model_config['optimizer']
+            mets = self.model_config['metrics']
 
-    def _eval_model(self, data=[]):
+        self.model.compile(loss=khsara,
+                           optimizer=opt,
+                           metrics=mets
+                           )
+        self.model_compiled = True
+
+    def _eval_model(self, X_train, Y_train, X_val, Y_val, X_test, cws):
         '''
         '''
-        pass
+        batch, ep, clbs = self._get_fit_configs()
+        history = self.model.fit(X_train, Y_train,
+                                 batch_size=batch, epochs=ep,
+                                 verbose=self.verbose,
+                                 validation_data=(X_val, Y_val),
+                                 class_weight=cws,
+                                 callbacks=clbs)
+        probs = self.model.predict(X_test)
+        return history, probs
 
-    
+    def _get_compile_configs(self):
+        '''
+        '''
+        classes = self.dataset.get_n_classes()
+        mets = ['accuracy']
+        if classes == 2:
+            khsara = 'binary_crossentropy'
+            mets.append(AUC())
+        else:
+            khsara = 'categorical_crossentropy'
+        opt = 'adam'
+        return khsara, opt, mets
+
+    def _get_fit_configs(self):
+        '''
+        '''
+        if self.model_config:
+            batch = self.model_config['batch']
+            ep = self.model_config['epochs']
+            clbs = self.model_config['callbacks']
+        else:
+            batch = 64
+            ep = 300
+            clbs = []
+        return batch, ep, clbs

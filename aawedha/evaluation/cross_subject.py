@@ -25,21 +25,21 @@ class CrossSubject(Evaluation):
             nfolds, self.n_subjects, train_phase, val_phase,
             test_phase, exclude_subj=excl)
 
-    def run_evaluation(self, clbs=[], flatten=False):
+    def run_evaluation(self):
         '''
         '''
         # generate folds if folds are empty
         if not self.folds:
             self.folds = self.generate_split(nfolds=30)
-        #
-        if flatten:
-            self.dataset.flatten()
-            
+
         res_acc, res_auc = [], []
         res_tp, res_fp = [], []
 
+        if not self.model_compiled:
+            self._compile_model()
+
         for fold in range(len(self.folds)):
-            rets = self._cross_subject(fold, clbs)
+            rets = self._cross_subject(fold)
             if isinstance(rets, tuple):
                 res_acc.append(rets[0])
                 res_auc.append(rets[1])
@@ -51,7 +51,7 @@ class CrossSubject(Evaluation):
             if self.log:
                 self.logger.debug(f' Fold : {fold} ACC: {res_acc[-1]:.2f} AUC: {res_auc[-1]:.2f}')
 
-        if flatten:
+        if self.dataset.ndim == 3:
             #
             self.dataset.recover_dim()
 
@@ -65,7 +65,7 @@ class CrossSubject(Evaluation):
 
         self.results = self.results_reports(res, tfpr)
 
-    def _cross_subject(self, fold, clbs=[]):
+    def _cross_subject(self, fold):
         '''
         '''
         #
@@ -80,13 +80,17 @@ class CrossSubject(Evaluation):
         #
         cws = self.class_weights(np.argmax(Y_train, axis=1))
         # evaluate model on subj on all folds
-
+        self.model_history, probs = self._eval_model(X_train, Y_train,
+                                                     X_val, Y_val, X_test,
+                                                     cws)
+        '''
         self.model_history = self.model.fit(X_train, Y_train, batch_size=96,
                                             epochs=500, verbose=self.verbose,
                                             validation_data=(X_val, Y_val),
                                             class_weight=cws, callbacks=clbs)
+        '''
         # train/val
-        probs = self.model.predict(X_test)
+        # probs = self.model.predict(X_test)
         rets = self.measure_performance(Y_test, probs)
 
         return rets
