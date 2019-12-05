@@ -84,11 +84,15 @@ class SingleSubject(Evaluation):
                 res_tp.append([elm[3] for elm in rets])
             else:
                 res_acc.append(rets)
+            
+            if self.log:
+                self.logger.debug(f' Subj : {subj} ACC: {res_acc[-1]:.2f} AUC: {res_auc[-1]:.2f}')
+                
         
         if flatten:
             #
             self.dataset.recover_dim()
-            
+
         # Aggregate results
         tfpr = {}
         if res_auc:
@@ -181,12 +185,7 @@ class SingleSubject(Evaluation):
             trials, kernels, channels, samples = x.shape       
         elif x.ndim == 3:
             trials, kernels, samples = x.shape
-        '''
-        X_train = x[f[0], :, :, :]
-        X_val = x[f[1], :, :, :]
-        Y_train = y[f[0]]
-        Y_val = y[f[1]]
-        '''
+
         X_train = x[f[0]]
         X_val = x[f[1]]
         Y_train = y[f[0]]
@@ -204,9 +203,6 @@ class SingleSubject(Evaluation):
             
             Y_test = self.labels_to_categorical(self.dataset.test_y[subj][:])
         else:
-            '''
-            X_test = x[f[2], :, :, :]
-            '''
             X_test = x[f[2]]
             Y_test = y[f[2]]
 

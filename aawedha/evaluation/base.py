@@ -3,8 +3,10 @@ Base class for evaluations
 
 '''
 from tensorflow.keras.utils import to_categorical
+from aawedha.utils.utils import log
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 import numpy as np
+import datetime
 import random
 import abc
 import os
@@ -13,7 +15,7 @@ import os
 class Evaluation(object):
 
     def __init__(self, dataset=None, partition=[], folds=[],
-                 model=None, verbose=2):
+                 model=None, verbose=2, log=False):
         '''
         '''
         self.dataset = dataset
@@ -22,10 +24,16 @@ class Evaluation(object):
         self.model = model
         self.predictions = []
         self.cm = []  # confusion matrix per fold
-        self.results = {}  # dict
+        self.results = {}
         self.model_history = {}
         self.verbose = verbose
         self.n_subjects = self._get_n_subjects()
+        self.log = log
+        if self.log:
+            now = datetime.datetime.now().strftime('%c').replace(' ','_')
+            f = 'logs/'+'_'.join([self.__class__.__name__, dataset.title, now, '.log']) 
+            self.logger = log(fname=f, logger_name='eval_log')
+        else: self.logger = None
 
     @abc.abstractmethod
     def generate_split(self, nfolds):

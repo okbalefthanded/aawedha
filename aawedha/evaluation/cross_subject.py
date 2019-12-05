@@ -48,6 +48,13 @@ class CrossSubject(Evaluation):
             else:
                 res_acc.append(rets)
 
+            if self.log:
+                self.logger.debug(f' Fold : {fold} ACC: {res_acc[-1]:.2f} AUC: {res_auc[-1]:.2f}')
+
+        if flatten:
+            #
+            self.dataset.recover_dim()
+
         # Aggregate results
         if res_auc:
             res = np.array([res_acc, res_auc])
