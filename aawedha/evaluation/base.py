@@ -34,6 +34,8 @@ class Evaluation(object):
             f = 'logs/'+'_'.join([self.__class__.__name__, dataset.title, now, '.log']) 
             self.logger = log(fname=f, logger_name='eval_log')
         else: self.logger = None
+        self.model_compiled = False
+        self.model_config = {}
 
     @abc.abstractmethod
     def generate_split(self, nfolds):
@@ -208,6 +210,11 @@ class Evaluation(object):
         filepath = folderpath + '/' + '_'.join(['model', prdg, dt, '.h5'])
         self.model.save(filepath)
 
+    def set_model(self, model=None, model_config={}):
+        '''
+        '''
+        pass
+    
     def _equale_subjects(self):
         '''
         '''
@@ -225,3 +232,15 @@ class Evaluation(object):
             return len(self.dataset.epochs)
         else:
             return len(self.dataset.epochs) + ts
+
+    def _compile_model(self):
+        '''
+        '''
+        pass
+
+    def _eval_model(self, data=[]):
+        '''
+        '''
+        pass
+
+    

@@ -241,3 +241,4 @@ class SingleSubject(Evaluation):
                 # generate test set from the entire set
                 folds.append([train[:tr], train[tr:tr + vl], test])
         return folds
+
