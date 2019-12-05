@@ -107,25 +107,48 @@ class DataSet(metaclass=ABCMeta):
             self.epochs = [self._reshape(ep) for ep in self.epochs]
             if hasattr(self, 'test_epochs'):
                 self.test_epochs = [self._reshape(ep) for ep in self.test_epochs]
-        else:            
+        else:
             self.epochs = self._reshape(self.epochs)
             if hasattr(self, 'test_epochs'):
                 self.test_epochs = self._reshape(self.test_epochs)
+
+    def select_subjects(self, subjects=[]):
+        '''
+        '''
+        self.epochs = self.epochs[subjects]
+        self.y = self.y[subjects]
+        if hasattr(self, 'test_epochs'):
+            self.test_epochs = self.test_epochs[subjects]
+            self.test_y = self.test_y[subjects]
+
+    def select_channels(self, ch=[]):
+        '''
+        '''
+        indexes = [i for i, x in enumerate(self.ch_names) if x in ch]
+
+        if type(self.epochs) is list:
+            self.epochs = [ep[:, indexes, :] for ep in self.epochs]
+            if hasattr(self, 'test_epochs'):
+                self.test_epochs = [ep[:, indexes, :] for ep in self.test_epochs]
+        else:
+            self.epochs = self.epochs[:, :, indexes, :]
+            if hasattr(self, 'test_epochs'):
+                self.test_epochs = self.test_epochs[:, :, indexes, :]
 
     def recover_dim(self):
         '''
         '''
         channels = len(self.ch_names)
-        if type(self.epochs) is list:            
+        if type(self.epochs) is list:
             self.epochs = [ep.reshape((ep.shape[0]/ channels, channels, ep.shape[1])) for ep in self.epochs]
             if hasattr(self, 'test_epochs'):
                 self.test_epochs = [ep.reshape((ep.shape[0]/ channels, channels, ep.shape[1])) for ep in self.test_epochs]
         else:
-            subjects, samples, trials = self.epochs.shape            
+            subjects, samples, trials = self.epochs.shape
             self.epochs = self.epochs.reshape((subjects, samples/channels, channels, trials))
             if hasattr(self, 'test_epochs'):
-                subjects, samples, trials = self.test_epochs.shape            
-                self.test_epochs = self.test_epochs.reshape((subjects, samples/channels, channels, trials))               
+                subjects, samples, trials = self.test_epochs.shape
+                self.test_epochs = self.test_epochs.reshape((subjects, samples/channels, channels, trials))
 
     def _reshape(self, tensor=None):
         '''
@@ -135,4 +158,4 @@ class DataSet(metaclass=ABCMeta):
             return tensor.reshape((subjects, samples*channels, trials))
         elif tensor.ndim == 3:
             samples, channels, trials = tensor.shape
-            return tensor.reshape((samples*channels, trials))         
+            return tensor.reshape((samples*channels, trials))
