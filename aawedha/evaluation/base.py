@@ -32,8 +32,8 @@ class Evaluation(object):
         self.log = lg
         if self.log:
             now = datetime.datetime.now().strftime('%c').replace(' ', '_')
-            f = 'logs/'+'_'.join([self.__class__.__name__,
-                                  dataset.title, now, '.log'])
+            f = 'aawedha/logs/'+'_'.join([self.__class__.__name__,
+                                         dataset.title, now, '.log'])
             self.logger = log(fname=f, logger_name='eval_log')
         else:
             self.logger = None

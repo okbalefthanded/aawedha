@@ -16,9 +16,11 @@ class Dummy(DataSet):
                          fs=None, doi='')
         mu, sigma = 0.0, 1.0
         self.epochs = np.random.normal(mu, sigma, train_shape)
-        self.y = np.random.randint(low=0, high=nb_classes, size=train_shape[3])
+        self.y = np.random.randint(low=0, high=nb_classes,
+                                   size=(train_shape[0], train_shape[3]))
         self.test_epochs = np.random.normal(mu, sigma, test_shape)
-        self.test_y = np.random.randint(low=0, high=nb_classes, size=test_shape[3])
+        self.test_y = np.random.randint(low=0, high=nb_classes,
+                                        size=(test_shape[0], test_shape[3]))
         self.test_events = []
         #
         self.x_train = None

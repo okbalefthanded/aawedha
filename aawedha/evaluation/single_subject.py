@@ -72,6 +72,9 @@ class SingleSubject(Evaluation):
         if not self.model_compiled:
             self._compile_model()
 
+        if self.log:
+            print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
+
         for subj in operations:
             #
             rets = self._single_subject(subj, independent_test)
@@ -84,10 +87,12 @@ class SingleSubject(Evaluation):
                 res_acc.append(rets)
 
             if self.log:
-                self.logger.debug(f' Subj : {subj} ACC: {res_acc[-1]:.2f} AUC: {res_auc[-1]:.2f}')
+                msg = f' Subj : {subj} ACC: {res_acc[-1]}'
+                if len(self.model.metrics) > 1:
+                    msg += f' AUC: {res_auc[-1]}'
+                self.logger.debug(msg)
 
-        if self.dataset.ndim == 3:
-            #
+        if self.dataset.epochs.ndim == 3:
             self.dataset.recover_dim()
 
         # Aggregate results
