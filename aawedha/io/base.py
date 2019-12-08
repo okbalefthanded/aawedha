@@ -90,7 +90,7 @@ class DataSet(metaclass=ABCMeta):
         f.close()
         # log if verbose
 
-    def load_set(self, file_name=None):
+    def load_set(self, file_name=None, subjects=[], ch=[]):
         '''
         '''
         if os.path.exists(file_name):
@@ -99,6 +99,10 @@ class DataSet(metaclass=ABCMeta):
         else:
             raise FileNotFoundError
         f.close()
+        if subjects:
+            data.select_subjects(subjects)
+        if ch:
+            data.select_channels(ch)
         return data
 
     def flatten(self):
@@ -116,6 +120,7 @@ class DataSet(metaclass=ABCMeta):
     def select_subjects(self, subjects=[]):
         '''
         '''
+        # TODO : test if equal subjects
         self.epochs = self.epochs[subjects]
         self.y = self.y[subjects]
         if hasattr(self, 'test_epochs'):

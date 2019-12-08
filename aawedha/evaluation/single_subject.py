@@ -74,6 +74,7 @@ class SingleSubject(Evaluation):
 
         if self.log:
             print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
+            self.log_experiment()
 
         for subj in operations:
             #
@@ -90,7 +91,7 @@ class SingleSubject(Evaluation):
                 res_acc.append(rets)
 
             if self.log:
-                msg = f' Subj : {subj} ACC: {res_acc[-1]}'
+                msg = f' Subj : {subj+1} ACC: {res_acc[-1]}'
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
