@@ -78,7 +78,7 @@ class Evaluation(object):
         # subjects = len(self.predictions)
         examples = len(self.predictions[0])
         dim = len(self.predictions[0][0])
-        
+
         if self.__class__.__name__ == 'CrossSubject':
             self.predictions = np.array(self.predictions).reshape(
                             (folds, examples, dim))
@@ -100,9 +100,9 @@ class Evaluation(object):
             results['acc_mean'] = r1.mean()
             results['auc_mean'] = r2.mean()
             #
-            if self.__class__.__name__ == 'SignleSubject':           
+            if self.__class__.__name__ == 'SignleSubject':
                 results['acc_mean_per_subj'] = r1.mean(axis=1)
-                results['auc_mean_per_subj'] = r2.mean(axis=1)           
+                results['auc_mean_per_subj'] = r2.mean(axis=1)
             #
             results['fpr'] = tfpr['fp']
             results['tpr'] = tfpr['tp']
@@ -112,7 +112,7 @@ class Evaluation(object):
             # mean across folds
             results['acc_mean_per_fold'] = res.mean(axis=0)
             # mean across subjects and folds
-            if self.__class__.__name__ == 'SignleSubject': 
+            if self.__class__.__name__ == 'SignleSubject':
                 results['acc_mean_per_subj'] = res.mean(axis=1)
             results['acc_mean'] = res.mean()
 
@@ -236,7 +236,20 @@ class Evaluation(object):
         model_config = f'Model config: {self._get_model_configs_info()}'
         exp_info = ' '.join([data, prt, model, model_config])
         self.logger.debug(exp_info)
-    
+
+    def reset(self):
+        '''
+            Reset Attributes and results for a future evaluation with
+            different model and same partition and folds
+        '''
+        self.model = None
+        self.predictions = []
+        self.cm = []  # confusion matrix per fold
+        self.results = {}
+        self.model_history = {}
+        self.model_compiled = False
+        self.model_config = {}
+
     def _equale_subjects(self):
         '''
         '''
@@ -317,7 +330,7 @@ class Evaluation(object):
         khsara, opt, mets = self._get_compile_configs()
         batch, ep, clbs = self._get_fit_configs()
         model_confg = f' Loss: {khsara} | Optimizer: {opt} | metrics: {mets} | batch_size: {batch} | epochs: {ep} | callbacks: {clbs}'
-        return model_confg    
+        return model_confg
 
     def _assert_partiton(self, excl=False):
         '''
@@ -325,5 +338,5 @@ class Evaluation(object):
         subjects = self._get_n_subjects()
         prt = np.sum(self.partition)
         if excl:
-            subjects -=1
+            subjects -= 1
         return subjects < prt
