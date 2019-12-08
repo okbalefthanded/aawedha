@@ -26,7 +26,7 @@ def KoreaU_CNN_1(nb_classes=5, Samples=120, Chans=8):
     dense = Dense(nb_classes, activation='sigmoid')(flatten)
     #
     softmax = Activation('sigmoid')(dense)
-    return Model(inputs=input1, outputs=softmax)
+    return Model(inputs=input1, outputs=softmax, name='KoreaU_CNN_1')
 
 
 def KoreaU_CNN_2(nb_classes=5, Samples=120, Chans=8):
@@ -47,4 +47,4 @@ def KoreaU_CNN_2(nb_classes=5, Samples=120, Chans=8):
     dense2 = Dense(nb_classes)(dense1)
     #
     softmax = Activation('sigmoid')(dense2)
-    return Model(inputs=input1, outputs=softmax)
+    return Model(inputs=input1, outputs=softmax, name='KoreaU_CNN_2')

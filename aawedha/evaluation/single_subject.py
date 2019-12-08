@@ -77,6 +77,9 @@ class SingleSubject(Evaluation):
 
         for subj in operations:
             #
+            if self.verbose == 0:
+                print(f'Evaluating Subject: {subj+1}/{len(operations)}...')
+
             rets = self._single_subject(subj, independent_test)
             if isinstance(rets[0], tuple):
                 res_acc.append([elm[0] for elm in rets])
@@ -149,15 +152,7 @@ class SingleSubject(Evaluation):
             self.model_history, probs = self._eval_model(X_train, Y_train,
                                                          X_val, Y_val, X_test,
                                                          class_weights)
-            '''
-            self.model_history = self.model.fit(X_train, Y_train,
-                                                batch_size=64, epochs=500,
-                                                verbose=self.verbose,
-                                                validation_data=(X_val, Y_val),
-                                                class_weight=class_weights,
-                                                callbacks=clbs)
-            '''
-            #
+            
             # probs = self.model.predict(X_test)
             rets.append(self.measure_performance(Y_test, probs))
 

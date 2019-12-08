@@ -78,7 +78,12 @@ class Evaluation(object):
         # subjects = len(self.predictions)
         examples = len(self.predictions[0])
         dim = len(self.predictions[0][0])
-        self.predictions = np.array(self.predictions).reshape(
+        
+        if self.__class__.__name__ == 'CrossSubject':
+            self.predictions = np.array(self.predictions).reshape(
+                            (folds, examples, dim))
+        elif self.__class__.__name__ == 'SingleSubject':
+            self.predictions = np.array(self.predictions).reshape(
                             (self.n_subjects, folds, examples, dim))
         #
         results = {}
@@ -87,16 +92,17 @@ class Evaluation(object):
             # res : (metric, subjects, folds)
             # means = res.mean(axis=-1) # mean across folds
             r1 = np.array(res['acc'])
-            results['acc'] = r1
-            results['acc_mean_per_fold'] = r1.mean(axis=0)
-            results['acc_mean_per_subj'] = r1.mean(axis=1)
-            results['acc_mean'] = r1.mean()
-            #
             r2 = np.array(res['auc'])
             results['auc'] = r2
+            results['acc'] = r1
+            results['acc_mean_per_fold'] = r1.mean(axis=0)
             results['auc_mean_per_fold'] = r2.mean(axis=0)
-            results['auc_mean_per_subj'] = r2.mean(axis=1)
+            results['acc_mean'] = r1.mean()
             results['auc_mean'] = r2.mean()
+            #
+            if self.__class__.__name__ == 'SignleSubject':           
+                results['acc_mean_per_subj'] = r1.mean(axis=1)
+                results['auc_mean_per_subj'] = r2.mean(axis=1)           
             #
             results['fpr'] = tfpr['fp']
             results['tpr'] = tfpr['tp']
@@ -106,7 +112,8 @@ class Evaluation(object):
             # mean across folds
             results['acc_mean_per_fold'] = res.mean(axis=0)
             # mean across subjects and folds
-            results['acc_mean_per_subj'] = res.mean(axis=1)
+            if self.__class__.__name__ == 'SignleSubject': 
+                results['acc_mean_per_subj'] = res.mean(axis=1)
             results['acc_mean'] = res.mean()
 
         return results
@@ -219,6 +226,17 @@ class Evaluation(object):
         self.model = model
         self.model_config = model_config
 
+    def log_experiment(self):
+        '''
+        '''
+        s = ['train', 'val', 'test']
+        data = f' Dataset: {self.dataset.title}'
+        prt = 'Subjects partition '+', '.join(f'{s[i], self.partition[i]}' for i in range(len(self.partition)))
+        model = f'Model: {self.model.name}'
+        model_config = f'Model config: {self._get_model_configs_info()}'
+        exp_info = ' '.join([data, prt, model, model_config])
+        self.logger.debug(exp_info)
+    
     def _equale_subjects(self):
         '''
         '''
@@ -292,3 +310,20 @@ class Evaluation(object):
             ep = 300
             clbs = []
         return batch, ep, clbs
+
+    def _get_model_configs_info(self):
+        '''
+        '''
+        khsara, opt, mets = self._get_compile_configs()
+        batch, ep, clbs = self._get_fit_configs()
+        model_confg = f' Loss: {khsara} | Optimizer: {opt} | metrics: {mets} | batch_size: {batch} | epochs: {ep} | callbacks: {clbs}'
+        return model_confg    
+
+    def _assert_partiton(self, excl=False):
+        '''
+        '''
+        subjects = self._get_n_subjects()
+        prt = np.sum(self.partition)
+        if excl:
+            subjects -=1
+        return subjects < prt

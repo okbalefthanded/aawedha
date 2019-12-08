@@ -30,7 +30,7 @@ def D1SCU(Samples=256, nb_classes=5):
     dense = Dense(nb_classes, kernel_regularizer=l2(0.001))(flatten)
     softmax = Activation('softmax', activity_regularizer=l2(0.001))(dense)
     #
-    return Model(inputs=input1, outputs=softmax)
+    return Model(inputs=input1, outputs=softmax,name='1DSCU')
 
 
 def PodNet(nb_classes, Chans=64, Samples=128,
@@ -79,4 +79,4 @@ def PodNet(nb_classes, Chans=64, Samples=128,
     dense = Dense(nb_classes)(flatten)
     #
     softmax = Activation('softmax')(dense)
-    return Model(inputs=input1, outputs=softmax)
+    return Model(inputs=input1, outputs=softmax, name='PodNet')

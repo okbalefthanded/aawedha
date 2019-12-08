@@ -26,4 +26,4 @@ def XU_JIANG(nb_classes=5, Samples=60, Chans=6):
     dense2 = Dense(nb_classes, activation='sigmoid')(dense1)
     softmax = Activation('softmax')(dense2)
 
-    return Model(inputs=input1, outputs=softmax)
+    return Model(inputs=input1, outputs=softmax, name='XU_JIANG')

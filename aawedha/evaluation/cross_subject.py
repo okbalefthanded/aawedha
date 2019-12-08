@@ -7,6 +7,10 @@ class CrossSubject(Evaluation):
     def generate_split(self, nfolds=30, excl=True):
         '''
         '''
+        
+        if self._assert_partiton(excl):
+            raise Exception(f'Parition exceeds subjects count, use a different parition')
+        
         # folds = []
         n_phase = len(self.partition)
         train_phase, val_phase = self.partition[0], self.partition[1]
@@ -20,7 +24,7 @@ class CrossSubject(Evaluation):
         else:
             # error : wrong partition
             raise AssertionError('Wrong partition scheme', self.partition)
-
+                 
         self.folds = self.get_folds(
             nfolds, self.n_subjects, train_phase, val_phase,
             test_phase, exclude_subj=excl)
@@ -40,8 +44,13 @@ class CrossSubject(Evaluation):
 
         if self.log:
             print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
+            self.log_experiment()
 
         for fold in range(len(self.folds)):
+            
+            if self.verbose == 0:
+                print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
+
             rets = self._cross_subject(fold)
             if isinstance(rets, tuple):
                 res_acc.append(rets[0])
@@ -52,11 +61,12 @@ class CrossSubject(Evaluation):
                 res_acc.append(rets)
 
             if self.log:
-                msg = f' Fold : {fold} ACC: {res_acc[-1]}'
+                msg = f' Fold : {fold+1} ACC: {res_acc[-1]}'
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
 
+        
         if self.dataset.epochs.ndim == 3:
             #
             self.dataset.recover_dim()
@@ -68,7 +78,7 @@ class CrossSubject(Evaluation):
         else:
             res = np.array(res_acc)
             tfpr = []
-
+                
         self.results = self.results_reports(res, tfpr)
 
     def _cross_subject(self, fold):
@@ -89,13 +99,6 @@ class CrossSubject(Evaluation):
         self.model_history, probs = self._eval_model(X_train, Y_train,
                                                      X_val, Y_val, X_test,
                                                      cws)
-        '''
-        self.model_history = self.model.fit(X_train, Y_train, batch_size=96,
-                                            epochs=500, verbose=self.verbose,
-                                            validation_data=(X_val, Y_val),
-                                            class_weight=cws, callbacks=clbs)
-        '''
-        # train/val
         # probs = self.model.predict(X_test)
         rets = self.measure_performance(Y_test, probs)
 
@@ -124,7 +127,6 @@ class CrossSubject(Evaluation):
             Y_test = self.labels_to_categorical(Y_test)
 
         else:
-
             x = self.dataset.epochs
             subjects, samples, channels, trials = x.shape
             y = self.dataset.y
