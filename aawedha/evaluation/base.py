@@ -1,7 +1,4 @@
-'''
-Base class for evaluations
 
-'''
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.metrics import AUC
 from aawedha.utils.utils import log
@@ -14,9 +11,89 @@ import os
 
 
 class Evaluation(object):
+    '''Base class for evaluations
 
-    def __init__(self, dataset=None, partition=[], folds=[],
-                 model=None, verbose=2, lg=False):
+        Evaluation defines and control the main process for training and testing a given model on
+        a given dataset following a certain configuration. 
+
+        Parameters
+        ----------
+        dataset : DataSet instance
+            a dataset from the available sets available to run evaluation on
+
+        model : Keras Model instance
+            the model to train/test on the dataset
+
+        partition : list of 2 or 3 integers
+            configuration for data partioning into train/validation/test subset
+            default a 3 integers list of: 
+                In case of a single dataset without an independet Test set
+                - (folds/L, folds/M, folds/N) L+M+N = total trials in dataset for SingleSubject evaluation
+                - (L_subjects, M_subjects, N_subjects) L+M+N = total subjects in dataset for CrossSubject evaluation
+            a 2 integers list of:
+                In case of a dataset with an independet Test set
+                - (folds/L, folds/M) L+M = T total trials in dataset for SingleSubject evaluation
+                - (L_subjects, M_subjects) L+M = S total subjects in dataset for CrossSubject evaluation
+            
+        folds : a list of 3 1d numpy array
+            indices of trials(SingleSubject evaluation)/subjects(CrossSubjects evaluation) for each fold
+
+        verbose : int
+            level of verbosity for model at fit method , 0 : silent, 1 : progress bar, 2 : one line per epoch
+        
+        lg : bool
+            if True uses logger to log experiment configurations and results, default False 
+
+        predictions : ndarray of predictions
+            models output for each example on the dataset :
+                - SingleSubject evaluaion : subjects x folds x Trials x dim
+                - CrossSubject evaluation : folds x Trials x dim
+        
+        cm : list 
+            confusion matrix per fold
+
+        results : dict of evaluation results compiled from models performance on the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)           
+            - 'acc_mean' : double : Accuracy mean over all subjects and folds
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
+            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
+            For binary class tasks :
+            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)       
+            - 'auc_mean' : double :  AUC mean over all subjects and folds
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'auc_mean_per_subj' :  AUC mean per Subject over all folds [only for SingleSubject evaluation]
+            - 'tpr' : 1d array : True posititves rate 
+            - 'fpr' : 1d array : False posititves rate
+
+        n_subjects : int
+            number of subjects in dataset if the train and test set have same subjects, the sum of both, otherwise.
+
+        model_history : list 
+            Keras history callbacks
+        
+        model_config : dict of model configurations, used in compile() and fit().
+            compile :
+            - loss : str : loss function to optimize during training
+                - default  : 'categorical_crossentropy'
+            - optimizer : str | Keras optimizer instance : SGD optimizer
+                - default : 'adam'
+            - metrics : list : str | Keras metrics : training metrics
+                - default : multiclass tasks ['accuracy']
+                            binary tasks ['accuracy', AUC()]
+            fit :
+            - batch : int : batch size
+                - default : 64
+            - epochs : int : training epochs
+                - default : 300
+            - callbacks : list : Keras model callbacks
+                - default : []
+
+        model_compiled : bool, flag for model state
+            default : False
+
+    '''
+    def __init__(self, dataset=None, model=None, partition=[], folds=[],
+                  verbose=2, lg=False):
         '''
         '''
         self.dataset = dataset
@@ -42,18 +119,41 @@ class Evaluation(object):
 
     @abc.abstractmethod
     def generate_split(self, nfolds):
-        '''
+        '''Generate train/validation/test split
+            Overriden in each type of evaluation : SingleSubject | CrossSubject
         '''
         pass
 
     @abc.abstractmethod
     def run_evaluation(self):
-        '''
+        '''Main evaluation process 
+            Overriden in each type of evaluation : SingleSubject | CrossSubject
         '''
         pass
 
     def measure_performance(self, Y_test, probs):
-        '''
+        '''Measure model performance on dataset
+
+        Calculates model performance on metrics and sets Confusion Matrix for each fold
+
+        Parameters
+        ----------
+        Y_test : 2d array (n_examples x n_classes) 
+            true class labels in Tensorflow format
+
+        probs : 2d array (n_examples x n_classes)
+            model output predictions as probability of belonging to a class   
+
+        Returns
+        -------
+            acc : float
+                accuracy value of model per fold
+            auc_score : float
+                AUC value of model per fold (only for Binary class tasks)
+            fp_rate : 1d array 
+                increasing false positive rate
+            tp_rate : 1d array
+                increasing true positive rate
         '''
         self.predictions.append(probs)  # ()
         preds = probs.argmax(axis=-1)
@@ -71,7 +171,37 @@ class Evaluation(object):
             return acc.item()
 
     def results_reports(self, res, tfpr={}):
-        '''
+        '''Collects evaluation results on a single dict 
+
+        Parameters
+        ----------
+        res : dict
+            contains models performance
+            - 'acc' : list
+                - SingleSubject : Accuracy of each subject on all folds
+                - CrossSubject :  Accuracy on all folds
+            - 'auc' : list (only for binary class tasks)
+                - SingleSubject : AUC of each subject on all folds
+                - CrossSubject :  AUC on all folds
+
+        tfpr : dict (only for binary class tasks)
+            - 'fp' : False positives rate on all fold
+            - 'tp' : True positives rate on all fold
+
+        Returns
+        -------
+        results : dict of evaluation results compiled from models performance on the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)           
+            - 'acc_mean' : double : Accuracy mean over all subjects and folds
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
+            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
+            For binary class tasks :
+            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)       
+            - 'auc_mean' : double :  AUC mean over all subjects and folds
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'auc_mean_per_subj' :  AUC mean per Subject over all folds [only for SingleSubject evaluation]
+            - 'tpr' : 1d array : True posititves rate 
+            - 'fpr' : 1d array : False posititves rate
         '''
         folds = len(self.folds)
         # subjects = self._get_n_subjects()
@@ -119,7 +249,27 @@ class Evaluation(object):
         return results
 
     def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
-        '''
+        '''Generate train/validation/tes folds following Shuffle split strategy 
+
+        Parameters
+        ----------
+        nfolds : int
+            number of folds to generate
+        population : int
+            number of total trials/subjects available
+        tr : int
+            number of trials/subjects to include in train folds
+        vl : int
+            number of trials/subjects to include in validation folds
+        ts : int
+            number of trials/subjects to include in test folds
+
+        exclude_subj : bool (only in CrossSubject evaluation)
+            if True the target subject data will be excluded from train fold
+
+        Returns
+        -------
+        folds : list
         '''
         folds = []
         if hasattr(self.dataset, 'test_epochs'):
@@ -166,6 +316,14 @@ class Evaluation(object):
         return folds
 
     def fit_scale(self, X):
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        '''
         mu = X.mean(axis=0)
         sigma = X.std(axis=0)
         X = np.subtract(X, mu[None, :, :])
@@ -173,12 +331,26 @@ class Evaluation(object):
         return X, mu, sigma
 
     def transform_scale(self, X, mu, sigma):
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        '''
         X = np.subtract(X, mu[None, :, :])
         X = np.divide(X, sigma[None, :, :])
         return X
 
     def class_weights(self, y):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         cl_weights = {}
         classes = np.unique(y)
@@ -199,7 +371,13 @@ class Evaluation(object):
         return cl_weights
 
     def labels_to_categorical(self, y):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         classes = np.unique(y)
         if np.isin(0, classes):
@@ -209,7 +387,13 @@ class Evaluation(object):
         return y
 
     def save_model(self, folderpath=None):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         if not os.path.isdir('trained'):
             os.mkdir('trained')
@@ -221,13 +405,25 @@ class Evaluation(object):
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         self.model = model
         self.model_config = model_config
 
     def log_experiment(self):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         s = ['train', 'val', 'test']
         data = f' Dataset: {self.dataset.title}'
@@ -238,9 +434,17 @@ class Evaluation(object):
         self.logger.debug(exp_info)
 
     def reset(self):
-        '''
-            Reset Attributes and results for a future evaluation with
+        '''Reset Attributes and results for a future evaluation with
             different model and same partition and folds
+         
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
+        
         '''
         self.model = None
         self.predictions = []
@@ -251,7 +455,13 @@ class Evaluation(object):
         self.model_config = {}
 
     def _equale_subjects(self):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         ts = 0
         tr = len(self.dataset.epochs)
@@ -260,7 +470,13 @@ class Evaluation(object):
         return tr == ts
 
     def _get_n_subjects(self):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         ts = len(self.dataset.test_epochs) if hasattr(self.dataset, 'test_epochs') else 0
         if self._equale_subjects():
@@ -269,7 +485,13 @@ class Evaluation(object):
             return len(self.dataset.epochs) + ts
 
     def _compile_model(self):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         if not self.model_config:
             # some nice default configs
@@ -286,7 +508,13 @@ class Evaluation(object):
         self.model_compiled = True
 
     def _eval_model(self, X_train, Y_train, X_val, Y_val, X_test, cws):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         batch, ep, clbs = self._get_fit_configs()
         history = self.model.fit(X_train, Y_train,
@@ -299,7 +527,13 @@ class Evaluation(object):
         return history, probs
 
     def _get_compile_configs(self):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         classes = self.dataset.get_n_classes()
         mets = ['accuracy']
@@ -312,7 +546,13 @@ class Evaluation(object):
         return khsara, opt, mets
 
     def _get_fit_configs(self):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         if self.model_config:
             batch = self.model_config['batch']
@@ -325,7 +565,13 @@ class Evaluation(object):
         return batch, ep, clbs
 
     def _get_model_configs_info(self):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         khsara, opt, mets = self._get_compile_configs()
         batch, ep, clbs = self._get_fit_configs()
@@ -333,7 +579,13 @@ class Evaluation(object):
         return model_confg
 
     def _assert_partiton(self, excl=False):
-        '''
+        ''' 
+
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         subjects = self._get_n_subjects()
         prt = np.sum(self.partition)
