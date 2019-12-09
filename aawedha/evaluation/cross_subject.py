@@ -3,14 +3,50 @@ import numpy as np
 
 
 class CrossSubject(Evaluation):
+    '''Cross Subject Evaluation
 
+    derived from base Evaluation class, takes same attributes and overrides
+    generate_split() and run_evaluation().
+
+    Methods
+    -------
+    _cross_subject()
+        for evaluation a subset of subjects data at a time
+        following the same folds split generated.
+
+    _split_set()
+        splits dataset into 3 (or 2 in case of independent test set)
+        distinct subset for train/validation/test.
+
+    _cat_lists()
+        some datasets has different number of trials for each subject, 
+        so the dataset is a list of ndarrays instead of a single Tensor,
+        this method concatenates selected subject in a single Tensor at
+        evaluation.
+    '''
     def generate_split(self, nfolds=30, excl=True):
+        '''Generate cross-validation folds following a cross-validation
+        strategy from ShuffleSplit
+
+        Parameters
+        ----------
+        nfolds : int
+            number of cross-validation folds to generate
+            default : 30
+
+        excl : bool
+            True, exclude target subject from evaluation to insure a complete
+            cross-subject evaluation, False otherwise
+            default : True
+
+        Returns
+        -------
+        no value, sets folds attribute with a list of arrays
         '''
-        '''
-        
+
         if self._assert_partiton(excl):
             raise Exception(f'Parition exceeds subjects count, use a different parition')
-        
+
         # folds = []
         n_phase = len(self.partition)
         train_phase, val_phase = self.partition[0], self.partition[1]
@@ -24,13 +60,21 @@ class CrossSubject(Evaluation):
         else:
             # error : wrong partition
             raise AssertionError('Wrong partition scheme', self.partition)
-                 
+
         self.folds = self.get_folds(
             nfolds, self.n_subjects, train_phase, val_phase,
             test_phase, exclude_subj=excl)
 
     def run_evaluation(self):
-        '''
+        '''Perform evaluation on subsets of subjects
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        no value, sets results attribute
         '''
         # generate folds if folds are empty
         if not self.folds:
@@ -47,7 +91,7 @@ class CrossSubject(Evaluation):
             self.log_experiment()
 
         for fold in range(len(self.folds)):
-            
+
             if self.verbose == 0:
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
@@ -66,7 +110,6 @@ class CrossSubject(Evaluation):
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
 
-        
         if self.dataset.epochs.ndim == 3:
             #
             self.dataset.recover_dim()
@@ -78,11 +121,21 @@ class CrossSubject(Evaluation):
         else:
             res = np.array(res_acc)
             tfpr = []
-                
+
         self.results = self.results_reports(res, tfpr)
 
     def _cross_subject(self, fold):
-        '''
+        '''Evaluate the subsets of subjects frawn from fold
+
+        Parameters
+        ----------
+        fold : int
+            fold index
+
+        Returns
+        -------
+        rets : tuple
+            folds performance
         '''
         #
         split = self._split_set(fold)
@@ -105,7 +158,20 @@ class CrossSubject(Evaluation):
         return rets
 
     def _split_set(self, fold):
-        '''
+        '''Splits subsets of Subjects data to be evaluated into train/validation/test sets following
+        the indices specified in the fold
+
+        Parameters
+        ----------
+        fold : int
+            fold index
+
+        Returns
+        -------
+        split : dict of nd arrays
+            X_train, Y_train, X_Val, Y_Val, X_test, Y_test
+            train/validation/test EEG data and labels
+            classes : array of values used to denote class labels
         '''
         split = {}
         kernels = 1
@@ -172,7 +238,23 @@ class CrossSubject(Evaluation):
         return split
 
     def _cat_lists(self, fold=0, phase=0):
-        '''
+        '''Concatenate lists into a single Tensor
+
+        Parameters
+        ----------
+        fold : int
+            fold index
+
+        phase : int
+            evaluation phase, 0 for test, 1 for validation
+            2 for test
+
+        Returns
+        -------
+        X : ndarray (subjects*trials, samples, channels)
+            EEG data concatenated
+        Y : ndarray (subject*n_examples, classes)
+            class labels
         '''
         if phase == 2:  # test phase
             if hasattr(self.dataset, 'test_epochs'):

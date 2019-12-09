@@ -16,7 +16,7 @@ class Evaluation(object):
         Evaluation defines and control the main process for training and testing a given model on
         a given dataset following a certain configuration. 
 
-        Parameters
+        Attributes
         ----------
         dataset : DataSet instance
             a dataset from the available sets available to run evaluation on
@@ -93,7 +93,7 @@ class Evaluation(object):
 
     '''
     def __init__(self, dataset=None, model=None, partition=[], folds=[],
-                  verbose=2, lg=False):
+                 verbose=2, lg=False):
         '''
         '''
         self.dataset = dataset
@@ -316,13 +316,23 @@ class Evaluation(object):
         return folds
 
     def fit_scale(self, X):
-        ''' 
+        '''Estimate mean and standard deviation from train set
+        for normalization.
+        train data is normalized afterwards
 
         Parameters
         ----------
+        X : nd array (trials, kernels, samples, channels)
+            training data
 
         Returns
         -------
+        X :  nd array (trials, kernels, samples, channels)
+            normalized training data
+        mu : nd array (1, kernels, samples, channels)
+            mean over all trials
+        sigma : nd array (1, kernels, samples, channels)
+            standard deviation over all trials
         '''
         mu = X.mean(axis=0)
         sigma = X.std(axis=0)
@@ -331,26 +341,41 @@ class Evaluation(object):
         return X, mu, sigma
 
     def transform_scale(self, X, mu, sigma):
-        ''' 
+        '''Apply normalization on validation/test data using estimated
+        mean and std from fit_scale method 
 
         Parameters
         ----------
+        X :  nd array (trials, kernels, samples, channels)
+            normalized training data
+        mu : nd array (1, kernels, samples, channels)
+            mean over all trials
+        sigma : nd array (1, kernels, samples, channels)
+            standard deviation over all trials
 
         Returns
         -------
+        X :  nd array (trials, kernels, samples, channels)
+            normalized data
         '''
         X = np.subtract(X, mu[None, :, :])
         X = np.divide(X, sigma[None, :, :])
         return X
 
     def class_weights(self, y):
-        ''' 
+        '''Calculates inverse of ratio of class' examples in train dataset
+        used to re-weight loss function in case of imbalanced classes in data
 
         Parameters
         ----------
+        y : 1d array of int
+            true labels
 
         Returns
         -------
+        cl_weights : dict of (int : float)
+            class_weight : class, 1 for each class if data classes are balanced
+
         '''
         cl_weights = {}
         classes = np.unique(y)
@@ -371,13 +396,17 @@ class Evaluation(object):
         return cl_weights
 
     def labels_to_categorical(self, y):
-        ''' 
+        '''Convert numerical labels to categorical 
 
         Parameters
         ----------
+        y : 1d array
+            true labels array in numerical format : 1,2,3,
 
         Returns
         -------
+        y : 2d array (n_examples x n_classes)
+            true labels in categorical format : example [1,0,0]
         '''
         classes = np.unique(y)
         if np.isin(0, classes):
@@ -387,43 +416,75 @@ class Evaluation(object):
         return y
 
     def save_model(self, folderpath=None):
-        ''' 
+        '''Save trained model in HDF5 format 
+        Uses the built-in save method in Keras Model object.
+        model name will be: folderpath/modelname_paradigm_dataset.h5
 
         Parameters
         ----------
+        folderpath : str
+            folder location where the model will be saved
+            default : 'aawedha/trained
 
         Returns
         -------
+        no value
         '''
+
         if not os.path.isdir('trained'):
             os.mkdir('trained')
         if not folderpath:
             folderpath = 'trained'
         prdg = self.dataset.paradigm.title
         dt = self.dataset.title
-        filepath = folderpath + '/' + '_'.join(['model', prdg, dt, '.h5'])
+        filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
-        ''' 
+        '''Assign Model and model_config
 
         Parameters
         ----------
+        model : Keras model
+            model to be trained and evaluated, selected from the available ones.
+            default : None
+
+        model_config : dict of model configurations, used in compile() and fit().
+            compile :
+            - loss : str : loss function to optimize during training
+                - default  : 'categorical_crossentropy'
+            - optimizer : str | Keras optimizer instance : SGD optimizer
+                - default : 'adam'
+            - metrics : list : str | Keras metrics : training metrics
+                - default : multiclass tasks ['accuracy']
+                            binary tasks ['accuracy', AUC()]
+            fit :
+            - batch : int : batch size
+                - default : 64
+            - epochs : int : training epochs
+                - default : 300
+            - callbacks : list : Keras model callbacks
+                - default : []
+            default : empty dict, attributed will be set at compile/fit calls
 
         Returns
         -------
+        no value
         '''
         self.model = model
         self.model_config = model_config
 
     def log_experiment(self):
-        ''' 
+        '''Write in logger, evaluation information after completing a fold
+        Message format : date-time-logger_name-logging_level-{fold|subject}-{ACC|AUC}-performance
 
         Parameters
         ----------
+        None
 
         Returns
         -------
+        no value
         '''
         s = ['train', 'val', 'test']
         data = f' Dataset: {self.dataset.title}'
@@ -436,15 +497,13 @@ class Evaluation(object):
     def reset(self):
         '''Reset Attributes and results for a future evaluation with
             different model and same partition and folds
-         
-
         Parameters
         ----------
+        None
 
         Returns
         -------
-        
-        
+        no value
         '''
         self.model = None
         self.predictions = []
@@ -455,14 +514,19 @@ class Evaluation(object):
         self.model_config = {}
 
     def _equale_subjects(self):
-        ''' 
+        '''Test whether dataset's train_epochs and test_epochs has same number
+        of subjects
 
         Parameters
         ----------
+        None
 
         Returns
         -------
+        bool : True if number of subjects in training data equals the number of
+        subjects in test data False otherwise
         '''
+
         ts = 0
         tr = len(self.dataset.epochs)
         if hasattr(self.dataset, 'test_epochs'):
@@ -470,13 +534,15 @@ class Evaluation(object):
         return tr == ts
 
     def _get_n_subjects(self):
-        ''' 
+        '''Return number of subjects in dataset 
 
         Parameters
         ----------
+        None
 
         Returns
         -------
+        int : number of subjects if train/test subjects is the same, their sum otherwise
         '''
         ts = len(self.dataset.test_epochs) if hasattr(self.dataset, 'test_epochs') else 0
         if self._equale_subjects():
@@ -485,13 +551,18 @@ class Evaluation(object):
             return len(self.dataset.epochs) + ts
 
     def _compile_model(self):
-        ''' 
+        '''Compile model using speficied model_config, default values otherwise
+
+        Sets model_compiled attribute to true after successful model compilation
 
         Parameters
         ----------
+        None
 
         Returns
         -------
+        no value
+
         '''
         if not self.model_config:
             # some nice default configs
@@ -508,13 +579,32 @@ class Evaluation(object):
         self.model_compiled = True
 
     def _eval_model(self, X_train, Y_train, X_val, Y_val, X_test, cws):
-        ''' 
+        '''Train model on train/validation data and predict its output on test data
+
+        Run model's fit() and predict() methods
 
         Parameters
         ----------
+        X_train : nd array
+            training data
+        Y_train : nd array
+            true training data labels
+        X_val : nd array
+            validation data
+        X_test : nd array
+            test data
+
+        cws : dict (int:float)
+            class weights
 
         Returns
         -------
+        history : Keras history callback
+            the model's loss and metrics performances per epoch
+
+        probs : 2d array (n_examples x n_classes)
+            model's output on test data as probabilites of belonging to each class
+
         '''
         batch, ep, clbs = self._get_fit_configs()
         history = self.model.fit(X_train, Y_train,
@@ -527,13 +617,20 @@ class Evaluation(object):
         return history, probs
 
     def _get_compile_configs(self):
-        ''' 
+        '''Returns default model compile configurations as tuple
 
         Parameters
         ----------
+        None
 
         Returns
         -------
+        khsara (loss in Arabic): str
+            loss function optimized during training
+        opt : str
+            optimizer
+        mets : list : str| keras metrics
+            metrics
         '''
         classes = self.dataset.get_n_classes()
         mets = ['accuracy']
@@ -546,13 +643,20 @@ class Evaluation(object):
         return khsara, opt, mets
 
     def _get_fit_configs(self):
-        ''' 
+        '''Returns fit configurations as tuple
 
         Parameters
         ----------
+        None
 
         Returns
         -------
+        batch : int
+            batch size
+        ep : int
+            epochs number
+        clbs : list
+            keras callbacks added to be watched during training
         '''
         if self.model_config:
             batch = self.model_config['batch']
@@ -565,13 +669,18 @@ class Evaluation(object):
         return batch, ep, clbs
 
     def _get_model_configs_info(self):
-        ''' 
+        '''Construct a logging message to be added to logger at evaluation beginning
+
+        the message details the models configuration used for model
 
         Parameters
         ----------
+        None
 
         Returns
         -------
+        model_config : str
+            model's configuation
         '''
         khsara, opt, mets = self._get_compile_configs()
         batch, ep, clbs = self._get_fit_configs()
@@ -579,13 +688,17 @@ class Evaluation(object):
         return model_confg
 
     def _assert_partiton(self, excl=False):
-        ''' 
+        '''Assert if partition to be used do not surpass number of subjects available
+        in dataset
 
         Parameters
         ----------
-
+        excl : bool
+            flag indicating whether the target subject is excluded from evaluation
+            
         Returns
         -------
+        bool : True if number of subjects is less than the sum of parition, False otherwise
         '''
         subjects = self._get_n_subjects()
         prt = np.sum(self.partition)

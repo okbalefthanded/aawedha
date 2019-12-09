@@ -4,11 +4,38 @@ import numpy as np
 
 
 class SingleSubject(Evaluation):
-    #
+    '''Single Subject Evaluation
+
+    derived from base Evaluation class, takes same attributes and overrides
+    generate_split() and run_evaluation().
+
+    Methods
+    -------
+    _single_subject() for evaluation a single subject data at a time following the
+        same folds split generated.
+
+    _fuse_data() when the dataset is beforehand split into train/test sets with different subjects
+          for each set, this method concatenates the subsets into a single set.
+    '''
+
     def generate_split(self, nfolds=30, strategy='Kfold'):
+        '''Generate cross-validation folds following a cross-validation
+        strategy from { Kfold | ShuffleSplit }
+
+        Parameters
+        ----------
+        nfolds : int
+            number of cross-validation folds to generate
+            default : 30
+
+        strategy : str
+            cross-validation strategy
+            default : 'Kfold'
+
+        Returns
+        -------
+        no value, sets folds attribute with a list of arrays
         '''
-        '''
-        # folds = []
         n_phase = len(self.partition)
         train_phase, val_phase = self.partition[0], self.partition[1]
         #
@@ -44,7 +71,18 @@ class SingleSubject(Evaluation):
                                         exclude_subj=False)
 
     def run_evaluation(self, subject=None):
-        '''
+        '''Perform evaluation on each subject
+
+        Parameters
+        ----------
+        subject : int | list
+            - specific subject id, performs a single evaluation.
+            - list of subjects from the set of subjects available in dataset
+            default : None, evaluate each subject
+
+        Returns
+        -------
+        no value, sets results attribute
         '''
         # generate folds if folds are empty
         if not self.folds:
@@ -113,7 +151,21 @@ class SingleSubject(Evaluation):
         self.results = self.results_reports(res, tfpr)
 
     def _single_subject(self, subj, indie=False):
-        '''
+        '''Evaluate a subject on each fold
+
+        Parameters
+        ----------
+        subj : int
+            subject id to be selected and evaluated
+
+        indie : bool
+            True if independent set available in dataset, so no need to use the test fold.
+            default : False
+
+        Returns
+        -------
+        rets : list of tuple, length = nfolds
+            contains subject's performance on each folds
         '''
         # prepare data
         kernels = 1  #
@@ -153,14 +205,25 @@ class SingleSubject(Evaluation):
             self.model_history, probs = self._eval_model(X_train, Y_train,
                                                          X_val, Y_val, X_test,
                                                          class_weights)
-            
+
             # probs = self.model.predict(X_test)
             rets.append(self.measure_performance(Y_test, probs))
 
         return rets
 
     def _fuse_data(self):
-        '''
+        '''Concatenate train and test dataset in a single dataset
+
+        Sets dataset.epochs and dataset.y
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        int : number of subjects in the newly formed dataset by concatenation
+
         '''
         # TODO : when epochs/y/test_epochs/y_test are lists???
         # make lists of lists
@@ -174,7 +237,36 @@ class SingleSubject(Evaluation):
         return self.dataset.epochs.shape[0]  # n_subject
 
     def _split_set(self, x=None, y=None, subj=0, fold=0, indie=False):
-        '''
+        '''Splits Subject data to be evaluated into train/validation/test sets following
+        the indices specified in the fold
+
+        Parameters
+        ----------
+        x : nd array (trials x kernels x channels x samples)
+            subject EEG data to be split
+            default: None
+
+        y : nd array (n_examples x n_classes)
+            subject data labels
+            default: None
+
+        subj : int
+            subject index in dataset
+            default : 0
+
+        fold : int
+            fold index in in folds
+            default : 0
+
+        indie : bool
+            True if independent data set is available, False otherwise
+            defaul : False
+
+        Returns
+        -------
+        split : dict of nd arrays
+            X_train, Y_train, X_Val, Y_Val, X_test, Y_test
+            train/validation/test EEG data and labels
         '''
         # folds[0][0][0] : inconsistent fold subject trials
         # folds[0][0] : same trials numbers for all subjects
@@ -218,7 +310,37 @@ class SingleSubject(Evaluation):
         return split
 
     def _get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0):
-        '''
+        '''Generate folds following a KFold cross-validation strategy
+
+        Parameters
+        ----------
+        nfolds : int
+            number of folds to generate
+            default : 4
+
+        n_trials : int | nd array
+            - int : same number of trials across all dataset epochs
+            - nd array : each subject has a specific number of trials in dataset epochs
+            default : 0
+
+        tr : int
+            number of training trials to select
+            default : 0
+   
+        vl : int
+            number of validation trials to select
+            default : 0
+
+        ts : int
+            number of test trials to select
+            default : 0
+
+        Returns
+        -------
+        folds : list of arrays
+            each fold has 3 arrays : one for train, one validation, one for test
+            if an independent test set is available in the dataset, this will have
+            only 2 array instead of 3
         '''
         if isinstance(n_trials, np.ndarray):
             t = [np.arange(n) for n in n_trials]
@@ -232,7 +354,28 @@ class SingleSubject(Evaluation):
         return folds
 
     def _get_split(self, nfolds, t, tr, vl):
-        '''
+        '''Generate nfolds following KFold cross-validation
+
+        Parameters
+        ----------
+        nfolds : int
+            number of folds to generate
+
+        t : int
+            number of total trials
+
+        tr : int
+            number of training trials to select
+
+        vl : int
+            number of validation trials to select
+
+        Returns
+        -------
+        folds : list of arrays
+            each fold has 3 arrays : one for train, one validation, one for test
+            if an independent test set is available in the dataset, this will have
+            only 2 array instead of 3
         '''
         folds = []
         cv = KFold(n_splits=nfolds)
