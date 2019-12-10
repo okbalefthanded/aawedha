@@ -2,6 +2,7 @@
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.metrics import AUC
 from aawedha.utils.utils import log
+from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 import numpy as np
 import datetime
@@ -133,49 +134,40 @@ class Evaluation(object):
         '''
         pass
 
-    
-    def set_checkpoint(self, current=0):
-        '''Save evaluation state to resume operations later
-
-        Evaluations instances will be save in a default location inside
-        the packages folder as : aawedha/checkpoints/current_[Evaluation_Type].pkl
-        at resume() the latest saved evaluation will be loaded and resumed
-
+    def resume(self):
+        '''Resume evaluation from where it was interrupted
+        
         Parameters
         ----------
-        current : int
-            current evaluation subject (SingleSubject)/ fold (CrossSubject) index   
+        None
 
         Returns
         -------
         no value
         '''
-        self.current = current
-        # save evaluation as object?
-        save_folder = 'aawedha/checkpoints'
-        if not os.path.isdir(save_folder):
-                os.mkdir(save_folder)
-
-        fname = save_folder + '/' + 'current_' + self.__class__.__name__ + '.pkl'
-        print(f'Saving Checkpoint to destination: {fname}')
-        f = open(fname, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        f.close()
-        pass
-
-    @staticmethod
-    def resume():
-        '''Resume evaluation from where it was interrupted
-        '''
         file_name = 'aawedha/checkpoints/current_' + self.__class__.__name__ + '.pkl'
         if os.path.exists(file_name):
             f = open(file_name, 'rb')
-            evl = pickle.load(f)
+            chkpoint = pickle.load(f)
         else:
             raise FileNotFoundError
         f.close()
-       
-        evl.run_evaluation()
+        self.reset(chkpoint)
+        self.run_evaluation(pointer=chkpoint, check=True)
+
+    def set_dataset(self, dt=None):
+        '''Instantiate dataset with dt
+        
+        Parameters
+        ----------
+        dt : dataset instance
+            a dataset object
+        
+        Returns
+        -------
+        no value
+        '''
+        self.dataset = dt
 
     def measure_performance(self, Y_test, probs):
         '''Measure model performance on dataset
@@ -540,24 +532,44 @@ class Evaluation(object):
         exp_info = ' '.join([data, prt, model, model_config])
         self.logger.debug(exp_info)
 
-    def reset(self):
+    def reset(self, chkpoint=None):
         '''Reset Attributes and results for a future evaluation with
             different model and same partition and folds
+        
+        if chkpoint is passed, Evaluation attributes will be set to 
+        the state at where the evaulation was interrupted, this is used
+        for operations resume 
+        
         Parameters
         ----------
-        None
+        chkpoint : CheckPoint instance
+            checkpoint object to set Evaluation state back where it was interrupted
 
         Returns
         -------
         no value
         '''
-        self.model = None
-        self.predictions = []
-        self.cm = []  # confusion matrix per fold
-        self.results = {}
-        self.model_history = {}
-        self.model_compiled = False
-        self.model_config = {}
+        if chkpoint:
+            # self.model = chkpoint.model
+            self.predictions = chkpoint.predictions
+            self.cm = chkpoint.cm
+            self.results = chkpoint.results
+            self.model_history = chkpoint.model_history
+            self.model_compiled = True
+            self.model_config = chkpoint.model_config
+            self.current = chkpoint.current
+            self.log = chkpoint.log
+            self.logger = log(fname=chkpoint.logger, logger_name='eval_log')
+            self.verbose = chkpoint.verbose
+                   
+        else:
+            self.model = None
+            self.predictions = []
+            self.cm = []  # confusion matrix per fold
+            self.results = {}
+            self.model_history = {}
+            self.model_compiled = False
+            self.model_config = {}
 
     def _equale_subjects(self):
         '''Test whether dataset's train_epochs and test_epochs has same number

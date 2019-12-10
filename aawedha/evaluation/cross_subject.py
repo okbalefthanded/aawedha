@@ -1,4 +1,5 @@
 from aawedha.evaluation.base import Evaluation
+from aawedha.evaluation.checkpoint import CheckPoint
 import numpy as np
 
 
@@ -65,7 +66,7 @@ class CrossSubject(Evaluation):
             nfolds, self.n_subjects, train_phase, val_phase,
             test_phase, exclude_subj=excl)
 
-    def run_evaluation(self, checkpoint=False):
+    def run_evaluation(self, pointer=None, check=False):
         '''Perform evaluation on subsets of subjects
 
         Parameters
@@ -79,6 +80,9 @@ class CrossSubject(Evaluation):
         # generate folds if folds are empty
         if not self.folds:
             self.folds = self.generate_split(nfolds=30)
+              
+        if not pointer:
+            pointer = CheckPoint(self)
 
         res_acc, res_auc = [], []
         res_tp, res_fp = [], []
@@ -116,8 +120,8 @@ class CrossSubject(Evaluation):
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
 
-            if checkpoint:
-                self.set_checkpoint(fold)
+            if check:
+                pointer.set_checkpoint(fold)
 
         if self.dataset.epochs.ndim == 3:
             #

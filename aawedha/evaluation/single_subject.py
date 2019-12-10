@@ -1,4 +1,5 @@
 from aawedha.evaluation.base import Evaluation
+from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.model_selection import KFold
 import numpy as np
 
@@ -70,7 +71,7 @@ class SingleSubject(Evaluation):
                                         val_phase, test_phase,
                                         exclude_subj=False)
 
-    def run_evaluation(self, subject=None, checkpoint=False):
+    def run_evaluation(self, subject=None, pointer=None, check=False):
         '''Perform evaluation on each subject
 
         Parameters
@@ -90,6 +91,9 @@ class SingleSubject(Evaluation):
         # generate folds if folds are empty
         if not self.folds:
             self.folds = self.generate_split(nfolds=30)
+        
+        if not pointer:
+            pointer = CheckPoint(self)
         #
         res_acc = []
         res_auc, res_tp, res_fp = [], [], []
@@ -139,8 +143,8 @@ class SingleSubject(Evaluation):
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
             
-            if checkpoint:
-                self.set_checkpoint(subj)    
+            if check:
+                pointer.set_checkpoint(subj)    
 
         if self.dataset.epochs.ndim == 3:
             self.dataset.recover_dim()
