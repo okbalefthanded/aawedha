@@ -65,7 +65,7 @@ class CrossSubject(Evaluation):
             nfolds, self.n_subjects, train_phase, val_phase,
             test_phase, exclude_subj=excl)
 
-    def run_evaluation(self):
+    def run_evaluation(self, checkpoint=False):
         '''Perform evaluation on subsets of subjects
 
         Parameters
@@ -90,7 +90,13 @@ class CrossSubject(Evaluation):
             print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
             self.log_experiment()
 
-        for fold in range(len(self.folds)):
+        if self.current:
+            operations = range(self.current, len(self.folds))
+        else:
+            operations = range(len(self.folds))
+        
+        #for fold in range(len(self.folds)):
+        for fold in operations:
 
             if self.verbose == 0:
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
@@ -109,6 +115,9 @@ class CrossSubject(Evaluation):
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
+
+            if checkpoint:
+                self.set_checkpoint(fold)
 
         if self.dataset.epochs.ndim == 3:
             #

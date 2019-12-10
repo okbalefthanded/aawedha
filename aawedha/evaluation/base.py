@@ -6,6 +6,7 @@ from sklearn.metrics import roc_curve, auc, confusion_matrix
 import numpy as np
 import datetime
 import random
+import pickle
 import abc
 import os
 
@@ -116,6 +117,7 @@ class Evaluation(object):
             self.logger = None
         self.model_compiled = False
         self.model_config = {}
+        self.current = None
 
     @abc.abstractmethod
     def generate_split(self, nfolds):
@@ -130,6 +132,50 @@ class Evaluation(object):
             Overriden in each type of evaluation : SingleSubject | CrossSubject
         '''
         pass
+
+    
+    def set_checkpoint(self, current=0):
+        '''Save evaluation state to resume operations later
+
+        Evaluations instances will be save in a default location inside
+        the packages folder as : aawedha/checkpoints/current_[Evaluation_Type].pkl
+        at resume() the latest saved evaluation will be loaded and resumed
+
+        Parameters
+        ----------
+        current : int
+            current evaluation subject (SingleSubject)/ fold (CrossSubject) index   
+
+        Returns
+        -------
+        no value
+        '''
+        self.current = current
+        # save evaluation as object?
+        save_folder = 'aawedha/checkpoints'
+        if not os.path.isdir(save_folder):
+                os.mkdir(save_folder)
+
+        fname = save_folder + '/' + 'current_' + self.__class__.__name__ + '.pkl'
+        print(f'Saving Checkpoint to destination: {fname}')
+        f = open(fname, 'wb')
+        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        f.close()
+        pass
+
+    @staticmethod
+    def resume():
+        '''Resume evaluation from where it was interrupted
+        '''
+        file_name = 'aawedha/checkpoints/current_' + self.__class__.__name__ + '.pkl'
+        if os.path.exists(file_name):
+            f = open(file_name, 'rb')
+            evl = pickle.load(f)
+        else:
+            raise FileNotFoundError
+        f.close()
+       
+        evl.run_evaluation()
 
     def measure_performance(self, Y_test, probs):
         '''Measure model performance on dataset

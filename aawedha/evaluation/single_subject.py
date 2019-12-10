@@ -70,7 +70,7 @@ class SingleSubject(Evaluation):
                                         val_phase, test_phase,
                                         exclude_subj=False)
 
-    def run_evaluation(self, subject=None):
+    def run_evaluation(self, subject=None, checkpoint=False):
         '''Perform evaluation on each subject
 
         Parameters
@@ -79,6 +79,9 @@ class SingleSubject(Evaluation):
             - specific subject id, performs a single evaluation.
             - list of subjects from the set of subjects available in dataset
             default : None, evaluate each subject
+
+        checkpoint : bool
+            if True, sets evaluation checkpoint for future operation resume, False otherwise
 
         Returns
         -------
@@ -101,8 +104,10 @@ class SingleSubject(Evaluation):
                 # test data are different subjects
                 n_subj = self._fuse_data()
                 self.n_subjects = n_subj
-
-        if subject:
+        #
+        if self.current:
+            operations = range(self.current, self.n_subjects)
+        elif subject:
             operations = [subject]
         else:
             operations = range(self.n_subjects)
@@ -133,6 +138,9 @@ class SingleSubject(Evaluation):
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
+            
+            if checkpoint:
+                self.set_checkpoint(subj)    
 
         if self.dataset.epochs.ndim == 3:
             self.dataset.recover_dim()
@@ -148,7 +156,7 @@ class SingleSubject(Evaluation):
         else:
             res = np.array(res_acc)
         #
-        self.results = self.results_reports(res, tfpr)
+        self.results = self.results_reports(res, tfpr)       
 
     def _single_subject(self, subj, indie=False):
         '''Evaluate a subject on each fold
