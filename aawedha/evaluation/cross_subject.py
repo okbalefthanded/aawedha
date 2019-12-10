@@ -121,7 +121,7 @@ class CrossSubject(Evaluation):
                 self.logger.debug(msg)
 
             if check:
-                pointer.set_checkpoint(fold)
+                pointer.set_checkpoint(fold, self.model)
 
         if self.dataset.epochs.ndim == 3:
             #

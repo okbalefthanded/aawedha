@@ -144,7 +144,7 @@ class SingleSubject(Evaluation):
                 self.logger.debug(msg)
             
             if check:
-                pointer.set_checkpoint(subj)    
+                pointer.set_checkpoint(subj, self.model)    
 
         if self.dataset.epochs.ndim == 3:
             self.dataset.recover_dim()

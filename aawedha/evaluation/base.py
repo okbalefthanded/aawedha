@@ -1,6 +1,7 @@
 
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.metrics import AUC
+from tensorflow.keras.models import load_model
 from aawedha.utils.utils import log
 from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.metrics import roc_curve, auc, confusion_matrix
@@ -145,7 +146,7 @@ class Evaluation(object):
         -------
         no value
         '''
-        file_name = 'aawedha/checkpoints/current_' + self.__class__.__name__ + '.pkl'
+        file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
         if os.path.exists(file_name):
             f = open(file_name, 'rb')
             chkpoint = pickle.load(f)
@@ -550,7 +551,7 @@ class Evaluation(object):
         no value
         '''
         if chkpoint:
-            # self.model = chkpoint.model
+            self.model = load_model(chkpoint.model_name)
             self.predictions = chkpoint.predictions
             self.cm = chkpoint.cm
             self.results = chkpoint.results

@@ -94,7 +94,7 @@ class CheckPoint(object):
         self.current = None
         self.partition = evl.partition
         self.folds = evl.folds
-        # self.model = evl.model
+        self.model_name = ''
         self.model_history = evl.model_history
         self.model_config = evl.model_config
         self.predictions = evl.predictions
@@ -104,7 +104,7 @@ class CheckPoint(object):
         self.logger = evl.logger.handlers[0].baseFilename
         self.verbose = evl.verbose
 
-    def set_checkpoint(self, current=0):
+    def set_checkpoint(self, current=0, model=None):
         '''Save evaluation state to resume operations later
 
         Evaluations instances will be save in a default location inside
@@ -121,6 +121,9 @@ class CheckPoint(object):
         no value
         '''
         self.current = current
+        # save model using built-in save_model, to avoid pickle error
+        self.model_name = 'aawedha/trained/current_model.h5'
+        model.save(self.model_name)
         # save evaluation as object?
         save_folder = 'aawedha/checkpoints'
         if not os.path.isdir(save_folder):
