@@ -552,6 +552,8 @@ class Evaluation(object):
         '''
         if chkpoint:
             self.model = load_model(chkpoint.model_name)
+            self.folds = chkpoint.folds
+            self.partition = chkpoint.partition
             self.predictions = chkpoint.predictions
             self.cm = chkpoint.cm
             self.results = chkpoint.results
