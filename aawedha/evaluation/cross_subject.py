@@ -81,7 +81,7 @@ class CrossSubject(Evaluation):
         if not self.folds:
             self.folds = self.generate_split(nfolds=30)
               
-        if not pointer:
+        if not pointer and check:
             pointer = CheckPoint(self)
 
         res_acc, res_auc = [], []
