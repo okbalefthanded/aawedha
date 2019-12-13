@@ -9,7 +9,7 @@ setuptools.setup(
 	author="Okba Bekhelifi",
 	author_email="okba.bekhelifi@univ-usto.dz",
 	description="",
-	long_description = long_description,
+	long_description=long_description,
 	long_description_content_type="text/markdown",	
 	packages=setuptools.find_packages(),
 	classifiers=[
