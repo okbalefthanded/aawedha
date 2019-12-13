@@ -3,18 +3,6 @@ import numpy as np
 
 
 def bandpass(eeg, band, fs, order=2):
-<<<<<<< HEAD
-  """
-  """
-  B,A = sig.butter(order, np.array(band)/(fs/2), btype='bandpass')
-  return sig.filtfilt(B, A, eeg, axis=0)
-
-
-def fit_normalize():
-  """
-  """
-  NotImplementedError
-=======
     B, A = sig.butter(order, np.array(band) / (fs / 2), btype='bandpass')
     return sig.filtfilt(B, A, eeg, axis=0)
 
@@ -39,4 +27,3 @@ def eeg_epoch(eeg, epoch_length, markers):
     eeg_epochs = np.array(eeg[epoch_idx, :]).reshape(
         (samples, len(markers), channels), order='F').transpose((0, 2, 1))
     return eeg_epochs
->>>>>>> dev

@@ -104,62 +104,18 @@ class Inria_ERN(DataSet):
             load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=16)
         self.paradigm = self._get_paradigm()
-<<<<<<< HEAD
-        
-        # save dataset
-        # save_folder = '/data/inria_ern'
-        if not os.path.isdir(save_folder):
-            os.mkdir(save_folder)
-        fileName = save_folder + '/inria_ern.pkl'
-        f = gzip.open(fileName, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)        
-        f.close()
-
-    @staticmethod
-    def load_set(fileName=None):
-        """
-        """
-        if os.path.exists(fileName):
-            f = gzip.open(fileName, 'rb')
-            data = pickle.load(f)
-        else:
-            raise FileNotFoundError
-        f.close()
-        return data  
-        
-=======
         self.save_set(save_folder)
 
     def get_path(self):
         NotImplementedError
->>>>>>> dev
 
     def _get_events(self):
         NotImplementedError
 
     def _get_subjects(self, n_subjects=0):
-<<<<<<< HEAD
-        return [Subject(id='S'+str(s),gender='M',age=0, handedness='')
-                    for s in range(1, n_subjects+1)]
-
-    def _get_paradigm(self):
-        return ERP(title='ERP_ERN', stimulation=60, break_duration=50, repetition=12,
-                    phrase='', flashing_mode='RC')
-
-    
-
-    
-        
-
-    
-
-
-        
-=======
         return [Subject(id='S' + str(s), gender='M', age=0, handedness='')
                 for s in range(1, n_subjects + 1)]
 
     def _get_paradigm(self):
         return ERP(title='ERP_ERN', stimulation=60, break_duration=50, repetition=12,
                    phrase='', flashing_mode='RC')
->>>>>>> dev
