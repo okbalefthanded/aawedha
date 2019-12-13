@@ -78,7 +78,7 @@ class DataSet(metaclass=ABCMeta):
         '''
         # save dataset
         if not os.path.isdir(save_folder):
-            os.mkdir(save_folder)
+            os.makedirs(save_folder)
 
         if not self.title:
             self.title = 'unnamed_set'
