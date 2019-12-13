@@ -99,7 +99,7 @@ class CrossSubject(Evaluation):
         else:
             operations = range(len(self.folds))
         
-        #for fold in range(len(self.folds)):
+        # for fold in range(len(self.folds)):
         for fold in operations:
 
             if self.verbose == 0:
