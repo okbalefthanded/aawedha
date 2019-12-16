@@ -142,9 +142,9 @@ class SingleSubject(Evaluation):
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
-            
+
             if check:
-                pointer.set_checkpoint(subj, self.model)    
+                pointer.set_checkpoint(subj+1, self.model)
 
         if self.dataset.epochs.ndim == 3:
             self.dataset.recover_dim()

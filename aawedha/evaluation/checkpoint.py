@@ -127,10 +127,11 @@ class CheckPoint(object):
         # save evaluation as object?
         save_folder = 'aawedha/checkpoints'
         if not os.path.isdir(save_folder):
-                os.mkdir(save_folder)
+            os.mkdir(save_folder)
 
         fname = save_folder + '/' + 'current_' + self.__class__.__name__ + '.pkl'
         print(f'Saving Checkpoint to destination: {fname}')
         f = open(fname, 'wb')
         pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         f.close()
+        

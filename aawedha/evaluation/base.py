@@ -564,7 +564,7 @@ class Evaluation(object):
             self.log = chkpoint.log
             self.logger = log(fname=chkpoint.logger, logger_name='eval_log')
             self.verbose = chkpoint.verbose
-                   
+      
         else:
             self.model = None
             self.predictions = []
