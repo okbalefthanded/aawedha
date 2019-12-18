@@ -155,6 +155,7 @@ class Evaluation(object):
         f.close()
         self.reset(chkpoint)
         self.run_evaluation(pointer=chkpoint, check=True)
+        return self
 
     def set_dataset(self, dt=None):
         '''Instantiate dataset with dt
