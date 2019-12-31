@@ -49,10 +49,15 @@ class SanDiego(DataSet):
                          epoch_duration, :, :, :] for stride in range(augmented)]
                 eeg = np.concatenate(v, axis=2)
                 samples, channels, blocks, targets = eeg.shape
+                '''
                 y = np.tile(np.arange(1, targets + 1),
                             (int(blocks / augmented), 1))
                 y = np.tile(y, (1, augmented))
                 y = y.reshape((1, blocks * targets), order='F')
+                '''
+                #
+                y = np.tile(np.arange(1, targets+1), (15*augmented,1))
+                y = y.reshape((1,blocks*targets),order='F')
                 del v
             else:
                 eeg = eeg[onset:onset + epoch_duration, :, :, :]
