@@ -181,21 +181,33 @@ class SingleSubject(Evaluation):
         '''
         # prepare data
         kernels = 1  #
-        if self.dataset.epochs.ndim == 4:
-            x = self.dataset.epochs[subj][:, :, :]
+        if isinstance(self.dataset.epochs, list):
+            # TODO
+            x = self.dataset.epochs[subj]
             samples, channels, trials = x.shape
             x = x.transpose((2, 1, 0)).reshape((trials, kernels, channels, samples))
-        elif self.dataset.epochs.ndim == 3:
-            x = self.dataset.epochs[subj][:, :]
-            samples, trials = x.shape
-            x = x.transpose((1, 0)).reshape((trials, kernels, samples))
+        else:
+            if self.dataset.epochs.ndim == 4:
+                x = self.dataset.epochs[subj][:, :, :]
+                samples, channels, trials = x.shape
+                x = x.transpose((2, 1, 0)).reshape((trials, kernels, channels, samples))
+            elif self.dataset.epochs.ndim == 3:
+                x = self.dataset.epochs[subj][:, :]
+                samples, trials = x.shape
+                x = x.transpose((1, 0)).reshape((trials, kernels, samples))
 
         # x = x.reshape((trials, kernels, channels, samples))
         y = self.dataset.y[subj][:]
         y = self.labels_to_categorical(y)
         rets = []
         # get in the fold!!!
-        for fold in range(len(self.folds)):
+        if isinstance(self.dataset.epochs, list):
+            folds_range = range(len(self.folds[0]))
+        else:
+            folds_range = range(len(self.folds))
+
+        # for fold in range(len(self.folds)):
+        for fold in folds_range:
             #
             split = self._split_set(x, y, subj, fold, indie)
             # normalize data
@@ -285,9 +297,11 @@ class SingleSubject(Evaluation):
         split = {}
         #
         if isinstance(self.dataset.epochs, list):
-            f = self.folds[fold][subj][:]
+            # f = self.folds[fold][subj][:]
+            f = self.folds[subj][fold][:]  # subject, fold, phase
         else:
             f = self.folds[fold][:]
+
         if x.ndim == 4:
             trials, kernels, channels, samples = x.shape
         elif x.ndim == 3:
@@ -298,15 +312,21 @@ class SingleSubject(Evaluation):
         Y_train = y[f[0]]
         Y_val = y[f[1]]
         if indie:
-            if self.dataset.test_epochs.ndim == 3:
-                sbj, s, t = self.dataset.test_epochs.shape
-                # self.dataset.test_epochs = self.dataset.test_epochs.reshape((sbj, s, 1, t))
-                X_test = self.dataset.test_epochs[subj].transpose((1, 0))
-                X_test = X_test.reshape((t, kernels, samples))
-            elif self.dataset.test_epochs.ndim == 4:
+            if isinstance(self.dataset.test_epochs, list):
+                # TODO
                 trs = self.dataset.test_epochs[0].shape[2]
-                X_test = self.dataset.test_epochs[subj][:, :, :].transpose((2, 1, 0))
+                X_test = self.dataset.test_epochs[subj].transpose((2, 1, 0))
                 X_test = X_test.reshape((trs, kernels, channels, samples))
+            else:
+                if self.dataset.test_epochs.ndim == 3:
+                    sbj, s, t = self.dataset.test_epochs.shape
+                    # self.dataset.test_epochs = self.dataset.test_epochs.reshape((sbj, s, 1, t))
+                    X_test = self.dataset.test_epochs[subj].transpose((1, 0))
+                    X_test = X_test.reshape((t, kernels, samples))
+                elif self.dataset.test_epochs.ndim == 4:
+                    trs = self.dataset.test_epochs[0].shape[2]
+                    X_test = self.dataset.test_epochs[subj][:, :, :].transpose((2, 1, 0))
+                    X_test = X_test.reshape((trs, kernels, channels, samples))
 
             Y_test = self.labels_to_categorical(self.dataset.test_y[subj][:])
         else:
@@ -355,11 +375,11 @@ class SingleSubject(Evaluation):
             only 2 array instead of 3
         '''
         if isinstance(n_trials, np.ndarray):
-            t = [np.arange(n) for n in n_trials]
-            sbj = []
-            folds = []
-            sbj = [self._get_split(nfolds, n, tr, vl) for n in t]
-            folds.append(sbj)
+            t = [np.arange(n) for n in n_trials]          
+            # folds = []
+            # sbj = [self._get_split(nfolds, n, tr, vl) for n in t]
+            # folds.append(sbj)
+            folds = [self._get_split(nfolds, n, tr, vl) for n in t]
         else:
             t = np.arange(n_trials)
             folds = self._get_split(nfolds, t, tr, vl)
