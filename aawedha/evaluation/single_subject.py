@@ -146,7 +146,7 @@ class SingleSubject(Evaluation):
             if check:
                 pointer.set_checkpoint(subj+1, self.model)
 
-        if self.dataset.epochs.ndim == 3:
+        if not isinstance(self.dataset.epochs, list) and self.dataset.epochs.ndim == 3:
             self.dataset.recover_dim()
 
         # Aggregate results

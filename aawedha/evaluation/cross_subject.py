@@ -123,7 +123,7 @@ class CrossSubject(Evaluation):
             if check:
                 pointer.set_checkpoint(fold+1, self.model)
 
-        if self.dataset.epochs.ndim == 3:
+        if isinstance(self.dataset.epochs, np.ndarray) and self.dataset.epochs.ndim == 3:
             #
             self.dataset.recover_dim()
 

@@ -231,29 +231,31 @@ class Evaluation(object):
         Returns
         -------
         results : dict of evaluation results compiled from models performance on the dataset
-            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)           
+            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
             - 'acc_mean' : double : Accuracy mean over all subjects and folds
             - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
             - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
             For binary class tasks :
-            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)       
+            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
             - 'auc_mean' : double :  AUC mean over all subjects and folds
             - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
             - 'auc_mean_per_subj' :  AUC mean per Subject over all folds [only for SingleSubject evaluation]
-            - 'tpr' : 1d array : True posititves rate 
+            - 'tpr' : 1d array : True posititves rate
             - 'fpr' : 1d array : False posititves rate
         '''
-        folds = len(self.folds)
-        # subjects = self._get_n_subjects()
-        # subjects = len(self.predictions)
-        examples = len(self.predictions[0])
-        dim = len(self.predictions[0][0])
+ 
+        if isinstance(self.dataset.epochs, np.ndarray):
+            folds = len(self.folds)
+            # subjects = self._get_n_subjects()
+            # subjects = len(self.predictions)
+            examples = len(self.predictions[0])
+            dim = len(self.predictions[0][0])
 
-        if self.__class__.__name__ == 'CrossSubject':
-            self.predictions = np.array(self.predictions).reshape(
-                            (folds, examples, dim))
-        elif self.__class__.__name__ == 'SingleSubject':
-            self.predictions = np.array(self.predictions).reshape(
+            if self.__class__.__name__ == 'CrossSubject':
+                self.predictions = np.array(self.predictions).reshape(
+                                (folds, examples, dim))
+            elif self.__class__.__name__ == 'SingleSubject':
+                self.predictions = np.array(self.predictions).reshape(
                             (self.n_subjects, folds, examples, dim))
         #
         results = {}
@@ -289,7 +291,7 @@ class Evaluation(object):
         return results
 
     def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
-        '''Generate train/validation/tes folds following Shuffle split strategy 
+        '''Generate train/validation/tes folds following Shuffle split strategy
 
         Parameters
         ----------
@@ -382,7 +384,7 @@ class Evaluation(object):
 
     def transform_scale(self, X, mu, sigma):
         '''Apply normalization on validation/test data using estimated
-        mean and std from fit_scale method 
+        mean and std from fit_scale method
 
         Parameters
         ----------
@@ -436,7 +438,7 @@ class Evaluation(object):
         return cl_weights
 
     def labels_to_categorical(self, y):
-        '''Convert numerical labels to categorical 
+        '''Convert numerical labels to categorical
 
         Parameters
         ----------
@@ -456,7 +458,7 @@ class Evaluation(object):
         return y
 
     def save_model(self, folderpath=None):
-        '''Save trained model in HDF5 format 
+        '''Save trained model in HDF5 format
         Uses the built-in save method in Keras Model object.
         model name will be: folderpath/modelname_paradigm_dataset.h5
 
