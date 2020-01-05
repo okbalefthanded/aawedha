@@ -695,13 +695,18 @@ class Evaluation(object):
             metrics
         '''
         classes = self.dataset.get_n_classes()
-        mets = ['accuracy']
-        if classes == 2:
-            khsara = 'binary_crossentropy'
-            mets.append(AUC())
+        if self.model_config:
+            mets = self.model_config['metrics']
+            khsara = self.model_config['loss']
+            opt = self.model_config['optimizer']
         else:
-            khsara = 'categorical_crossentropy'
-        opt = 'adam'
+            mets = ['accuracy']
+            if classes == 2:
+                khsara = 'binary_crossentropy'
+                mets.append(AUC())
+            else:
+                khsara = 'categorical_crossentropy'
+            opt = 'adam'
         return khsara, opt, mets
 
     def _get_fit_configs(self):

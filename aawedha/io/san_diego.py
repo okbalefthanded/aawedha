@@ -56,8 +56,8 @@ class SanDiego(DataSet):
                 y = y.reshape((1, blocks * targets), order='F')
                 '''
                 #
-                y = np.tile(np.arange(1, targets+1), (15*augmented,1))
-                y = y.reshape((1,blocks*targets),order='F')
+                y = np.tile(np.arange(1, targets+1), (15*augmented, 1))
+                y = y.reshape((1, blocks*targets), order='F')
                 del v
             else:
                 eeg = eeg[onset:onset + epoch_duration, :, :, :]
