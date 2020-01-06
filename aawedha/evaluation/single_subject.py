@@ -1,6 +1,6 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 import numpy as np
 
 
@@ -63,13 +63,14 @@ class SingleSubject(Evaluation):
         val_phase = val_phase * part
         test_phase = test_phase * part
 
-        if strategy == 'Kfold':
-            self.folds = self._get_folds(nfolds, n_trials, train_phase,
-                                         val_phase, test_phase)
-        elif strategy == 'Shuffle':
+        
+        if strategy == 'Shuffle':
             self.folds = self.get_folds(nfolds, n_trials, train_phase,
                                         val_phase, test_phase,
                                         exclude_subj=False)
+        else:
+            self.folds = self._get_folds(nfolds, n_trials, train_phase,
+                                         val_phase, test_phase, strategy)
 
     def run_evaluation(self, subject=None, pointer=None, check=False):
         '''Perform evaluation on each subject
@@ -341,7 +342,7 @@ class SingleSubject(Evaluation):
         split['Y_val'] = Y_val
         return split
 
-    def _get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0):
+    def _get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
         '''Generate folds following a KFold cross-validation strategy
 
         Parameters
@@ -379,14 +380,14 @@ class SingleSubject(Evaluation):
             # folds = []
             # sbj = [self._get_split(nfolds, n, tr, vl) for n in t]
             # folds.append(sbj)
-            folds = [self._get_split(nfolds, n, tr, vl) for n in t]
+            folds = [self._get_split(nfolds, n, tr, vl,stg) for n in t]
         else:
             t = np.arange(n_trials)
-            folds = self._get_split(nfolds, t, tr, vl)
+            folds = self._get_split(nfolds, t, tr, vl,stg)
         return folds
 
-    def _get_split(self, nfolds, t, tr, vl):
-        '''Generate nfolds following KFold cross-validation
+    def _get_split(self, nfolds, t, tr, vl, stg):
+        '''Generate nfolds following a specified cross-validation strategy
 
         Parameters
         ----------
@@ -402,6 +403,9 @@ class SingleSubject(Evaluation):
         vl : int
             number of validation trials to select
 
+        stg : str
+            cross-validation strategy : K-fold | Stratified k-fold
+
         Returns
         -------
         folds : list of arrays
@@ -410,8 +414,14 @@ class SingleSubject(Evaluation):
             only 2 array instead of 3
         '''
         folds = []
-        cv = KFold(n_splits=nfolds)
-        for train, test in cv.split(t):
+        if stg == 'Kfold':        
+            cv = KFold(n_splits=nfolds).split(t)
+        elif stg  == 'Stratified':
+            y = self.dataset.y[0]
+            # trs = np.arange(0, t)            
+            cv = StratifiedKFold(n_splits=nfolds).split(t,y)
+        # for train, test in cv.split(t):
+        for train, test in cv:
             if len(self.partition) == 2:
                 # independent test set
                 folds.append([train, test])
