@@ -91,7 +91,7 @@ class SingleSubject(Evaluation):
         '''
         # generate folds if folds are empty
         if not self.folds:
-            self.folds = self.generate_split(nfolds=30)
+            self.generate_split(nfolds=30)
         
         if not pointer and check:
             pointer = CheckPoint(self)
@@ -143,6 +143,7 @@ class SingleSubject(Evaluation):
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
+                self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
 
             if check:
                 pointer.set_checkpoint(subj+1, self.model)
@@ -380,7 +381,7 @@ class SingleSubject(Evaluation):
             # folds = []
             # sbj = [self._get_split(nfolds, n, tr, vl) for n in t]
             # folds.append(sbj)
-            folds = [self._get_split(nfolds, n, tr, vl,stg) for n in t]
+            folds = [self._get_split(nfolds, n, tr, vl, stg) for n in t]
         else:
             t = np.arange(n_trials)
             folds = self._get_split(nfolds, t, tr, vl,stg)

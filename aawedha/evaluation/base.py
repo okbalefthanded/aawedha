@@ -530,10 +530,15 @@ class Evaluation(object):
         '''
         s = ['train', 'val', 'test']
         data = f' Dataset: {self.dataset.title}'
+        if isinstance(self.dataset.epochs, list):
+            duration = f' epoch duration:{self.dataset.epochs[0].shape[0]/self.dataset.fs} sec'
+        else:
+            duration = f' epoch duration:{self.dataset.epochs.shape[1]/self.dataset.fs} sec'
+       
         prt = 'Subjects partition '+', '.join(f'{s[i], self.partition[i]}' for i in range(len(self.partition)))
         model = f'Model: {self.model.name}'
         model_config = f'Model config: {self._get_model_configs_info()}'
-        exp_info = ' '.join([data, prt, model, model_config])
+        exp_info = ' '.join([data, duration, prt, model, model_config])
         self.logger.debug(exp_info)
 
     def reset(self, chkpoint=None):

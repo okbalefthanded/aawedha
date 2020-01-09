@@ -119,6 +119,7 @@ class CrossSubject(Evaluation):
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
+                self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
 
             if check:
                 pointer.set_checkpoint(fold+1, self.model)
