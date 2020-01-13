@@ -63,7 +63,6 @@ class SingleSubject(Evaluation):
         val_phase = val_phase * part
         test_phase = test_phase * part
 
-        
         if strategy == 'Shuffle':
             self.folds = self.get_folds(nfolds, n_trials, train_phase,
                                         val_phase, test_phase,
@@ -92,7 +91,7 @@ class SingleSubject(Evaluation):
         # generate folds if folds are empty
         if not self.folds:
             self.generate_split(nfolds=30)
-        
+
         if not pointer and check:
             pointer = CheckPoint(self)
         #
@@ -143,7 +142,8 @@ class SingleSubject(Evaluation):
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
-                self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+                self.logger.debug(
+                    f' Training stopped at epoch: {self.model_history.epoch[-1]}')
 
             if check:
                 pointer.set_checkpoint(subj+1, self.model)
@@ -162,7 +162,7 @@ class SingleSubject(Evaluation):
         else:
             res = np.array(res_acc)
         #
-        self.results = self.results_reports(res, tfpr)       
+        self.results = self.results_reports(res, tfpr)
 
     def _single_subject(self, subj, indie=False):
         '''Evaluate a subject on each fold
@@ -187,12 +187,14 @@ class SingleSubject(Evaluation):
             # TODO
             x = self.dataset.epochs[subj]
             samples, channels, trials = x.shape
-            x = x.transpose((2, 1, 0)).reshape((trials, kernels, channels, samples))
+            x = x.transpose((2, 1, 0)).reshape(
+                (trials, kernels, channels, samples))
         else:
             if self.dataset.epochs.ndim == 4:
                 x = self.dataset.epochs[subj][:, :, :]
                 samples, channels, trials = x.shape
-                x = x.transpose((2, 1, 0)).reshape((trials, kernels, channels, samples))
+                x = x.transpose((2, 1, 0)).reshape(
+                    (trials, kernels, channels, samples))
             elif self.dataset.epochs.ndim == 3:
                 x = self.dataset.epochs[subj][:, :]
                 samples, trials = x.shape
@@ -327,7 +329,8 @@ class SingleSubject(Evaluation):
                     X_test = X_test.reshape((t, kernels, samples))
                 elif self.dataset.test_epochs.ndim == 4:
                     trs = self.dataset.test_epochs[0].shape[2]
-                    X_test = self.dataset.test_epochs[subj][:, :, :].transpose((2, 1, 0))
+                    X_test = self.dataset.test_epochs[subj][:, :, :].transpose(
+                        (2, 1, 0))
                     X_test = X_test.reshape((trs, kernels, channels, samples))
 
             Y_test = self.labels_to_categorical(self.dataset.test_y[subj][:])
@@ -360,7 +363,7 @@ class SingleSubject(Evaluation):
         tr : int
             number of training trials to select
             default : 0
-   
+
         vl : int
             number of validation trials to select
             default : 0
@@ -377,14 +380,14 @@ class SingleSubject(Evaluation):
             only 2 array instead of 3
         '''
         if isinstance(n_trials, np.ndarray):
-            t = [np.arange(n) for n in n_trials]          
+            t = [np.arange(n) for n in n_trials]
             # folds = []
             # sbj = [self._get_split(nfolds, n, tr, vl) for n in t]
             # folds.append(sbj)
             folds = [self._get_split(nfolds, n, tr, vl, stg) for n in t]
         else:
             t = np.arange(n_trials)
-            folds = self._get_split(nfolds, t, tr, vl,stg)
+            folds = self._get_split(nfolds, t, tr, vl, stg)
         return folds
 
     def _get_split(self, nfolds, t, tr, vl, stg):
@@ -415,12 +418,12 @@ class SingleSubject(Evaluation):
             only 2 array instead of 3
         '''
         folds = []
-        if stg == 'Kfold':        
+        if stg == 'Kfold':
             cv = KFold(n_splits=nfolds).split(t)
-        elif stg  == 'Stratified':
+        elif stg == 'Stratified':
             y = self.dataset.y[0]
-            # trs = np.arange(0, t)            
-            cv = StratifiedKFold(n_splits=nfolds).split(t,y)
+            # trs = np.arange(0, t)
+            cv = StratifiedKFold(n_splits=nfolds).split(t, y)
         # for train, test in cv.split(t):
         for train, test in cv:
             if len(self.partition) == 2:

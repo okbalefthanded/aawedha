@@ -25,6 +25,7 @@ class CrossSubject(Evaluation):
         this method concatenates selected subject in a single Tensor at
         evaluation.
     '''
+
     def generate_split(self, nfolds=30, excl=True):
         '''Generate cross-validation folds following a cross-validation
         strategy from ShuffleSplit
@@ -46,7 +47,8 @@ class CrossSubject(Evaluation):
         '''
 
         if self._assert_partiton(excl):
-            raise Exception(f'Parition exceeds subjects count, use a different parition')
+            raise Exception(
+                f'Parition exceeds subjects count, use a different parition')
 
         # folds = []
         n_phase = len(self.partition)
@@ -80,7 +82,7 @@ class CrossSubject(Evaluation):
         # generate folds if folds are empty
         if not self.folds:
             self.folds = self.generate_split(nfolds=30)
-              
+
         if not pointer and check:
             pointer = CheckPoint(self)
 
@@ -98,7 +100,7 @@ class CrossSubject(Evaluation):
             operations = range(self.current, len(self.folds))
         else:
             operations = range(len(self.folds))
-        
+
         # for fold in range(len(self.folds)):
         for fold in operations:
 
@@ -119,7 +121,8 @@ class CrossSubject(Evaluation):
                 if len(self.model.metrics) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
-                self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+                self.logger.debug(
+                    f' Training stopped at epoch: {self.model_history.epoch[-1]}')
 
             if check:
                 pointer.set_checkpoint(fold+1, self.model)
@@ -273,9 +276,9 @@ class CrossSubject(Evaluation):
         if phase == 2:  # test phase
             if hasattr(self.dataset, 'test_epochs'):
                 X = np.concatenate([self.dataset.test_epochs[idx]
-                                   for idx in range(self.n_subjects)], axis=-1)
+                                    for idx in range(self.n_subjects)], axis=-1)
                 Y = np.concatenate([self.dataset.test_y[idx]
-                                   for idx in range(self.n_subjects)], axis=-1)
+                                    for idx in range(self.n_subjects)], axis=-1)
                 return X, Y
         X = np.concatenate([self.dataset.epochs[idx]
                             for idx in self.folds[fold][phase]], axis=-1)
