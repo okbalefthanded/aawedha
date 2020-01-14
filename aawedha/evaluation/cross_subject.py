@@ -103,7 +103,7 @@ class CrossSubject(Evaluation):
 
         # for fold in range(len(self.folds)):
         for fold in operations:
-
+            #    
             if self.verbose == 0:
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
@@ -126,7 +126,7 @@ class CrossSubject(Evaluation):
 
             if check:
                 pointer.set_checkpoint(fold+1, self.model)
-
+            #
         if isinstance(self.dataset.epochs, np.ndarray) and self.dataset.epochs.ndim == 3:
             #
             self.dataset.recover_dim()
@@ -217,11 +217,12 @@ class CrossSubject(Evaluation):
             #
             classes = np.unique(y)
             y = self.labels_to_categorical(y)
-            # n_subjects per train/val
+            # n_subjects per train/val/test
             tr, val = self.partition[0], self.partition[1]
+            ts = 1 # hold a subject for test (default)
             if len(self.partition) == 3:
                 ts = self.partition[2]
-
+            
             X_train = x[self.folds[fold][0], :, :, :].reshape(
                 (tr * trials, kernels, channels, samples))
             X_val = x[self.folds[fold][1], :, :, :].reshape(
@@ -233,12 +234,18 @@ class CrossSubject(Evaluation):
 
             if hasattr(self.dataset, 'test_epochs'):
                 trs = self.dataset.test_epochs.shape[3]
-                X_test = self.dataset.test_epochs.transpose((0, 3, 2, 1))
+                X_test = self.dataset.test_epochs[self.folds[fold][2]].transpose((0, 3, 2, 1))
                 X_test = X_test.reshape(
-                    (trs * self.n_subjects, kernels, channels, samples))
-                # Y_test = tf_utils.to_categorical(self.dataset.test_y)
+                    (trs * ts, kernels, channels, samples))
                 Y_test = self.labels_to_categorical(
-                    self.dataset.test_y.reshape((self.n_subjects * trs)))
+                            self.dataset.test_y[self.folds[fold][2]].reshape((trs*ts))
+                            )
+                # X_test = self.dataset.test_epochs.transpose((0, 3, 2, 1))
+                # X_test = X_test.reshape(
+                #    (trs * self.n_subjects, kernels, channels, samples))
+                # Y_test = tf_utils.to_categorical(self.dataset.test_y)
+                # Y_test = self.labels_to_categorical(
+                #    self.dataset.test_y.reshape((self.n_subjects * trs)))
             else:
                 X_test = x[self.folds[fold][2], :, :, :].reshape(
                     (ts * trials, kernels, channels, samples))

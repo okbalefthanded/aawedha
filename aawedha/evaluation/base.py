@@ -10,7 +10,7 @@ import datetime
 import random
 import pickle
 import abc
-import os
+import os 
 
 
 class Evaluation(object):
@@ -326,7 +326,9 @@ class Evaluation(object):
                     for fold in range(nfolds):
                         np.random.shuffle(selection)
                         folds.append([np.array(selection[:tr]),
-                                      np.array(selection[tr:])])
+                                      np.array(selection[tr:]),
+                                      np.array([subj])
+                                      ])
             elif self.__class__.__name__ == 'SingleSubject':
                 # generate folds for test set from one set
                 pop = population
@@ -351,6 +353,21 @@ class Evaluation(object):
                         folds.append([tmp[:t], tmp[t:t + v], tmp[-s:]])
         else:
             # generate folds for test set from one set
+
+            if self.__class__.__name__ == 'CrossSubject':
+                for subj in range(self.n_subjects):
+                    # exclude subject per default
+                    selection = np.arange(0, self.n_subjects)
+                    # fully cross-subject, no subject train data in fold
+                    selection = np.delete(selection, subj)
+                    for fold in range(nfolds):
+                        np.random.shuffle(selection)
+                        folds.append([np.array(selection[:tr]),
+                                      np.array(selection[tr:tr + vl]),
+                                      np.array([subj])
+                                      ]
+                                      )
+
             for _ in range(nfolds):
                 tmp = np.array(random.sample(range(population), population))
                 folds.append([tmp[:tr], tmp[tr:tr + vl], tmp[-ts:]])
@@ -778,4 +795,4 @@ class Evaluation(object):
         prt = np.sum(self.partition)
         if excl:
             subjects -= 1
-        return subjects < prt
+        return subjects <= prt
