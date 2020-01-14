@@ -326,7 +326,7 @@ class Evaluation(object):
                     for fold in range(nfolds):
                         np.random.shuffle(selection)
                         folds.append([np.array(selection[:tr]),
-                                      np.array(selection[tr:]),
+                                      np.array(selection[tr:tr + vl]),
                                       np.array([subj])
                                       ])
             elif self.__class__.__name__ == 'SingleSubject':
@@ -353,7 +353,6 @@ class Evaluation(object):
                         folds.append([tmp[:t], tmp[t:t + v], tmp[-s:]])
         else:
             # generate folds for test set from one set
-
             if self.__class__.__name__ == 'CrossSubject':
                 for subj in range(self.n_subjects):
                     # exclude subject per default
@@ -365,12 +364,11 @@ class Evaluation(object):
                         folds.append([np.array(selection[:tr]),
                                       np.array(selection[tr:tr + vl]),
                                       np.array([subj])
-                                      ]
-                                      )
-
-            for _ in range(nfolds):
-                tmp = np.array(random.sample(range(population), population))
-                folds.append([tmp[:tr], tmp[tr:tr + vl], tmp[-ts:]])
+                                      ])
+            else:
+                for _ in range(nfolds):
+                    tmp = np.array(random.sample(range(population), population))
+                    folds.append([tmp[:tr], tmp[tr:tr + vl], tmp[-ts:]])
         #
         return folds
 
@@ -785,14 +783,14 @@ class Evaluation(object):
         Parameters
         ----------
         excl : bool
-            flag indicating whether the target subject is excluded from evaluation
-            
+            flag indicating whether the target subject is excluded from
+            evaluation
+
         Returns
         -------
-        bool : True if number of subjects is less than the sum of parition, False otherwise
+        bool : True if number of subjects is less than the sum of parition
+            False otherwise
         '''
         subjects = self._get_n_subjects()
         prt = np.sum(self.partition)
-        if excl:
-            subjects -= 1
-        return subjects <= prt
+        return subjects < prt

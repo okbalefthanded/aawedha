@@ -219,10 +219,10 @@ class CrossSubject(Evaluation):
             y = self.labels_to_categorical(y)
             # n_subjects per train/val/test
             tr, val = self.partition[0], self.partition[1]
-            ts = 1 # hold a subject for test (default)
+            ts = 1  # hold a subject for test (default)
             if len(self.partition) == 3:
                 ts = self.partition[2]
-            
+
             X_train = x[self.folds[fold][0], :, :, :].reshape(
                 (tr * trials, kernels, channels, samples))
             X_val = x[self.folds[fold][1], :, :, :].reshape(
