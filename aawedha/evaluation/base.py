@@ -135,9 +135,9 @@ class Evaluation(object):
         '''
         pass
 
-    def resume(self):
+    def resume(self, run=False):
         '''Resume evaluation from where it was interrupted
-        
+
         Parameters
         ----------
         None
@@ -146,6 +146,8 @@ class Evaluation(object):
         -------
         no value
         '''
+
+        '''
         file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
         if os.path.exists(file_name):
             f = open(file_name, 'rb')
@@ -153,8 +155,10 @@ class Evaluation(object):
         else:
             raise FileNotFoundError
         f.close()
-        self.reset(chkpoint)
-        self.run_evaluation(pointer=chkpoint, check=True)
+        '''
+        chk = self.reset(chkpoint=True)
+        if run:
+            self.run_evaluation(pointer=chk, check=True)
         return self
 
     def set_dataset(self, dt=None):
@@ -529,6 +533,12 @@ class Evaluation(object):
         no value
         '''
         self.model = model
+        if model_config:
+            self.model_config = model_config
+
+    def set_config(self, model_config):
+        '''
+        '''
         self.model_config = model_config
 
     def log_experiment(self):
@@ -556,38 +566,47 @@ class Evaluation(object):
         exp_info = ' '.join([data, duration, prt, model, model_config])
         self.logger.debug(exp_info)
 
-    def reset(self, chkpoint=None):
+    def reset(self, chkpoint=False):
         '''Reset Attributes and results for a future evaluation with
             different model and same partition and folds
-        
+
         if chkpoint is passed, Evaluation attributes will be set to 
         the state at where the evaulation was interrupted, this is used
-        for operations resume 
-        
+        for operations resume
+
         Parameters
         ----------
-        chkpoint : CheckPoint instance
-            checkpoint object to set Evaluation state back where it was interrupted
+        chkpoint : bool
+            load checkpoint to resume where the evaluation has stopped earlier,
+            reset the evaluation for future use with different configs
+            otherwise
 
         Returns
         -------
-        no value
+        chk : CheckPoint instance
+            checkpoint object to set Evaluation state back where it was
+            interrupted
         '''
+        chk = None
         if chkpoint:
-            self.model = load_model(chkpoint.model_name)
-            self.folds = chkpoint.folds
-            self.partition = chkpoint.partition
-            self.predictions = chkpoint.predictions
-            self.cm = chkpoint.cm
-            self.results = chkpoint.results
-            self.model_history = chkpoint.model_history
+            chk = self._load_checkpoint()
+
+        # if chkpoint:
+        if chk:
+            self.model = load_model(chk.model_name)
+            self.folds = chk.folds
+            self.partition = chk.partition
+            self.predictions = chk.predictions
+            self.cm = chk.cm
+            self.results = chk.results
+            self.model_history = chk.model_history
             self.model_compiled = True
-            self.model_config = chkpoint.model_config
-            self.current = chkpoint.current
-            self.log = chkpoint.log
-            self.logger = log(fname=chkpoint.logger, logger_name='eval_log')
-            self.verbose = chkpoint.verbose
-      
+            self.model_config = chk.model_config
+            self.current = chk.current
+            self.log = chk.log
+            self.logger = log(fname=chk.logger, logger_name='eval_log')
+            self.verbose = chk.verbose
+
         else:
             self.model = None
             self.predictions = []
@@ -596,6 +615,8 @@ class Evaluation(object):
             self.model_history = {}
             self.model_compiled = False
             self.model_config = {}
+
+        return chk
 
     def _equale_subjects(self):
         '''Test whether dataset's train_epochs and test_epochs has same number
@@ -773,8 +794,8 @@ class Evaluation(object):
         '''
         khsara, opt, mets = self._get_compile_configs()
         batch, ep, clbs = self._get_fit_configs()
-        model_confg = f' Loss: {khsara} | Optimizer: {opt} | metrics: {mets} | batch_size: {batch} | epochs: {ep} | callbacks: {clbs}'
-        return model_confg
+        model_config = f' Loss: {khsara} | Optimizer: {opt} | metrics: {mets} | batch_size: {batch} | epochs: {ep} | callbacks: {clbs}'
+        return model_config
 
     def _assert_partiton(self, excl=False):
         '''Assert if partition to be used do not surpass number of subjects available
@@ -794,3 +815,15 @@ class Evaluation(object):
         subjects = self._get_n_subjects()
         prt = np.sum(self.partition)
         return subjects < prt
+
+    def _load_checkpoint(self):
+        '''
+        '''
+        file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
+        if os.path.exists(file_name):
+            f = open(file_name, 'rb')
+            chkpoint = pickle.load(f)
+        else:
+            raise FileNotFoundError
+        f.close()
+        return chkpoint

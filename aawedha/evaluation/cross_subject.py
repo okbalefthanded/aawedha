@@ -103,7 +103,7 @@ class CrossSubject(Evaluation):
 
         # for fold in range(len(self.folds)):
         for fold in operations:
-            #    
+            #
             if self.verbose == 0:
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
