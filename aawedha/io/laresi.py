@@ -73,8 +73,9 @@ class LaresiHybrid:
 
         self.erp_set._cat_lists()
         self.ssvep_set._cat_lists()
-        self.ssvep_set.events = self.ssvep_set._get_events(self.y)
-        self.ssvep_set.test_events = self.ssvep_set._get_events(self.test_y)
+        self.ssvep_set.events = self.ssvep_set._get_events(self.ssvep_set.y)
+        self.ssvep_set.test_events = self.ssvep_set._get_events(
+            self.ssvep_set.test_y)
         self.save_set(save_folder)
 
     def save_set(self, save_folder=None):
