@@ -79,6 +79,8 @@ class Exoskeleton(DataSet):
 
         self.subjects = self._get_subjects(n_subjects=12)
         self.paradigm = self._get_paradigm()
+        self.events = self._get_events(self.y)
+        self.test_events = self._get_events(self.test_y)
         self.save_set(save_folder)
 
     def _get_epoched(self, files=[], records=[],
@@ -129,6 +131,18 @@ class Exoskeleton(DataSet):
 
         return x, y  # epochs and labels
 
+    def _get_events(self, y):
+        '''
+        '''
+        ev = []
+        for i in range(len(y)):
+            events = np.empty(y[i].shape, dtype=object)
+            for l in range(len(self.paradigm.frequencies)):
+                ind = np.where(y[i] == l+1)
+                events[ind[0]] = self.paradigm.frequencies[l]
+            ev.append(events)
+        return ev
+
     def _get_subjects(self, n_subjects=0):
         return [Subject(id='S' + str(s), gender='M', age=0, handedness='')
                 for s in range(1, n_subjects + 1)]
@@ -138,7 +152,7 @@ class Exoskeleton(DataSet):
                      stimulation=5000,
                      break_duration=3000, repetition=8,
                      stimuli=3, phrase='',
-                     stim_type='ON_OFF', frequencies=['idle', '13', '21', '17'],
+                     stim_type='ON_OFF', frequencies=['idle', 13, 21, 17],
                      )
 
     def flatten(self, list_of_lists=[]):

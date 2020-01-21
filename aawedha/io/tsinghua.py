@@ -4,11 +4,8 @@ from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass
 from scipy.io import loadmat
 import numpy as np
-import os
 import re
-import sys
 import glob
-import pickle
 
 
 class Tsinghua(DataSet):
@@ -94,7 +91,20 @@ class Tsinghua(DataSet):
                                             augment)
         self.subjects = self._get_subjects(path=load_path)
         self.paradigm = self._get_paradigm()
+        self.events = self._get_events()
         self.save_set(save_folder)
+
+    def _get_events(self):
+        '''
+        '''
+        events = np.zeros(self.y.shape)
+        rows, cols = events.shape
+        for i in range(rows):
+            for l in range(len(self.paradigm.frequencies)):
+                ind = np.where(self.y[i, :] == l+1)
+                events[i, ind[0]] = self.paradigm.frequencies[l]
+
+        return events
 
     def _get_subjects(self, n_subject=0, path=None):
         '''
@@ -110,12 +120,14 @@ class Tsinghua(DataSet):
     def _get_paradigm(self):
         '''
         '''
-        return SSVEP(title='SSVEP_JFPM', stimulation=5000, break_duration=500, repetition=6,
-                     stimuli=40, phrase='',
-                     stim_type='Sinusoidal', frequencies=[8., 9., 10., 11., 12., 13., 14., 15., 8.2, 9.2,
-                                                          10.2, 11.2, 12.2, 13.2, 14.2, 15.2, 8.4, 9.4, 10.4, 11.4,
-                                                          12.4, 13.4, 14.4, 15.4, 8.6, 9.6, 10.6, 11.6, 12.6, 13.6,
-                                                          14.6, 15.6, 8.8, 9.8, 10.8, 11.8, 12.8, 13.8, 14.8, 15.8],
+        return SSVEP(title='SSVEP_JFPM', stimulation=5000, break_duration=500,
+                     repetition=6, stimuli=40, phrase='',
+                     stim_type='Sinusoidal',
+                     frequencies=[8., 9., 10., 11., 12., 13., 14., 15., 8.2, 9.2,
+                                  10.2, 11.2, 12.2, 13.2, 14.2, 15.2, 8.4, 9.4, 10.4, 11.4,
+                                  12.4, 13.4, 14.4, 15.4, 8.6, 9.6, 10.6, 11.6, 12.6, 13.6,
+                                  14.6, 15.6, 8.8, 9.8, 10.8, 11.8, 12.8, 13.8, 14.8, 15.8],
+
                      phase=[0., 1.57079633, 3.14159265, 4.71238898, 0.,
                             1.57079633, 3.14159265, 4.71238898, 1.57079633, 3.14159265,
                             4.71238898, 0., 1.57079633, 3.14159265, 4.71238898,

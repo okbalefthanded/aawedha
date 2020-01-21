@@ -1,6 +1,7 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.hybrid import HybridLARESI
 from aawedha.paradigms.subject import Subject
+from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass
 from aawedha.analysis.preprocess import eeg_epoch
 from abc import abstractmethod
@@ -72,6 +73,8 @@ class LaresiHybrid:
 
         self.erp_set._cat_lists()
         self.ssvep_set._cat_lists()
+        self.ssvep_set.events = self.ssvep_set._get_events(self.y)
+        self.ssvep_set.test_events = self.ssvep_set._get_events(self.test_y)
         self.save_set(save_folder)
 
     def save_set(self, save_folder=None):
@@ -235,7 +238,7 @@ class LaresiEEG(DataSet):
         self.test_epochs.append(test_epochs)
         self.test_y.append(y_test)
         self.subjects = []
-        self.paradigm = []
+        self.paradigm = self._get_paradigm()
 
     def get_path(self):
         return NotImplementedError
@@ -249,7 +252,7 @@ class LaresiEEG(DataSet):
         signal = bandpass(signal, band, self.fs, order)
         cnt[info['session_interval'][0]:info['session_interval'][1], :] = signal
         eps = eeg_epoch(cnt, epoch, info['pos'])
-        self.events = info['desc']
+        # self.events = info['desc']
         return eps
 
     @abstractmethod
@@ -263,6 +266,11 @@ class LaresiEEG(DataSet):
         self.y = np.array(self.y)
         self.test_epochs = np.array(self.test_epochs)
         self.test_y = np.array(self.test_y)
+
+    def _get_paradigm(self):
+        '''
+        '''
+        return []
 
 
 class LaresiERP(LaresiEEG):
@@ -278,14 +286,14 @@ class LaresiERP(LaresiEEG):
         end = raw_pos[raw_desc == OV_TrialStop]
         erp_start = np.round(start[::2] * self.fs).astype(int)
         erp_end = np.round(end[::2] * self.fs).astype(int)
-        
+
         evs = np.unique(raw_desc)
         stimuli = np.sum(np.logical_and(
-                evs > Base_Stimulations, evs < OV_Target))
+            evs > Base_Stimulations, evs < OV_Target))
         id_stim = np.logical_and(
-                raw_desc > Base_Stimulations, raw_desc <= Base_Stimulations + stimuli)
+            raw_desc > Base_Stimulations, raw_desc <= Base_Stimulations + stimuli)
         stim_mrk = np.round(raw_pos[id_stim] * self.fs).astype(int)
-        stim_m = raw_desc[id_stim]     
+        stim_m = raw_desc[id_stim]
 
         erp_tr = np.logical_or(raw_desc == OV_Target, raw_desc == OV_NonTarget)
         erp_mrk = np.round(raw_pos[erp_tr] * self.fs).astype(int)
@@ -299,9 +307,9 @@ class LaresiERP(LaresiEEG):
         epoch = np.round(np.array(epoch) * self.fs).astype(int)
 
         for tr in range(len(erp_start)):
-            # filter, epoch, append 
+            # filter, epoch, append
             desc_idx = np.logical_and(
-                stim_mrk >= erp_start[tr], stim_mrk <= erp_end[tr])         
+                stim_mrk >= erp_start[tr], stim_mrk <= erp_end[tr])
             desc.append(stim_m[desc_idx] - Base_Stimulations)
 
             idx = np.logical_and(
@@ -365,3 +373,20 @@ class LaresiSSVEP(LaresiEEG):
 
         ssvep_epochs = np.array(ssvep_epochs).transpose((1, 2, 0))
         return ssvep_epochs, ev_desc
+
+    def _get_events(self, y):
+        '''
+        '''
+        events = np.empty(y.shape, dtype=object)
+        for i in range(events.shape[0]):
+            for l in range(len(self.paradigm.frequencies)):
+                ind = np.where(y[i, :] == l+1)
+                events[i, ind[0]] = self.paradigm.frequencies[l]
+        return events
+
+    def _get_paradigm(self):
+        return SSVEP(title='SSVEP_LARESI', stimulation=1000,
+                     break_duration=2000, repetition=15,
+                     stimuli=5, phrase='', stim_type='Sinusoidal',
+                     frequencies=['idle', 14, 12, 10, 8],
+                     )
