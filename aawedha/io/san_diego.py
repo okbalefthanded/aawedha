@@ -91,7 +91,7 @@ class SanDiego(DataSet):
     def _get_events(self):
         '''
         '''
-        events = np.zeros(self.y.shape)
+        events = np.empty(self.y.shape, dtype=object)
         rows, cols = events.shape
         for i in range(rows):
             for l in range(len(self.paradigm.frequencies)):
