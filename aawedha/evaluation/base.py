@@ -10,7 +10,7 @@ import datetime
 import random
 import pickle
 import abc
-import os 
+import os
 
 
 class Evaluation(object):
@@ -37,22 +37,22 @@ class Evaluation(object):
                 In case of a dataset with an independet Test set
                 - (folds/L, folds/M) L+M = T total trials in dataset for SingleSubject evaluation
                 - (L_subjects, M_subjects) L+M = S total subjects in dataset for CrossSubject evaluation
-            
+   
         folds : a list of 3 1d numpy array
             indices of trials(SingleSubject evaluation)/subjects(CrossSubjects evaluation) for each fold
 
         verbose : int
             level of verbosity for model at fit method , 0 : silent, 1 : progress bar, 2 : one line per epoch
-        
+
         lg : bool
-            if True uses logger to log experiment configurations and results, default False 
+            if True uses logger to log experiment configurations and results, default False
 
         predictions : ndarray of predictions
             models output for each example on the dataset :
                 - SingleSubject evaluaion : subjects x folds x Trials x dim
                 - CrossSubject evaluation : folds x Trials x dim
-        
-        cm : list 
+
+        cm : list
             confusion matrix per fold
 
         results : dict of evaluation results compiled from models performance on the dataset
@@ -65,7 +65,7 @@ class Evaluation(object):
             - 'auc_mean' : double :  AUC mean over all subjects and folds
             - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
             - 'auc_mean_per_subj' :  AUC mean per Subject over all folds [only for SingleSubject evaluation]
-            - 'tpr' : 1d array : True posititves rate 
+            - 'tpr' : 1d array : True posititves rate
             - 'fpr' : 1d array : False posititves rate
 
         n_subjects : int

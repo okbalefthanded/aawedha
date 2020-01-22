@@ -132,6 +132,8 @@ class DataSet(metaclass=ABCMeta):
         '''
         indexes = [i for i, x in enumerate(self.ch_names) if x in ch]
 
+        self.ch_names = self.ch_names[indexes]
+
         if type(self.epochs) is list:
             self.epochs = [ep[:, indexes, :] for ep in self.epochs]
             if hasattr(self, 'test_epochs'):
@@ -140,6 +142,34 @@ class DataSet(metaclass=ABCMeta):
             self.epochs = self.epochs[:, :, indexes, :]
             if hasattr(self, 'test_epochs'):
                 self.test_epochs = self.test_epochs[:, :, indexes, :]
+
+    def rearrange(self, target_events=[]):
+        '''Rearragne dataset by selecting a subset of epochs and their
+        labels and events, according to the target events passed.
+        Used in CrossSet evaluation
+
+        Parameters
+        ----------
+        target_events : numpy ndarray of object
+            list of events that the selection is based on, if data does not
+            contain the same events, the nearest ones in task are selected
+
+        Returns
+        -------
+        None
+        '''
+        ind_all = []
+
+        n_subject = len(self.epochs)
+
+        for sbj in range(n_subject):
+            ind = np.empty(0)
+            for i in range(target_events.size):
+                # dataset contain all events in target_events
+                ind = np.concatenate((ind, np.where(self.events[sbj] == target_events[i])[0]))
+            ind_all.append(ind)
+            # tmp.append(np.take(self.epochs[sbj], ind.astype(int), axis=-1))
+        self._rearrange(ind_all)
 
     def recover_dim(self):
         '''
@@ -173,3 +203,18 @@ class DataSet(metaclass=ABCMeta):
         elif tensor.ndim == 3:
             samples, channels, trials = tensor.shape
             return tensor.reshape((samples*channels, trials))
+
+    def _rearrange(self, ind):
+        '''
+        '''
+        # takes only train data for future use in CrossSet
+        attrs = ['epochs', 'y', 'events']
+        for k in attrs:
+            tmp = []
+            array = getattr(self, k)
+            for sbj in range(len(self.epochs)):
+                tmp.append(np.take(array[sbj], ind[sbj].astype(int), axis=-1))
+            if isinstance(array, list):
+                setattr(self, k, tmp)
+            else:
+                setattr(self, k, np.array(tmp))

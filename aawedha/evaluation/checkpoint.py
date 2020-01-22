@@ -85,7 +85,6 @@ class CheckPoint(object):
     -------
     set_checkpoint 
 
-    
     '''
 
     def __init__(self, evl=None):
