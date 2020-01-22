@@ -107,8 +107,8 @@ class SanDiego(DataSet):
     def _get_paradigm(self):
         return SSVEP(title='SSVEP_JFPM', stimulation=4000, break_duration=1000,
                      repetition=15, stimuli=12, phrase='', stim_type='ON_OFF',
-                     frequencies=[9.25, 11.25, 13.25, 9.75, 11.75, 13.75,
-                                  10.25, 12.25, 14.25, 10.75, 12.75, 14.75],
+                     frequencies=['9.25', '11.25', '13.25', '9.75', '11.75', '13.75',
+                                  '10.25', '12.25', '14.25', '10.75', '12.75', '14.75'],
                      phase=[0.0, 0.0, 0.0, 0.5 * np.pi, 0.5 * np.pi, 0.5 * np.pi,
                             np.pi, np.pi, np.pi, 1.5 * np.pi, 1.5 * np.pi, 1.5 * np.pi])
 

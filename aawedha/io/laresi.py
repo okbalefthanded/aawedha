@@ -389,5 +389,5 @@ class LaresiSSVEP(LaresiEEG):
         return SSVEP(title='SSVEP_LARESI', stimulation=1000,
                      break_duration=2000, repetition=15,
                      stimuli=5, phrase='', stim_type='Sinusoidal',
-                     frequencies=['idle', 14, 12, 10, 8],
+                     frequencies=['idle', '14', '12', '10', '8'],
                      )

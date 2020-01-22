@@ -152,7 +152,7 @@ class Exoskeleton(DataSet):
                      stimulation=5000,
                      break_duration=3000, repetition=8,
                      stimuli=3, phrase='',
-                     stim_type='ON_OFF', frequencies=['idle', 13, 21, 17],
+                     stim_type='ON_OFF', frequencies=['idle', '13', '21', '17'],
                      )
 
     def flatten(self, list_of_lists=[]):
