@@ -2,6 +2,7 @@
     Base class for datasets
 """
 from abc import ABCMeta, abstractmethod
+from aawedha.analysis.utils import isfloat
 import numpy as np
 import os
 import pickle
@@ -164,11 +165,15 @@ class DataSet(metaclass=ABCMeta):
 
         for sbj in range(n_subject):
             ind = np.empty(0)
+            tmp = np.empty(0)
             for i in range(target_events.size):
-                # dataset contain all events in target_events
-                ind = np.concatenate((ind, np.where(self.events[sbj] == target_events[i])[0]))
+                tmp = np.concatenate((tmp, np.where(source[src].events[sbj] == target_events[i])[0]))
+                if tmp.size == 0:
+                    ind = np.concatenate( (ind,_get_ind(target_events[i], sbj)) )
+                else:
+                    ind = tmp
             ind_all.append(ind)
-            # tmp.append(np.take(self.epochs[sbj], ind.astype(int), axis=-1))
+
         self._rearrange(ind_all)
 
     def recover_dim(self):
@@ -204,11 +209,28 @@ class DataSet(metaclass=ABCMeta):
             samples, channels, trials = tensor.shape
             return tensor.reshape((samples*channels, trials))
 
+    def _get_ind(self, ev, sbj):
+        '''
+        '''
+        rng = np.linspace(-0.25, 1, 25, endpoint=False)
+        rng = np.delete(rng, np.where(rng==0.0)[0])
+        tmp = np.empty(0)
+        r = len(self.events[sbj])
+        e = np.array([float(self.events[sbj][i]) for i in range(r) if isfloat(self.events[sbj][i])])
+        
+        if isfloat(ev):
+            rg = float(ev) + rng          
+            idx = np.logical_or.reduce([e == r for r in rg])
+            tmp = np.concatenate((tmp, np.where(idx==True)[0]))
+        
+        return tmp    
+    
     def _rearrange(self, ind):
         '''
         '''
         # takes only train data for future use in CrossSet
         attrs = ['epochs', 'y', 'events']
+        
         for k in attrs:
             tmp = []
             array = getattr(self, k)
@@ -217,4 +239,4 @@ class DataSet(metaclass=ABCMeta):
             if isinstance(array, list):
                 setattr(self, k, tmp)
             else:
-                setattr(self, k, np.array(tmp))
+                setattr(self, k, np.array(tmp)) 
