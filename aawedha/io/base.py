@@ -112,7 +112,8 @@ class DataSet(metaclass=ABCMeta):
         if type(self.epochs) is list:
             self.epochs = [self._reshape(ep) for ep in self.epochs]
             if hasattr(self, 'test_epochs'):
-                self.test_epochs = [self._reshape(ep) for ep in self.test_epochs]
+                self.test_epochs = [self._reshape(
+                    ep) for ep in self.test_epochs]
         else:
             self.epochs = self._reshape(self.epochs)
             if hasattr(self, 'test_epochs'):
@@ -138,7 +139,8 @@ class DataSet(metaclass=ABCMeta):
         if type(self.epochs) is list:
             self.epochs = [ep[:, indexes, :] for ep in self.epochs]
             if hasattr(self, 'test_epochs'):
-                self.test_epochs = [ep[:, indexes, :] for ep in self.test_epochs]
+                self.test_epochs = [ep[:, indexes, :]
+                                    for ep in self.test_epochs]
         else:
             self.epochs = self.epochs[:, :, indexes, :]
             if hasattr(self, 'test_epochs'):
@@ -167,9 +169,11 @@ class DataSet(metaclass=ABCMeta):
             ind = np.empty(0)
             tmp = np.empty(0)
             for i in range(target_events.size):
-                tmp = np.concatenate((tmp, np.where(source[src].events[sbj] == target_events[i])[0]))
+                tmp = np.concatenate(
+                    (tmp, np.where(self.events[sbj] == target_events[i])[0]))
                 if tmp.size == 0:
-                    ind = np.concatenate( (ind,_get_ind(target_events[i], sbj)) )
+                    ind = np.concatenate(
+                        (ind, self._get_ind(target_events[i], sbj)))
                 else:
                     ind = tmp
             ind_all.append(ind)
@@ -181,15 +185,19 @@ class DataSet(metaclass=ABCMeta):
         '''
         channels = len(self.ch_names)
         if type(self.epochs) is list:
-            self.epochs = [ep.reshape((ep.shape[0]/ channels, channels, ep.shape[1])) for ep in self.epochs]
+            self.epochs = [ep.reshape(
+                (ep.shape[0] / channels, channels, ep.shape[1])) for ep in self.epochs]
             if hasattr(self, 'test_epochs'):
-                self.test_epochs = [ep.reshape((ep.shape[0]/ channels, channels, ep.shape[1])) for ep in self.test_epochs]
+                self.test_epochs = [ep.reshape(
+                    (ep.shape[0] / channels, channels, ep.shape[1])) for ep in self.test_epochs]
         else:
             subjects, samples, trials = self.epochs.shape
-            self.epochs = self.epochs.reshape((subjects, samples/channels, channels, trials))
+            self.epochs = self.epochs.reshape(
+                (subjects, samples/channels, channels, trials))
             if hasattr(self, 'test_epochs'):
                 subjects, samples, trials = self.test_epochs.shape
-                self.test_epochs = self.test_epochs.reshape((subjects, samples/channels, channels, trials))
+                self.test_epochs = self.test_epochs.reshape(
+                    (subjects, samples/channels, channels, trials))
 
     def get_n_classes(self):
         '''
@@ -213,24 +221,26 @@ class DataSet(metaclass=ABCMeta):
         '''
         '''
         rng = np.linspace(-0.25, 1, 25, endpoint=False)
-        rng = np.delete(rng, np.where(rng==0.0)[0])
+        rng = np.delete(rng, np.where(rng == 0.0)[0])
         tmp = np.empty(0)
         r = len(self.events[sbj])
-        e = np.array([float(self.events[sbj][i]) for i in range(r) if isfloat(self.events[sbj][i])])
-        
+        e = np.array([float(self.events[sbj][i])
+                      for i in range(r) if isfloat(self.events[sbj][i])])
+
         if isfloat(ev):
-            rg = float(ev) + rng          
+            rg = float(ev) + rng
             idx = np.logical_or.reduce([e == r for r in rg])
-            tmp = np.concatenate((tmp, np.where(idx==True)[0]))
-        
-        return tmp    
-    
+            # tmp = np.concatenate((tmp, np.where(idx == True)[0]))
+            tmp = np.concatenate((tmp, np.where(idx)[0]))
+
+        return tmp
+
     def _rearrange(self, ind):
         '''
         '''
         # takes only train data for future use in CrossSet
         attrs = ['epochs', 'y', 'events']
-        
+
         for k in attrs:
             tmp = []
             array = getattr(self, k)
@@ -239,4 +249,4 @@ class DataSet(metaclass=ABCMeta):
             if isinstance(array, list):
                 setattr(self, k, tmp)
             else:
-                setattr(self, k, np.array(tmp)) 
+                setattr(self, k, np.array(tmp))
