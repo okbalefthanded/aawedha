@@ -639,7 +639,7 @@ class Evaluation(object):
         return tr == ts
 
     def _get_n_subjects(self):
-        '''Return number of subjects in dataset 
+        '''Return number of subjects in dataset
 
         Parameters
         ----------
@@ -647,13 +647,17 @@ class Evaluation(object):
 
         Returns
         -------
-        int : number of subjects if train/test subjects is the same, their sum otherwise
+        int : number of subjects if train/test subjects is the same
+                their sum otherwise
         '''
-        ts = len(self.dataset.test_epochs) if hasattr(self.dataset, 'test_epochs') else 0
-        if self._equale_subjects():
-            return len(self.dataset.epochs)
+        if self.dataset:
+            ts = len(self.dataset.test_epochs) if hasattr(self.dataset, 'test_epochs') else 0
+            if self._equale_subjects():
+                return len(self.dataset.epochs)
+            else:
+                return len(self.dataset.epochs) + ts
         else:
-            return len(self.dataset.epochs) + ts
+            return 0
 
     def _compile_model(self):
         '''Compile model using speficied model_config, default values otherwise

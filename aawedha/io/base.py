@@ -134,7 +134,7 @@ class DataSet(metaclass=ABCMeta):
         '''
         indexes = [i for i, x in enumerate(self.ch_names) if x in ch]
 
-        self.ch_names = self.ch_names[indexes]
+        self.ch_names = [self.ch_names[ch] for ch in indexes]
 
         if type(self.epochs) is list:
             self.epochs = [ep[:, indexes, :] for ep in self.epochs]
@@ -146,7 +146,7 @@ class DataSet(metaclass=ABCMeta):
             if hasattr(self, 'test_epochs'):
                 self.test_epochs = self.test_epochs[:, :, indexes, :]
 
-    def rearrange(self, target_events=[]):
+    def rearrange(self, target_events=[], v=0):
         '''Rearragne dataset by selecting a subset of epochs and their
         labels and events, according to the target events passed.
         Used in CrossSet evaluation
@@ -157,6 +157,8 @@ class DataSet(metaclass=ABCMeta):
             list of events that the selection is based on, if data does not
             contain the same events, the nearest ones in task are selected
 
+        v : float
+            interval value for frequencies near target event
         Returns
         -------
         None
@@ -173,7 +175,7 @@ class DataSet(metaclass=ABCMeta):
                     (tmp, np.where(self.events[sbj] == target_events[i])[0]))
                 if tmp.size == 0:
                     ind = np.concatenate(
-                        (ind, self._get_ind(target_events[i], sbj)))
+                        (ind, self._get_ind(target_events[i], sbj, v)))
                 else:
                     ind = tmp
             ind_all.append(ind)
@@ -217,7 +219,7 @@ class DataSet(metaclass=ABCMeta):
             samples, channels, trials = tensor.shape
             return tensor.reshape((samples*channels, trials))
 
-    def _get_ind(self, ev, sbj):
+    def _get_ind(self, ev, sbj, v):
         '''
         '''
         rng = np.linspace(-0.25, 1, 25, endpoint=False)
@@ -228,9 +230,10 @@ class DataSet(metaclass=ABCMeta):
                       for i in range(r) if isfloat(self.events[sbj][i])])
 
         if isfloat(ev):
-            rg = float(ev) + rng
-            idx = np.logical_or.reduce([e == r for r in rg])
+            # rg = float(ev) + rng
+            # idx = np.logical_or.reduce([e == r for r in rg])
             # tmp = np.concatenate((tmp, np.where(idx == True)[0]))
+            idx = np.logical_and(e > float(ev)-v, e < float(ev)+v)
             tmp = np.concatenate((tmp, np.where(idx)[0]))
 
         return tmp
