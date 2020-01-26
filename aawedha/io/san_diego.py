@@ -27,7 +27,7 @@ class SanDiego(DataSet):
     def load_raw(self, path=None, epoch_duration=1,
                  band=[5.0, 45.0], order=6, augment=False):
         list_of_files = sorted(glob.glob(path + 's*.mat'))
-
+        
         epoch_duration = np.round(
             np.array(epoch_duration) * self.fs).astype(int)
         onset = 39  # onset in samples

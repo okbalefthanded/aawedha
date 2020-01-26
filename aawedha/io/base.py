@@ -182,6 +182,18 @@ class DataSet(metaclass=ABCMeta):
 
         self._rearrange(ind_all)
 
+    def update_labels(self, d, v):
+        '''
+        '''
+        k = list(d)
+        for sbj in range(len(self.events)):
+            r = len(self.events[sbj])
+            e = np.array([float(self.events[sbj][i])
+                      for i in range(r) if isfloat(self.events[sbj][i])])
+            for i in range(len(k)):
+                idx = np.logical_and(e > float(k[i])-v, e < float(k[i])+v) 
+                self.y[sbj, idx] = d[k[i]] 
+
     def recover_dim(self):
         '''
         '''
