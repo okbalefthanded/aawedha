@@ -3,6 +3,7 @@
 """
 from abc import ABCMeta, abstractmethod
 from aawedha.analysis.utils import isfloat
+from scipy.signal import resample_poly
 import numpy as np
 import os
 import pickle
@@ -189,10 +190,24 @@ class DataSet(metaclass=ABCMeta):
         for sbj in range(len(self.events)):
             r = len(self.events[sbj])
             e = np.array([float(self.events[sbj][i])
-                      for i in range(r) if isfloat(self.events[sbj][i])])
+                          for i in range(r) if isfloat(self.events[sbj][i])])
             for i in range(len(k)):
-                idx = np.logical_and(e > float(k[i])-v, e < float(k[i])+v) 
-                self.y[sbj, idx] = d[k[i]] 
+                idx = np.logical_and(e > float(k[i])-v, e < float(k[i])+v)
+                self.y[sbj, idx] = d[k[i]]
+
+    def resample(self, min_rate):
+        '''
+        '''
+        if self.fs == min_rate:
+            return
+        elif self.fs < min_rate:
+            up = self.fs
+            down = min_rate
+        else:
+            up = min_rate
+            down = self.fs
+
+        self.epochs = resample_poly(self.epochs, up, down, axis=1)
 
     def recover_dim(self):
         '''

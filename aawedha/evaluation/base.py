@@ -16,8 +16,9 @@ import os
 class Evaluation(object):
     '''Base class for evaluations
 
-        Evaluation defines and control the main process for training and testing a given model on
-        a given dataset following a certain configuration. 
+        Evaluation defines and control the main process for training and
+        testing a given model on a given dataset following a certain
+        configuration.
 
         Attributes
         ----------
@@ -29,7 +30,7 @@ class Evaluation(object):
 
         partition : list of 2 or 3 integers
             configuration for data partioning into train/validation/test subset
-            default a 3 integers list of: 
+            default a 3 integers list of:
                 In case of a single dataset without an independet Test set
                 - (folds/L, folds/M, folds/N) L+M+N = total trials in dataset for SingleSubject evaluation
                 - (L_subjects, M_subjects, N_subjects) L+M+N = total subjects in dataset for CrossSubject evaluation
@@ -37,7 +38,7 @@ class Evaluation(object):
                 In case of a dataset with an independet Test set
                 - (folds/L, folds/M) L+M = T total trials in dataset for SingleSubject evaluation
                 - (L_subjects, M_subjects) L+M = S total subjects in dataset for CrossSubject evaluation
-   
+
         folds : a list of 3 1d numpy array
             indices of trials(SingleSubject evaluation)/subjects(CrossSubjects evaluation) for each fold
 
@@ -56,24 +57,26 @@ class Evaluation(object):
             confusion matrix per fold
 
         results : dict of evaluation results compiled from models performance on the dataset
-            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)           
+            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
             - 'acc_mean' : double : Accuracy mean over all subjects and folds
             - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
             - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
             For binary class tasks :
-            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)       
+            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
             - 'auc_mean' : double :  AUC mean over all subjects and folds
             - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
-            - 'auc_mean_per_subj' :  AUC mean per Subject over all folds [only for SingleSubject evaluation]
+            - 'auc_mean_per_subj' :  AUC mean per Subject over all folds
+                [only for SingleSubject evaluation]
             - 'tpr' : 1d array : True posititves rate
             - 'fpr' : 1d array : False posititves rate
 
         n_subjects : int
-            number of subjects in dataset if the train and test set have same subjects, the sum of both, otherwise.
+            number of subjects in dataset if the train and test set have same
+            subjects, the sum of both, otherwise.
 
-        model_history : list 
+        model_history : list
             Keras history callbacks
-        
+
         model_config : dict of model configurations, used in compile() and fit().
             compile :
             - loss : str : loss function to optimize during training
@@ -357,7 +360,7 @@ class Evaluation(object):
                         folds.append([tmp[:t], tmp[t:t + v], tmp[-s:]])
         else:
             # generate folds for test set from one set
-            if self.__class__.__name__ == 'CrossSubject':
+            if self.__class__.__name__ != 'SingleSubject':
                 for subj in range(self.n_subjects):
                     # exclude subject per default
                     selection = np.arange(0, self.n_subjects)
