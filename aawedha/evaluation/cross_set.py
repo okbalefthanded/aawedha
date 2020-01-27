@@ -135,7 +135,7 @@ class CrossSet(Evaluation):
         '''
         # generate folds if folds are empty
         if not self.folds:
-            self.folds = self.generate_split(nfolds=1)
+            self.generate_split(nfolds=1)
 
         if not pointer and check:
             pointer = CheckPoint(self)
@@ -225,8 +225,10 @@ class CrossSet(Evaluation):
     def _split_set(self, fold):
         '''
         '''
-        # TODO : multiple sources
+        kernels = 1
         split = {}
+        X_src = []
+        Y_src = []
 
         classes = np.unique(self.target.y)
 
@@ -238,11 +240,19 @@ class CrossSet(Evaluation):
         Y_v = self._flatten(self.target.y[self.folds[fold][1]])
         Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
 
-        X_src = self._flatten(self.source.epochs)
-        Y_src = self._flatten(self.source.y)
+        for src in self.source:
+            X_src.append(self._flatten(src.epochs))
+            Y_src.append(self._flatten(src.y))
+
+        X_src = np.array(X_src).squeeze()
+        Y_src = np.array(Y_src).squeeze()
 
         X_t = np.concatenate((X_t, X_src), axis=-1)
         Y_t = np.concatenate((Y_t, Y_src), axis=-1)
+
+        samples, channels, trials = X_t.shape
+        
+        X_t = X_t.transpose((2,0,1)).reshape((trials, kernels, samples, channels))    
 
         split['X_train'] = X_t
         split['X_val'] = X_v

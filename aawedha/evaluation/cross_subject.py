@@ -81,7 +81,7 @@ class CrossSubject(Evaluation):
         '''
         # generate folds if folds are empty
         if not self.folds:
-            self.folds = self.generate_split(nfolds=30)
+            self.generate_split(nfolds=30)
 
         if not pointer and check:
             pointer = CheckPoint(self)
