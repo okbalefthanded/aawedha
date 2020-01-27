@@ -386,16 +386,16 @@ class Evaluation(object):
 
         Parameters
         ----------
-        X : nd array (trials, kernels, samples, channels)
+        X : nd array (trials, kernels, channels, samples)
             training data
 
         Returns
         -------
-        X :  nd array (trials, kernels, samples, channels)
+        X :  nd array (trials, kernels, channels, samples)
             normalized training data
-        mu : nd array (1, kernels, samples, channels)
+        mu : nd array (1, kernels, channels, samples)
             mean over all trials
-        sigma : nd array (1, kernels, samples, channels)
+        sigma : nd array (1, kernels, channels, samples)
             standard deviation over all trials
         '''
         mu = X.mean(axis=0)

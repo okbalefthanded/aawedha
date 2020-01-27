@@ -1,5 +1,6 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
+from aawedha.analysis.utils import isfloat
 import numpy as np
 
 
@@ -40,9 +41,13 @@ class CrossSet(Evaluation):
         d_source = self._diff(source.events)
         d_target = self._diff(ev)
         v = np.min([d_source, d_target])
-        events = np.unique(ev.astype(float))
+        
+        # events = np.unique(ev.astype(float))
+        events = np.unique(ev)
         labels = np.unique(self.target.y)
-        new_labels = {str(events[i]): labels[i] for i in range(events.size)}
+        # new_labels = {str(events[i]): labels[i] for i in range(events.size)}
+        new_labels = {events[i]: labels[i] for i in range(events.size)}
+        
         source.rearrange(ev, v)
         source.update_labels(new_labels, v)
 
@@ -65,8 +70,10 @@ class CrossSet(Evaluation):
         #
         chs = self._get_min_channels()
         ev = np.unique(self.target.events)
+        print(f' elements for selection | target events: {ev} | channels: {chs}')
         # select channels and trials for source datasets
         for src in self.source:
+            print(f' selection for source set : {src.title}')
             self.select_channels(src, chs)
             self.select_trials(src, ev)
 
@@ -77,7 +84,7 @@ class CrossSet(Evaluation):
         #
         self.resample()
 
-    def generate_split(self, nfolds=30, excl=True):
+    def generate_split(self, nfolds=30, excl=True, replacement=[]):
         '''Generate cross-validation folds following a cross-validation
         strategy from ShuffleSplit
 
@@ -97,7 +104,7 @@ class CrossSet(Evaluation):
         no value, sets folds attribute with a list of arrays
         '''
 
-        self.generate_set()
+        self.generate_set(replacement)
 
         self.n_subjects = len(self.target.epochs)
 
@@ -214,8 +221,10 @@ class CrossSet(Evaluation):
         return rets
 
     def _diff(self, events):
+        '''
+        '''
         ev = np.unique(events)
-        ev = np.array([float(ev[i]) for i in range(ev.size)])
+        ev = np.array([float(ev[i]) for i in range(ev.size) if isfloat(ev[i])])
         d = np.unique(np.diff(sorted(ev)))
         if d.size > 1:
             return np.max(d)  # float converion results in inconsisten values
@@ -251,15 +260,19 @@ class CrossSet(Evaluation):
         Y_t = np.concatenate((Y_t, Y_src), axis=-1)
 
         samples, channels, trials = X_t.shape
-        
-        X_t = X_t.transpose((2,0,1)).reshape((trials, kernels, samples, channels))    
+        tr_v = X_v.shape[-1]
+        tr_s = X_ts.shape[-1]
+
+        X_t = X_t.transpose((2,0,1)).reshape((trials, kernels, channels, samples))    
+        X_v = X_v.transpose((2,0,1)).reshape((tr_v, kernels, channels, samples))
+        X_ts = X_ts.transpose((2,0,1)).reshape((tr_s, kernels, channels, samples))
 
         split['X_train'] = X_t
         split['X_val'] = X_v
         split['X_test'] = X_ts
-        split['Y_train'] = Y_t
-        split['Y_val'] = Y_v
-        split['Y_test'] = Y_ts
+        split['Y_train'] = self.labels_to_categorical(Y_t)
+        split['Y_val'] = self.labels_to_categorical(Y_v)
+        split['Y_test'] = self.labels_to_categorical(Y_ts)
         split['classes'] = classes
 
         return split
