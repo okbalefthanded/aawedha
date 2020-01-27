@@ -189,17 +189,19 @@ class DataSet(metaclass=ABCMeta):
         k = list(d)
         for sbj in range(len(self.events)):
             r = len(self.events[sbj])
-            
+
             e = np.array([float(self.events[sbj][i])
                           for i in range(r) if isfloat(self.events[sbj][i])])
-             
 
             for i in range(len(k)):
                 if k[i] == 'idle':
-                    idx = np.where(self.events[sbj] == 'idle')
+                    idx = np.where(self.events[sbj] == 'idle')[0]
                 else:
                     idx = np.logical_and(e > float(k[i])-v, e < float(k[i])+v)
-                self.y[sbj, idx] = d[k[i]]
+                if isinstance(self.y, list):
+                    self.y[sbj][idx] = d[k[i]]
+                else:
+                    self.y[sbj, idx] = d[k[i]]
 
     def resample(self, min_rate):
         '''
@@ -212,8 +214,11 @@ class DataSet(metaclass=ABCMeta):
         else:
             up = min_rate
             down = self.fs
-
-        self.epochs = resample_poly(self.epochs, up, down, axis=1)
+        if isinstance(self.epochs, list):
+            self.epochs = [resample_poly(self.epochs[idx], up, down, axis=1)
+                           for idx in range(len(self.epochs))]
+        else:
+            self.epochs = resample_poly(self.epochs, up, down, axis=1)
 
     def recover_dim(self):
         '''
@@ -221,10 +226,13 @@ class DataSet(metaclass=ABCMeta):
         channels = len(self.ch_names)
         if type(self.epochs) is list:
             self.epochs = [ep.reshape(
-                (ep.shape[0] / channels, channels, ep.shape[1])) for ep in self.epochs]
+                           (ep.shape[0] / channels, channels, ep.shape[1]))
+                           for ep in self.epochs]
+
             if hasattr(self, 'test_epochs'):
                 self.test_epochs = [ep.reshape(
-                    (ep.shape[0] / channels, channels, ep.shape[1])) for ep in self.test_epochs]
+                                    (ep.shape[0] / channels, channels, ep.shape[1]))
+                                    for ep in self.test_epochs]
         else:
             subjects, samples, trials = self.epochs.shape
             self.epochs = self.epochs.reshape(

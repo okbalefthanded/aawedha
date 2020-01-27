@@ -41,13 +41,13 @@ class CrossSet(Evaluation):
         d_source = self._diff(source.events)
         d_target = self._diff(ev)
         v = np.min([d_source, d_target])
-        
+
         # events = np.unique(ev.astype(float))
         events = np.unique(ev)
         labels = np.unique(self.target.y)
         # new_labels = {str(events[i]): labels[i] for i in range(events.size)}
         new_labels = {events[i]: labels[i] for i in range(events.size)}
-        
+
         source.rearrange(ev, v)
         source.update_labels(new_labels, v)
 
@@ -70,10 +70,9 @@ class CrossSet(Evaluation):
         #
         chs = self._get_min_channels()
         ev = np.unique(self.target.events)
-        print(f' elements for selection | target events: {ev} | channels: {chs}')
+
         # select channels and trials for source datasets
         for src in self.source:
-            print(f' selection for source set : {src.title}')
             self.select_channels(src, chs)
             self.select_trials(src, ev)
 
@@ -113,21 +112,25 @@ class CrossSet(Evaluation):
                 f'Parition exceeds subjects count, use a different parition')
 
         n_phase = len(self.partition)
-        train_phase, val_phase = self.partition[0], self.partition[1]
 
-        if n_phase == 2:
-            # independent test set available
-            test_phase = 0
-        elif n_phase == 3:
-            # generate a set set from the dataset
-            test_phase = self.partition[2]
+        if n_phase == 1:
+            self.folds = [0]
         else:
-            # error : wrong partition
-            raise AssertionError('Wrong partition scheme', self.partition)
+            train_phase, val_phase = self.partition[0], self.partition[1]
 
-        self.folds = self.get_folds(
-            nfolds, self.n_subjects, train_phase, val_phase,
-            test_phase, exclude_subj=excl)
+            if n_phase == 2:
+                # independent test set available
+                test_phase = 0
+            elif n_phase == 3:
+                # generate a set set from the dataset
+                test_phase = self.partition[2]
+            else:
+                # error : wrong partition
+                raise AssertionError('Wrong partition scheme', self.partition)
+
+            self.folds = self.get_folds(
+                    nfolds, self.n_subjects, train_phase, val_phase,
+                    test_phase, exclude_subj=excl)
 
     def run_evaluation(self, pointer=None, check=False):
         '''Perform evaluation on subsets of subjects
@@ -223,6 +226,9 @@ class CrossSet(Evaluation):
     def _diff(self, events):
         '''
         '''
+        if isinstance(events, list):
+            # some datasets attr are lists and not ndarray
+            events = events[0]
         ev = np.unique(events)
         ev = np.array([float(ev[i]) for i in range(ev.size) if isfloat(ev[i])])
         d = np.unique(np.diff(sorted(ev)))
@@ -240,14 +246,18 @@ class CrossSet(Evaluation):
         Y_src = []
 
         classes = np.unique(self.target.y)
+        if hasattr(self.target, 'test_epochs'):
+            if len(self.folds) == 1:
+                target = self._flatten(self.target.epochs)
 
-        X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
-        X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
-        X_ts = self._flatten(self.target.epochs[self.folds[fold][2]])
+        else:
+            X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
+            X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
+            X_ts = self._flatten(self.target.epochs[self.folds[fold][2]])
 
-        Y_t = self._flatten(self.target.y[self.folds[fold][0]])
-        Y_v = self._flatten(self.target.y[self.folds[fold][1]])
-        Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
+            Y_t = self._flatten(self.target.y[self.folds[fold][0]])
+            Y_v = self._flatten(self.target.y[self.folds[fold][1]])
+            Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
 
         for src in self.source:
             X_src.append(self._flatten(src.epochs))
@@ -263,9 +273,9 @@ class CrossSet(Evaluation):
         tr_v = X_v.shape[-1]
         tr_s = X_ts.shape[-1]
 
-        X_t = X_t.transpose((2,0,1)).reshape((trials, kernels, channels, samples))    
-        X_v = X_v.transpose((2,0,1)).reshape((tr_v, kernels, channels, samples))
-        X_ts = X_ts.transpose((2,0,1)).reshape((tr_s, kernels, channels, samples))
+        X_t = X_t.transpose((2, 0, 1)).reshape((trials, kernels, channels, samples))
+        X_v = X_v.transpose((2, 0, 1)).reshape((tr_v, kernels, channels, samples))
+        X_ts = X_ts.transpose((2, 0, 1)).reshape((tr_s, kernels, channels, samples))
 
         split['X_train'] = X_t
         split['X_val'] = X_v
