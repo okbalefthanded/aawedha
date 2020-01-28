@@ -214,12 +214,16 @@ class DataSet(metaclass=ABCMeta):
         else:
             up = min_rate
             down = self.fs
-
+        '''
         if isinstance(self.epochs, list):
             self.epochs = [resample_poly(self.epochs[idx], up, down, axis=0)
                            for idx in range(len(self.epochs))]
         else:
             self.epochs = resample_poly(self.epochs, up, down, axis=1)
+        '''
+        self.epochs = self._resample_array(self.epochs, up, down)
+        if hasattr(self, 'test_epochs'):
+            self.test_epochs = self._resample_array(self.test_epochs, up, down)
 
     def recover_dim(self):
         '''
@@ -250,6 +254,17 @@ class DataSet(metaclass=ABCMeta):
             return len(np.unique(self.y[0]))
         else:
             return len(np.unique(self.y))
+
+    def _resample_array(self, ndarray, up, down):
+        '''
+        '''
+        if isinstance(ndarray, list):
+            ndarray = [resample_poly(ndarray[idx], up, down, axis=0)
+                       for idx in range(len(ndarray))]
+        else:
+            ndarray = resample_poly(ndarray, up, down, axis=1)
+
+        return ndarray
 
     def _reshape(self, tensor=None):
         '''

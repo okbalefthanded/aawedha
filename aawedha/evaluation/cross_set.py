@@ -48,12 +48,11 @@ class CrossSet(Evaluation):
         # labels = np.unique(self.target.y)
         # new_labels = {str(events[i]): labels[i] for i in range(events.size)}
         # new_labels = {events[i]: labels[i] for i in range(events.size)}
-        
+
         keys = self.target.events.flatten().tolist()
         values = self.target.y.flatten().tolist()
         new_labels = dict(zip(keys, values))
-        print(f' new labels: {new_labels}')
-        
+
         source.rearrange(ev, v)
         source.update_labels(new_labels, v)
 
@@ -250,7 +249,12 @@ class CrossSet(Evaluation):
         split = self._split_set(fold)
         # normalize data
         X_train, mu, sigma = self.fit_scale(split['X_train'])
-        X_val = self.transform_scale(split['X_val'], mu, sigma)
+
+        if isinstance(split['X_val'], np.ndarray):
+            X_val = self.transform_scale(split['X_val'], mu, sigma)
+        else:
+            X_val = split['X_val']
+
         X_test = self.transform_scale(split['X_test'], mu, sigma)
         Y_train = split['Y_train']
         Y_val = split['Y_val']
@@ -289,16 +293,17 @@ class CrossSet(Evaluation):
         Y_src = []
 
         classes = np.unique(self.target.y)
-        
+
         if hasattr(self.target, 'test_epochs'):
             if len(self.folds) == 1:
-                
+
                 X_t = self._flatten(self.target.epochs)
                 Y_t = self._flatten(self.target.y)
 
                 X_ts = self._flatten(self.target.test_epochs)
+                print(f' X test shape: {X_ts.shape}')
                 Y_ts = self._flatten(self.target.test_y)
-                
+
                 X_v = None
                 Y_v = None
 
@@ -313,21 +318,24 @@ class CrossSet(Evaluation):
 
         for src in self.source:
             X_src.append(self._flatten(src.epochs))
-            Y_src.append(self._flatten(src.y))        
-        
-        print(f' X_src dim : {[x.shape for x in X_src]}')
-        print(f' Y_src dim : {[y.shape for y in Y_src]}')
-        X_src = np.array(X_src).squeeze()
+            Y_src.append(self._flatten(src.y))
+
+        X_src = np.concatenate(X_src, axis=-1)
+        Y_src = np.concatenate(Y_src, axis=-1)
+        '''
+        X_src = np.array(X_src).squeeze()        
         Y_src = np.array(Y_src).squeeze()
-        
+        '''
         X_t = np.concatenate((X_t, X_src), axis=-1)
         Y_t = np.concatenate((Y_t, Y_src), axis=-1)
 
         samples, channels, trials = X_t.shape
-        
+
         tr_s = X_ts.shape[-1]
+        print(f' Test trials: {tr_s}')
 
         X_t = X_t.transpose((2, 0, 1)).reshape((trials, kernels, channels, samples))
+        print(f' X_ts dim: {X_ts.shape}')
         X_ts = X_ts.transpose((2, 0, 1)).reshape((tr_s, kernels, channels, samples))
 
         if isinstance(X_v, np.ndarray):
@@ -335,7 +343,7 @@ class CrossSet(Evaluation):
             X_v = X_v.transpose((2, 0, 1)).reshape((tr_v, kernels, channels, samples))            
             Y_v = self.labels_to_categorical(Y_v)
 
-        split['X_train'] = X_t       
+        split['X_train'] = X_t
         split['X_test'] = X_ts
         split['X_val'] = X_v
         split['Y_val'] = Y_v
