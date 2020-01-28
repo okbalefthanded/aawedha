@@ -38,16 +38,22 @@ class CrossSet(Evaluation):
     def select_trials(self, source=[], ev=[]):
         '''
         '''
+        ev = np.unique(self.target.events)
         d_source = self._diff(source.events)
         d_target = self._diff(ev)
         v = np.min([d_source, d_target])
 
         # events = np.unique(ev.astype(float))
-        events = np.unique(ev)
-        labels = np.unique(self.target.y)
+        # events = np.unique(ev)
+        # labels = np.unique(self.target.y)
         # new_labels = {str(events[i]): labels[i] for i in range(events.size)}
-        new_labels = {events[i]: labels[i] for i in range(events.size)}
-
+        # new_labels = {events[i]: labels[i] for i in range(events.size)}
+        
+        keys = self.target.events.flatten().tolist()
+        values = self.target.y.flatten().tolist()
+        new_labels = dict(zip(keys, values))
+        print(f' new labels: {new_labels}')
+        
         source.rearrange(ev, v)
         source.update_labels(new_labels, v)
 
@@ -69,12 +75,12 @@ class CrossSet(Evaluation):
         '''
         #
         chs = self._get_min_channels()
-        ev = np.unique(self.target.events)
+        # ev = np.unique(self.target.events)
 
         # select channels and trials for source datasets
         for src in self.source:
             self.select_channels(src, chs)
-            self.select_trials(src, ev)
+            self.select_trials(src)
 
         if replacement:
             self.select_channels(self.target, chs, replacement)
@@ -201,6 +207,43 @@ class CrossSet(Evaluation):
 
         self.results = self.results_reports(res, tfpr)
 
+    def results_reports(self, res, tfpr={}):
+        '''
+        '''
+        if isinstance(self.target.epochs, np.ndarray):
+            folds = len(self.folds)
+            # subjects = self._get_n_subjects()
+            # subjects = len(self.predictions)
+            examples = len(self.predictions[0])
+            dim = len(self.predictions[0][0])
+            self.predictions = np.array(self.predictions).reshape((folds, examples, dim))
+        #
+        results = {}
+        #
+        if tfpr:
+            # res : (metric, subjects, folds)
+            # means = res.mean(axis=-1) # mean across folds
+            r1 = np.array(res['acc'])
+            r2 = np.array(res['auc'])
+            results['auc'] = r2
+            results['acc'] = r1
+            results['acc_mean_per_fold'] = r1.mean(axis=0)
+            results['auc_mean_per_fold'] = r2.mean(axis=0)
+            results['acc_mean'] = r1.mean()
+            results['auc_mean'] = r2.mean()
+            #
+            results['fpr'] = tfpr['fp']
+            results['tpr'] = tfpr['tp']
+        else:
+            # res : (subjects, folds)
+            results['acc'] = res
+            # mean across folds
+            results['acc_mean_per_fold'] = res.mean(axis=0)
+            # mean across subjects and folds
+            results['acc_mean'] = res.mean()
+
+        return results
+
     def _cross_set(self, fold):
         '''
         '''
@@ -246,9 +289,18 @@ class CrossSet(Evaluation):
         Y_src = []
 
         classes = np.unique(self.target.y)
+        
         if hasattr(self.target, 'test_epochs'):
             if len(self.folds) == 1:
-                target = self._flatten(self.target.epochs)
+                
+                X_t = self._flatten(self.target.epochs)
+                Y_t = self._flatten(self.target.y)
+
+                X_ts = self._flatten(self.target.test_epochs)
+                Y_ts = self._flatten(self.target.test_y)
+                
+                X_v = None
+                Y_v = None
 
         else:
             X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
@@ -261,27 +313,33 @@ class CrossSet(Evaluation):
 
         for src in self.source:
             X_src.append(self._flatten(src.epochs))
-            Y_src.append(self._flatten(src.y))
-
+            Y_src.append(self._flatten(src.y))        
+        
+        print(f' X_src dim : {[x.shape for x in X_src]}')
+        print(f' Y_src dim : {[y.shape for y in Y_src]}')
         X_src = np.array(X_src).squeeze()
         Y_src = np.array(Y_src).squeeze()
-
+        
         X_t = np.concatenate((X_t, X_src), axis=-1)
         Y_t = np.concatenate((Y_t, Y_src), axis=-1)
 
         samples, channels, trials = X_t.shape
-        tr_v = X_v.shape[-1]
+        
         tr_s = X_ts.shape[-1]
 
         X_t = X_t.transpose((2, 0, 1)).reshape((trials, kernels, channels, samples))
-        X_v = X_v.transpose((2, 0, 1)).reshape((tr_v, kernels, channels, samples))
         X_ts = X_ts.transpose((2, 0, 1)).reshape((tr_s, kernels, channels, samples))
 
-        split['X_train'] = X_t
-        split['X_val'] = X_v
+        if isinstance(X_v, np.ndarray):
+            tr_v = X_v.shape[-1]
+            X_v = X_v.transpose((2, 0, 1)).reshape((tr_v, kernels, channels, samples))            
+            Y_v = self.labels_to_categorical(Y_v)
+
+        split['X_train'] = X_t       
         split['X_test'] = X_ts
-        split['Y_train'] = self.labels_to_categorical(Y_t)
-        split['Y_val'] = self.labels_to_categorical(Y_v)
+        split['X_val'] = X_v
+        split['Y_val'] = Y_v
+        split['Y_train'] = self.labels_to_categorical(Y_t)        
         split['Y_test'] = self.labels_to_categorical(Y_ts)
         split['classes'] = classes
 

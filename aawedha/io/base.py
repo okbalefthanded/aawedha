@@ -214,8 +214,9 @@ class DataSet(metaclass=ABCMeta):
         else:
             up = min_rate
             down = self.fs
+
         if isinstance(self.epochs, list):
-            self.epochs = [resample_poly(self.epochs[idx], up, down, axis=1)
+            self.epochs = [resample_poly(self.epochs[idx], up, down, axis=0)
                            for idx in range(len(self.epochs))]
         else:
             self.epochs = resample_poly(self.epochs, up, down, axis=1)
