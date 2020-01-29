@@ -719,10 +719,16 @@ class Evaluation(object):
 
         '''
         batch, ep, clbs = self._get_fit_configs()
+        
+        if X_val is None:
+            val = None
+        else:
+            val = (X_val, Y_val)
+
         history = self.model.fit(X_train, Y_train,
                                  batch_size=batch, epochs=ep,
                                  verbose=self.verbose,
-                                 validation_data=(X_val, Y_val),
+                                 validation_data=val,
                                  class_weight=cws,
                                  callbacks=clbs)
         probs = self.model.predict(X_test)

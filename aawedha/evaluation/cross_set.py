@@ -39,6 +39,7 @@ class CrossSet(Evaluation):
         '''
         '''
         ev = np.unique(self.target.events)
+
         d_source = self._diff(source.events)
         d_target = self._diff(ev)
         v = np.min([d_source, d_target])
@@ -301,7 +302,6 @@ class CrossSet(Evaluation):
                 Y_t = self._flatten(self.target.y)
 
                 X_ts = self._flatten(self.target.test_epochs)
-                print(f' X test shape: {X_ts.shape}')
                 Y_ts = self._flatten(self.target.test_y)
 
                 X_v = None
@@ -332,10 +332,8 @@ class CrossSet(Evaluation):
         samples, channels, trials = X_t.shape
 
         tr_s = X_ts.shape[-1]
-        print(f' Test trials: {tr_s}')
 
         X_t = X_t.transpose((2, 0, 1)).reshape((trials, kernels, channels, samples))
-        print(f' X_ts dim: {X_ts.shape}')
         X_ts = X_ts.transpose((2, 0, 1)).reshape((tr_s, kernels, channels, samples))
 
         if isinstance(X_v, np.ndarray):
