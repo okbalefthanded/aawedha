@@ -114,9 +114,13 @@ class Evaluation(object):
         self.n_subjects = self._get_n_subjects()
         self.log = lg
         if self.log:
+            if dataset:
+                title = dataset.tilte
+            else:
+                title = ''
             now = datetime.datetime.now().strftime('%c').replace(' ', '_')
             f = 'aawedha/logs/'+'_'.join([self.__class__.__name__,
-                                         dataset.title, now, '.log'])
+                                         title, now, '.log'])
             self.logger = log(fname=f, logger_name='eval_log')
         else:
             self.logger = None
@@ -557,12 +561,17 @@ class Evaluation(object):
         no value
         '''
         s = ['train', 'val', 'test']
-        data = f' Dataset: {self.dataset.title}'
-        if isinstance(self.dataset.epochs, list):
-            duration = f' epoch duration:{self.dataset.epochs[0].shape[0]/self.dataset.fs} sec'
+        
+        if self.dataset:
+            data = f' Dataset: {self.dataset.title}'
+            if isinstance(self.dataset.epochs, list):
+                duration = f' epoch duration:{self.dataset.epochs[0].shape[0]/self.dataset.fs} sec'
+            else:
+                duration = f' epoch duration:{self.dataset.epochs.shape[1]/self.dataset.fs} sec'
         else:
-            duration = f' epoch duration:{self.dataset.epochs.shape[1]/self.dataset.fs} sec'
-       
+            data = ''
+            duration = '0'
+
         prt = 'Subjects partition '+', '.join(f'{s[i], self.partition[i]}' for i in range(len(self.partition)))
         model = f'Model: {self.model.name}'
         model_config = f'Model config: {self._get_model_configs_info()}'
@@ -750,7 +759,11 @@ class Evaluation(object):
         mets : list : str| keras metrics
             metrics
         '''
-        classes = self.dataset.get_n_classes()
+        if self.dataset:
+            classes = self.dataset.get_n_classes()
+        else:
+            classes = 0
+
         if self.model_config:
             mets = self.model_config['metrics']
             khsara = self.model_config['loss']

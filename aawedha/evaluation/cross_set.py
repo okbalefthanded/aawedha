@@ -367,6 +367,9 @@ class CrossSet(Evaluation):
 
         if min_id.size > 1:
             min_id = min_id[0]
+        
+        if isinstance(min_id, np.ndarray):
+            min_id = min_id.item()
 
         if min_id == len(len_ch) - 1:
             return self.target.ch_names
