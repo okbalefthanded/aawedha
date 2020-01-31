@@ -4,8 +4,6 @@ from aawedha.paradigms.subject import Subject
 from scipy.io import loadmat
 import numpy as np
 import glob
-import pickle
-import os
 
 
 class FreiburgOnline(DataSet):
