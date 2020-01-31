@@ -41,6 +41,7 @@ class EPFL(DataSet):
         # epochs = []
         # y = []
         events = []
+        events_test = []
         target = []
         X = []
         Y = []
@@ -53,23 +54,19 @@ class EPFL(DataSet):
             raw_names = ['{f}/subject{s}/session{r}/'.format(f=path, s=sbj, r=r) for r in sessions]
             epochs = []
             y = []
-
+            stims = []
+            # train sessions
             for session in range(len(raw_names)-1):
                 files = glob.glob(raw_names[session] + '*.mat')
-                ep, yy, trg = self._load_session(files, epoch, band, order)  # subject, session, runs
+                ep, yy, trg, stm = self._load_session(files, epoch, band, order)  # subject, session, runs
                 epochs.append(ep)
                 y.append(yy)
                 target.append(trg)
-                '''
-                for run in range(len(files)):
-                    data = loadmat(files[run])
-                    ep, y_tmp, trg = self._get_epochs(data)
-                    epochs.append(ep)
-                    y.append(y_tmp)
-                    target.append(trg)
-                '''
+                stims.append(stm)
+            # test session
             test_files = glob.glob(raw_names[-1] + '*.mat')
-            test_epochs, test_y, test_target = self._load_session(test_files, epoch, band, order)
+            test_epochs, test_y, test_target, stm = self._load_session(test_files, epoch, band, order)
+
             epochs = np.concatenate(epochs, axis=-1)  # subject, sessions, runs
             y = np.concatenate(y, axis=-1)
 
@@ -77,7 +74,12 @@ class EPFL(DataSet):
             Y.append(y)
             X_test.append(test_epochs)
             Y_test.append(test_y)
+            events.append(np.concatenate(stims, axis=-1))
+            events_test.append(stm)
 
+        #
+        self.events = events
+        self.test_events = events_test
         return X, Y, X_test, Y_test
 
     def generate_set(self, load_path=None,
@@ -87,11 +89,11 @@ class EPFL(DataSet):
                      order=2):
         '''
         '''
-        self.epochs, self.y, self.test_epochs, self.test_events = self.load_raw(
+        self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(
             load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=9)
         self.paradigm = self._get_paradigm()
-        # self.save_set(save_folder)
+        self.save_set(save_folder)
 
     def _load_session(self, files, epoch, band, order):
         '''
@@ -99,19 +101,22 @@ class EPFL(DataSet):
         epochs = []
         y = []
         target = []
+        stims = []
         for run in range(len(files)):
             data = loadmat(files[run])
-            ep, y_tmp, trg = self._get_epochs(data, epoch, band, order)
+            ep, y_tmp, trg, stim = self._get_epochs(data, epoch, band, order)
             epochs.append(ep)
             y.append(y_tmp)
             target.append(trg)
+            stims.append(stim)
 
         # epochs = np.array(epochs)
         epochs = np.concatenate(epochs, axis=-1)
         # y = np.array(y)
         y = np.concatenate(y, axis=-1)
         target = np.array(target)
-        return epochs, y, target
+        stims = np.concatenate(stims, axis=-1)
+        return epochs, y, target, stims
 
     def _get_epochs(self, data, epoch, band, order):
         '''
@@ -148,7 +153,7 @@ class EPFL(DataSet):
         y = np.zeros(n_trials)
         y[stimuli == target] = 1
 
-        return epochs, y, target
+        return epochs, y, target, stimuli
 
     def _get_subjects(self, n_subjects=0):
         '''
