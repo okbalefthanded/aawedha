@@ -80,7 +80,8 @@ class CrossSet(Evaluation):
         # select channels and trials for source datasets
         for src in self.source:
             self.select_channels(src, chs)
-            self.select_trials(src)
+            if not self._is_selectable(src):
+                self.select_trials(src)
 
         if replacement:
             self.select_channels(self.target, chs, replacement)
@@ -244,6 +245,12 @@ class CrossSet(Evaluation):
 
         return results
 
+    def _is_selectable(self, source=None):
+        '''
+        '''
+        y_target = np.unique(self.target.y[0])
+        return np.logical_and.reduce(np.unique(source.y[0]) == y_target)
+
     def _cross_set(self, fold):
         '''
         '''
@@ -362,8 +369,7 @@ class CrossSet(Evaluation):
         '''
         len_ch = [len(st.ch_names) for st in self.source]
         len_ch.append(len(self.target.ch_names))
-        len_ch = np.array(len_ch)
-        min_id = np.where(len_ch == len_ch.min())[0]
+        min_id = np.argmin(len_ch)
 
         if min_id.size > 1:
             min_id = min_id[0]
@@ -372,9 +378,16 @@ class CrossSet(Evaluation):
             min_id = min_id.item()
 
         if min_id == len(len_ch) - 1:
-            return self.target.ch_names
+            chs = self.target.ch_names
         else:
-            return self.source[min_id].ch_names
+            chs = self.source[min_id].ch_names
+
+        intersection = [list(set(src.ch_names).intersection(chs)) for src in self.source]
+        intersection.append(list(set(self.target.ch_names).intersection(chs)))
+
+        idx = np.argmin([len(ls) for ls in intersection])  
+
+        return intersection[idx]
 
     def _assert_partiton(self, subjects=0, excl=False):
         '''Assert if partition to be used do not surpass number of subjects available

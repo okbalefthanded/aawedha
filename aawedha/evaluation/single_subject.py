@@ -318,7 +318,7 @@ class SingleSubject(Evaluation):
         if indie:
             if isinstance(self.dataset.test_epochs, list):
                 # TODO
-                trs = self.dataset.test_epochs[0].shape[2]
+                trs = self.dataset.test_epochs[subj].shape[2]
                 X_test = self.dataset.test_epochs[subj].transpose((2, 1, 0))
                 X_test = X_test.reshape((trs, kernels, channels, samples))
             else:
