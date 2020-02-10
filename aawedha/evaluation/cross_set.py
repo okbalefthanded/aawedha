@@ -199,14 +199,20 @@ class CrossSet(Evaluation):
                 pointer.set_checkpoint(fold+1, self.model)
 
         # Aggregate results
+        tfpr = {}
         if res_auc:
-            res = np.array([res_acc, res_auc])
-            tfpr = np.array([res_fp, res_tp])
+            # res = np.array([res_acc, res_auc])
+            res = {}
+            res['acc'] = res_acc
+            res['auc'] = res_auc
+            # tfpr = np.array([res_fp, res_tp])
+            tfpr['fp'] = res_fp
+            tfpr['tp'] = res_tp
         else:
             res = np.array(res_acc)
             tfpr = []
 
-        self.results = self.results_reports(res, tfpr)
+        self.results =  self.results_reports(res, tfpr)
 
     def results_reports(self, res, tfpr={}):
         '''

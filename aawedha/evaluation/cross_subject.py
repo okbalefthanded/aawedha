@@ -130,14 +130,17 @@ class CrossSubject(Evaluation):
         if isinstance(self.dataset.epochs, np.ndarray) and self.dataset.epochs.ndim == 3:
             #
             self.dataset.recover_dim()
-
+        
+        tfpr = {}
         # Aggregate results
         if res_auc:
             res = np.array([res_acc, res_auc])
-            tfpr = np.array([res_fp, res_tp])
+            #tfpr = np.array([res_fp, res_tp])
+            tfpr['fp'] = res_fp
+            tfpr['tp'] = res_tp
         else:
             res = np.array(res_acc)
-            tfpr = []
+            #tfpr = []
 
         self.results = self.results_reports(res, tfpr)
 
