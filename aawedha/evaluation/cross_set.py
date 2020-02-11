@@ -319,6 +319,8 @@ class CrossSet(Evaluation):
 
                 X_v = None
                 Y_v = None
+            else:
+                pass
 
         else:
             X_t = self._flatten(self.target.epochs[self.folds[fold][0]])

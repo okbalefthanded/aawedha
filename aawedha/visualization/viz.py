@@ -9,15 +9,28 @@ import numpy as np
 def plot_train_val_curve(model_history={}):
     '''
     '''
-    ky = list(model_history.keys())
-    for k in range(len(ky) // 2):
+    ky = sorted(list(model_history.keys()))
+    legends = ['Train', 'val']
+
+    n_ks = len(ky)
+    if n_ks > 2 and n_ks % 2 == 0:
+        n_figs = n_ks // 2
+    else:
+        n_figs = n_ks
+
+    #for k in range(len(ky) // 2):
+    for k in range(n_figs):
         plt.figure(k)
         plt.plot(model_history[ky[k]])
-        plt.plot(model_history[ky[k + len(ky) // 2]])
+        if n_ks > 2 and n_ks % 2 == 0:
+            plt.plot(model_history[ky[k + len(ky) // 2]])
+            plt.legend(legends, loc='upper left')
+        else:            
+            plt.legend(legends[0], loc='upper left')
         plt.title(ky[k].upper())
         plt.ylabel(ky[k].upper())
         plt.xlabel('Epoch')
-        plt.legend(['Train', 'val'], loc='upper left')
+        
         plt.show()
 
 
