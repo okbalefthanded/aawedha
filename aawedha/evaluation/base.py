@@ -283,7 +283,7 @@ class Evaluation(object):
             results['acc_mean'] = r1.mean()
             results['auc_mean'] = r2.mean()
             #
-            if self.__class__.__name__ == 'SignleSubject':
+            if self.__class__.__name__ == 'SingleSubject':
                 results['acc_mean_per_subj'] = r1.mean(axis=1)
                 results['auc_mean_per_subj'] = r2.mean(axis=1)
             #
@@ -295,7 +295,7 @@ class Evaluation(object):
             # mean across folds
             results['acc_mean_per_fold'] = res.mean(axis=0)
             # mean across subjects and folds
-            if self.__class__.__name__ == 'SignleSubject':
+            if self.__class__.__name__ == 'SingleSubject':
                 results['acc_mean_per_subj'] = res.mean(axis=1)
             results['acc_mean'] = res.mean()
 
