@@ -48,10 +48,15 @@ def plot_roc_curve(results={}, nfolds=4, subj=None):
     #    
     for s in operations:
         plt.figure()
-        for fld in range(nfolds):
-            fpr = results['fpr'][s][fld]
-            tpr = results['tpr'][s][fld]
-            roc_auc = results['auc'][s, fld]  # (subject, fold)
+        for fld in range(nfolds):           
+            if results['auc'].ndim == 1:
+                roc_auc = results['auc'][s] # 1fold
+                fpr = results['fpr'][s]
+                tpr = results['tpr'][s]
+            else:
+                roc_auc = results['auc'][s, fld]  # (subject, fold)
+                fpr = results['fpr'][s][fld]
+                tpr = results['tpr'][s][fld]
             tprs.append(interp(mean_fpr, fpr, tpr))
             plt.plot(fpr, tpr, lw=1, alpha=0.3,
                      label=f'ROC fold {fld} AUC = {roc_auc}')
