@@ -115,7 +115,7 @@ class Evaluation(object):
         self.log = lg
         if self.log:
             if dataset:
-                title = dataset.tilte
+                title = dataset.title
             else:
                 title = ''
             now = datetime.datetime.now().strftime('%c').replace(' ', '_')
