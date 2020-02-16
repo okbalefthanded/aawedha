@@ -30,7 +30,7 @@ def plot_temporal_filters(filters, fs):
 
 
 def plot_topomaps(data=None, channels=None, fs=512):
-    '''
+    '''Topographic maps
     '''
     montage = mne.channels.make_standard_montage('standard_1020')
     info = mne.create_info(channels, fs, 'eeg', montage=montage)
