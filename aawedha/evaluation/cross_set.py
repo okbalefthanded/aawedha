@@ -19,7 +19,22 @@ class CrossSet(Evaluation):
         self.target = target
 
     def select_channels(self, ds=[], chs=[], replacement={}):
-        '''
+        '''Select a subset of channels available among all datasets
+        Parameters
+        ----------
+        ds : dataset instance
+            a dataset to use in evaluation
+
+        chs: list of str
+            minimum channels the dataset will be resized from
+
+        replacement: dict
+            nearest electrodes in dataset to replace missing ones
+            in chs
+
+        Returns
+        -------
+        None
         '''
         channels = list(set(ds.ch_names).intersection(chs))
 
@@ -37,6 +52,11 @@ class CrossSet(Evaluation):
 
     def select_trials(self, source=[], ev=[]):
         '''
+        Parameters
+        ----------
+
+        Returns
+        -------
         '''
         ev = np.unique(self.target.events)
 
