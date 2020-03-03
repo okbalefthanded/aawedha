@@ -91,9 +91,9 @@ class Exoskeleton(DataSet):
         OVTK_StimulationId_VisualStimulationStart = 32779
         labels = [33024, 33025, 33026, 33027]
         if isinstance(epoch, list):
-            epoch = np.array(epoch).astype(int) * self.fs
+            epoch = (np.array(epoch) * self.fs).astype(int)
         else:
-            epoch = np.array([0, epoch]).astype(int) * self.fs
+            epoch = (np.array([0, epoch]) * self.fs).astype(int)
         x = []
         y = []
         for sess in records:

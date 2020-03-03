@@ -27,7 +27,7 @@ class SanDiego(DataSet):
     def load_raw(self, path=None, epoch_duration=1,
                  band=[5.0, 45.0], order=6, augment=False):
         list_of_files = sorted(glob.glob(path + 's*.mat'))
-        
+        ep = epoch_duration
         epoch_duration = np.round(
             np.array(epoch_duration) * self.fs).astype(int)
         onset = 39  # onset in samples
@@ -42,9 +42,12 @@ class SanDiego(DataSet):
             eeg = data['eeg'].transpose((2, 1, 3, 0))
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
-                augmented = 4
-                v = [eeg[onset + (stride * self.fs):onset + (stride * self.fs) +
-                         epoch_duration, :, :, :] for stride in range(augmented)]
+                stimulation = 4
+                #stimulation = 4 * self.fs
+                augmented = np.floor(4 * self.fs / epoch_duration).astype(int)                
+                #v = [eeg[onset + (stride * self.fs):onset + (stride * self.fs) + epoch_duration, :, :, :] for stride in range(augmented)]
+                strides = list(np.arange(0, stimulation, ep))
+                v = [eeg[onset + (int(s) * self.fs):onset + (int(s) * self.fs) + epoch_duration, :, :, :] for s in strides]
                 eeg = np.concatenate(v, axis=2)
                 samples, channels, blocks, targets = eeg.shape
                 '''
