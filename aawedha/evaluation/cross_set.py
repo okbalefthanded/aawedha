@@ -5,9 +5,44 @@ import numpy as np
 
 
 class CrossSet(Evaluation):
-    '''
-    '''
-    # evl = SingleSubject(partition=[2,1], dataset=dt, verbose=0, lg=False)
+    """Cross Set Evaluation
+
+    derived from base Evaluation class, performs cross set transfer learning
+
+    Attributes
+    ----------
+    source : list
+        list of datasets instances used to augment data in training.
+
+    target : dataset instance
+        dataset used for both training and evaluation
+
+    Methods
+    -------
+    select_channels()
+
+    select_trials()
+
+    resample()
+
+    generate_set()
+
+    generate_split()
+
+    run_evaluation()
+
+    _is_selectable()
+
+    _cross_set()
+
+    _diff()
+
+    _split_set()
+
+    _flatten()
+
+    _get_min_channels()   
+    """
 
     def __init__(self, source=[], target=[], partition=[],
                  verbose=2, lg=False):
@@ -50,14 +85,18 @@ class CrossSet(Evaluation):
                         chs[i] = replacement[r]
             ds.select_channels(chs)
 
-    def select_trials(self, source=[], ev=[]):
-        '''
+    def select_trials(self, source=[]):
+        """Keep trials in source datasets based on events from target
+        dataset
+
         Parameters
         ----------
+        source : dataset instance
 
         Returns
         -------
-        '''
+        no value
+        """
         ev = np.unique(self.target.events)
 
         d_source = self._diff(source.events)
@@ -78,7 +117,16 @@ class CrossSet(Evaluation):
         source.update_labels(new_labels, v)
 
     def resample(self):
-        '''
+        '''Resample all datasets (target and sources alike) used in evaluation
+            to lowest frequency sampling among them.
+
+        Parameters
+        ----------
+        no parameters
+
+        Returns
+        -------
+        no value
         '''
         fs_all = [src.fs for src in self.source]
         fs_all.append(self.target.fs)
@@ -91,7 +139,18 @@ class CrossSet(Evaluation):
         self.target.resample(min_fs)
 
     def generate_set(self, replacement={}):
-        '''
+        '''Unify datasets in a single format by keeping shared channels, trials
+        and resampling.
+
+        Parameters
+        ----------
+        replacement: dict
+            nearest electrodes in dataset to replace missing ones
+            in chs
+
+        Returns
+        -------
+        no value
         '''
         #
         chs = self._get_min_channels()
@@ -124,6 +183,10 @@ class CrossSet(Evaluation):
             True, exclude target subject from evaluation to insure a complete
             cross-subject evaluation, False otherwise
             default : True
+
+        replacement: dict
+            nearest electrodes in dataset to replace missing ones
+            in chs
 
         Returns
         -------
@@ -160,11 +223,17 @@ class CrossSet(Evaluation):
                     test_phase, exclude_subj=excl)
 
     def run_evaluation(self, pointer=None, check=False):
-        '''Perform evaluation on subsets of subjects
+        '''Perform evaluation on subsets of subjects.
+        sets results
 
         Parameters
         ----------
-        None
+        pointer : CheckPoint instance
+            save state of evaluation
+
+        check : bool
+            if True, sets evaluation checkpoint for future operation resume,
+            False otherwise
 
         Returns
         -------
@@ -232,10 +301,36 @@ class CrossSet(Evaluation):
             res = np.array(res_acc)
             tfpr = []
 
-        self.results =  self.results_reports(res, tfpr)
+        self.results = self.results_reports(res, tfpr)
 
     def results_reports(self, res, tfpr={}):
-        '''
+        '''Collects evaluation results on a single dict
+
+        Parameters
+        ----------
+        res : dict
+            contains models performance
+            - 'acc' : list
+                Accuracy on all folds
+            - 'auc' : list (only for binary class tasks)
+                AUC on all folds
+
+        tfpr : dict (only for binary class tasks)
+            - 'fp' : False positives rate on all fold
+            - 'tp' : True positives rate on all fold
+
+        Returns
+        -------
+        results : dict of evaluation results compiled from models performance on the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
+            - 'acc_mean' : double : Accuracy mean over all subjects and folds
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
+            For binary class tasks :
+            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
+            - 'auc_mean' : double :  AUC mean over all subjects and folds
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'tpr' : 1d array : True posititves rate
+            - 'fpr' : 1d array : False posititves rate
         '''
         if isinstance(self.target.epochs, np.ndarray):
             folds = len(self.folds)
@@ -272,13 +367,40 @@ class CrossSet(Evaluation):
         return results
 
     def _is_selectable(self, source=None):
-        '''
+        '''Find trials from source equivalent to target
+        Parameters
+        ----------
+        source : dataset instance
+
+        Returns
+        -------
+        ndarray of bool
+            indices of samples to keep
         '''
         y_target = np.unique(self.target.y[0])
         return np.logical_and.reduce(np.unique(source.y[0]) == y_target)
 
     def _cross_set(self, fold):
-        '''
+        '''Evaluate model on data split according to fold
+
+        Parameters
+        ----------
+        fold : int
+            fold index
+        Returns
+        -------
+        rets : dict
+            dict of evaluation results compiled from models performance on the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
+            - 'acc_mean' : double : Accuracy mean over all subjects and folds
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
+            For binary class tasks :
+            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
+            - 'auc_mean' : double :  AUC mean over all subjects and folds
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'tpr' : 1d array : True posititves rate
+            - 'fpr' : 1d array : False posititves rate
+
         '''
         split = self._split_set(fold)
         # normalize data
@@ -305,8 +427,18 @@ class CrossSet(Evaluation):
         return rets
 
     def _diff(self, events):
-        '''
-        '''
+        """Returns difference between events, used for SSVEP frequency stimulations
+
+        Parameters
+        ----------
+        events : ndarray
+            paradigm stimulus
+
+        Returns
+        -------
+        int
+            maxmimum difference between stimulus (in Hz if frequencies)
+        """
         if isinstance(events, list):
             # some datasets attr are lists and not ndarray
             events = events[0]
@@ -314,13 +446,33 @@ class CrossSet(Evaluation):
         ev = np.array([float(ev[i]) for i in range(ev.size) if isfloat(ev[i])])
         d = np.unique(np.diff(sorted(ev)))
         if d.size > 1:
-            return np.max(d)  # float converion results in inconsisten values
+            return np.max(d)  # float conversion results in inconsisten values
         else:
             return d.item()
 
     def _split_set(self, fold):
-        '''
-        '''
+        """fuse target and source data and return split of three sets for 
+        Train/validation/test
+
+        Parameters
+        ----------
+        fold : int
+            fold index in the generated splits
+
+        Returns
+        -------
+        split : dict
+            phase data and their corresonding labels
+            ndarrays :
+            - X_train : train data
+            - X_test  : test data
+            - X_val   : validation data
+            - Y_train : train labels
+            - Y_test  : test labels
+            - Y_val   : validation labels
+            - classes : target class labels in numbers
+        """
+
         kernels = 1
         split = {}
         X_src = []
@@ -387,14 +539,31 @@ class CrossSet(Evaluation):
         return split
 
     def _flatten(self, ndarray):
-        '''
-        '''
+        """concatenate list of ndarrays with inconsistent number of elements in last dimension
+        in a single ndarray
+
+        Parameters
+        ----------
+        ndarray : list of ndarray
+            arbitrary ndarray
+
+        Returns
+        -------
+        ndarray :
+            single ndarray with consistent number of elements in the last
+            dimension
+        """
         return np.concatenate([ndarray[idx] for idx in
                                range(len(ndarray))], axis=-1)
 
     def _get_min_channels(self):
-        '''
-        '''
+        """find minimum channels shared between all datasets
+
+        Returns
+        -------
+        list :
+            minimum channels shared between all datasets
+        """
         len_ch = [len(st.ch_names) for st in self.source]
         len_ch.append(len(self.target.ch_names))
         min_id = np.argmin(len_ch)
@@ -413,12 +582,12 @@ class CrossSet(Evaluation):
         intersection = [list(set(src.ch_names).intersection(chs)) for src in self.source]
         intersection.append(list(set(self.target.ch_names).intersection(chs)))
 
-        idx = np.argmin([len(ls) for ls in intersection])  
+        idx = np.argmin([len(ls) for ls in intersection])
 
         return intersection[idx]
 
     def _assert_partiton(self, subjects=0, excl=False):
-        '''Assert if partition to be used do not surpass number of subjects available
+        """Assert if partition to be used do not surpass number of subjects available
         in dataset
 
         Parameters
@@ -434,6 +603,6 @@ class CrossSet(Evaluation):
         -------
         bool : True if number of subjects is less than the sum of parition
             False otherwise
-        '''
+        """
         prt = np.sum(self.partition)
         return self.n_subjects < prt

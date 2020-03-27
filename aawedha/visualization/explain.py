@@ -4,8 +4,17 @@ import numpy as np
 
 
 def plot_temporal_filters(filters, fs):
-    '''Temporal filters
-    '''
+    """Plot learned temporal filters.
+
+    Parameters
+    ----------
+    filters : ndarray
+        convolution filters learned by model
+
+    fs : int
+       sampling frequency of EEG recordings.
+    """
+
     kernel_length = filters.shape[2]
     time = np.arange(0, kernel_length/fs, 1/fs) * 1000
     n_filters = filters.shape[-1]
@@ -30,8 +39,18 @@ def plot_temporal_filters(filters, fs):
 
 
 def plot_topomaps(data=None, channels=None, fs=512):
-    '''Topographic maps
-    '''
+    """Plot topomaps
+    spatial distribution of data in the scalp, uses MNE plot_topomap
+
+    Parameters
+    ----------
+    data : ndarray
+        brain activity distributed accors channels.
+    channels : list of str
+        electrodes names
+    fs : int
+        sampling frequency of EEG recordings. by default 512 (LARESI dataset)
+    """
     montage = mne.channels.make_standard_montage('standard_1020')
     info = mne.create_info(channels, fs, 'eeg', montage=montage)
     if data.ndim == 2:
@@ -46,9 +65,20 @@ def plot_topomaps(data=None, channels=None, fs=512):
 
 
 def plot_spectral_power(filters, samples, fs, kernels):
-    '''
-    '''
-       
+    """Plot spectral power of learned filters by model
+
+    Parameters
+    ----------
+    filters : ndarray
+        convolution filters learned by model
+    samples : [type]
+        [description]
+    fs : int
+        sampling frequency of EEG recordings. by default 512 (LARESI dataset)
+    kernels : list of int
+        indices of filters to visualize.
+    """
+
     plt.plot()
     for krn in kernels:
         k = filters[:, :, :, :, krn].squeeze()

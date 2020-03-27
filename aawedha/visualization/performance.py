@@ -7,8 +7,16 @@ import numpy as np
 
 
 def plot_train_val_curve(model_history={}):
-    '''
-    '''
+    """plot learning curves progression following epochs
+
+    Parameters
+    ----------
+    model_history : dict
+        keras History.history dictionary recording training loss values and
+        metrics values at successive epochs, as well as validation loss
+        values and validation metrics values (if applicable).
+    """
+
     ky = sorted(list(model_history.keys()))
     legends = ['Train', 'val']
 
@@ -30,13 +38,37 @@ def plot_train_val_curve(model_history={}):
         plt.title(ky[k].upper())
         plt.ylabel(ky[k].upper())
         plt.xlabel('Epoch')
-        
+
         plt.show()
 
 
 def plot_roc_curve(results={}, nfolds=4, subj=None):
-    '''
-    '''
+    """Plot receiver operating characteristic curve (ROC) in binary
+    classification tasks for each fold.
+
+    Parameters
+    ----------
+    results : dict,
+        dict of evaluation results compiled from models performance on the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
+            - 'acc_mean' : double : Accuracy mean over all subjects and folds
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
+            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
+            For binary class tasks :
+            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
+            - 'auc_mean' : double :  AUC mean over all subjects and folds
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'auc_mean_per_subj' :  AUC mean per Subject over all folds
+                [only for SingleSubject evaluation]
+            - 'tpr' : 1d array : True posititves rate
+            - 'fpr' : 1d array : False posititves rate
+
+    nfolds : int
+        total number of folds in experiment
+
+    subj : int, optional
+        subject index in dataset, if None plot for each subject.
+    """
     mean_fpr = np.linspace(0, 1, 100)
     tprs = []
     #
@@ -87,8 +119,24 @@ def plot_roc_curve(results={}, nfolds=4, subj=None):
 
 def plot_confusion_matrix(cm, target_names, title='Confusion matrix',
                           cmap="Blues"):
-    '''
-    '''
+    """plot confusion matrix as a seaborn heatmap
+
+    Parameters
+    ----------
+    cm : ndarray (n_classes x n_classes)
+        scikit-learn confusion matrix
+    target_names : list of str
+        classes names
+    title : str
+        heatmap title by default 'Confusion matrix'
+    cmap : str, optional
+        The mapping from data values to color space, by default "Blues"
+
+    Returns
+    -------
+    matplotlib Axes
+        Axes object with the heatmap.
+    """
     cm = 100 * cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     df = pd.DataFrame(data=cm, columns=target_names, index=target_names)
@@ -103,8 +151,30 @@ def plot_confusion_matrix(cm, target_names, title='Confusion matrix',
 
 
 def plot_subjects_perf(results={}):
-    '''
-    '''
+    """Plot metrics performance per subject as bars.
+
+    Parameters
+    ----------
+    results : dict,
+        dict of evaluation results compiled from models performance on the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
+            - 'acc_mean' : double : Accuracy mean over all subjects and folds
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
+            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
+            For binary class tasks :
+            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
+            - 'auc_mean' : double :  AUC mean over all subjects and folds
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'auc_mean_per_subj' :  AUC mean per Subject over all folds
+                [only for SingleSubject evaluation]
+            - 'tpr' : 1d array : True posititves rate
+            - 'fpr' : 1d array : False posititves rate
+    Returns
+    -------
+    fig: matplotlib pyplot figure instance.
+ 
+    ax : matplotlib Axes instance.
+    """
     plt.rcParams["figure.figsize"] = (10, 5)
     labels = ['acc_mean_per_subj', 'auc_mean_per_subj']
     x = np.arange(len(results['acc_mean_per_subj']))  # the label locations

@@ -98,6 +98,7 @@ class Evaluation(object):
             default : False
 
     '''
+
     def __init__(self, dataset=None, model=None, partition=[], folds=[],
                  verbose=2, lg=False):
         '''
@@ -120,7 +121,7 @@ class Evaluation(object):
                 title = ''
             now = datetime.datetime.now().strftime('%c').replace(' ', '_')
             f = 'aawedha/logs/'+'_'.join([self.__class__.__name__,
-                                         title, now, '.log'])
+                                          title, now, '.log'])
             self.logger = log(fname=f, logger_name='eval_log')
         else:
             self.logger = None
@@ -137,7 +138,7 @@ class Evaluation(object):
 
     @abc.abstractmethod
     def run_evaluation(self):
-        '''Main evaluation process 
+        '''Main evaluation process
             Overriden in each type of evaluation : SingleSubject | CrossSubject
         '''
         pass
@@ -147,11 +148,13 @@ class Evaluation(object):
 
         Parameters
         ----------
-        None
+        run : bool
+            if true resume evaluation at checkpoint
 
         Returns
         -------
-        no value
+        instance of evaluation
+
         '''
 
         '''
@@ -170,12 +173,12 @@ class Evaluation(object):
 
     def set_dataset(self, dt=None):
         '''Instantiate dataset with dt
-        
+
         Parameters
         ----------
         dt : dataset instance
             a dataset object
-        
+
         Returns
         -------
         no value
@@ -185,15 +188,16 @@ class Evaluation(object):
     def measure_performance(self, Y_test, probs):
         '''Measure model performance on dataset
 
-        Calculates model performance on metrics and sets Confusion Matrix for each fold
+        Calculates model performance on metrics and sets Confusion Matrix for
+        each fold
 
         Parameters
         ----------
-        Y_test : 2d array (n_examples x n_classes) 
+        Y_test : 2d array (n_examples x n_classes)
             true class labels in Tensorflow format
 
         probs : 2d array (n_examples x n_classes)
-            model output predictions as probability of belonging to a class   
+            model output predictions as probability of belonging to a class
 
         Returns
         -------
@@ -201,7 +205,7 @@ class Evaluation(object):
                 accuracy value of model per fold
             auc_score : float
                 AUC value of model per fold (only for Binary class tasks)
-            fp_rate : 1d array 
+            fp_rate : 1d array
                 increasing false positive rate
             tp_rate : 1d array
                 increasing true positive rate
@@ -222,7 +226,7 @@ class Evaluation(object):
             return acc.item()
 
     def results_reports(self, res, tfpr={}):
-        '''Collects evaluation results on a single dict 
+        '''Collects evaluation results on a single dict
 
         Parameters
         ----------
@@ -254,7 +258,7 @@ class Evaluation(object):
             - 'tpr' : 1d array : True posititves rate
             - 'fpr' : 1d array : False posititves rate
         '''
- 
+
         if isinstance(self.dataset.epochs, np.ndarray):
             folds = len(self.folds)
             # subjects = self._get_n_subjects()
@@ -264,10 +268,10 @@ class Evaluation(object):
 
             if self.__class__.__name__ == 'CrossSubject':
                 self.predictions = np.array(self.predictions).reshape(
-                                (folds, examples, dim))
+                    (folds, examples, dim))
             elif self.__class__.__name__ == 'SingleSubject':
                 self.predictions = np.array(self.predictions).reshape(
-                            (self.n_subjects, folds, examples, dim))
+                    (self.n_subjects, folds, examples, dim))
         #
         results = {}
         #
@@ -378,7 +382,8 @@ class Evaluation(object):
                                       ])
             else:
                 for _ in range(nfolds):
-                    tmp = np.array(random.sample(range(population), population))
+                    tmp = np.array(random.sample(
+                        range(population), population))
                     folds.append([tmp[:tr], tmp[tr:tr + vl], tmp[-ts:]])
         #
         return folds
@@ -505,7 +510,8 @@ class Evaluation(object):
             folderpath = 'trained'
         prdg = self.dataset.paradigm.title
         dt = self.dataset.title
-        filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])
+        filepath = folderpath + '/' + \
+            '_'.join([self.model.name, prdg, dt, '.h5'])
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
@@ -544,7 +550,32 @@ class Evaluation(object):
             self.model_config = model_config
 
     def set_config(self, model_config):
-        '''
+        '''Setter for model_config
+
+        Parameters
+        ----------
+        model_config : dict
+            dict of model configurations, used in compile() and fit()
+            compile :
+            - loss : str : loss function to optimize during training
+                - default  : 'categorical_crossentropy'
+            - optimizer : str | Keras optimizer instance : SGD optimizer
+                - default : 'adam'
+            - metrics : list : str | Keras metrics : training metrics
+                - default : multiclass tasks ['accuracy']
+                            binary tasks ['accuracy', AUC()]
+            fit :
+            - batch : int : batch size
+                - default : 64
+            - epochs : int : training epochs
+                - default : 300
+            - callbacks : list : Keras model callbacks
+                - default : []
+            default : empty dict, attributed will be set at compile/fit calls
+
+        Returns
+        -------
+        no value
         '''
         self.model_config = model_config
 
@@ -561,7 +592,7 @@ class Evaluation(object):
         no value
         '''
         s = ['train', 'val', 'test']
-        
+
         if self.dataset:
             data = f' Dataset: {self.dataset.title}'
             if isinstance(self.dataset.epochs, list):
@@ -572,7 +603,9 @@ class Evaluation(object):
             data = ''
             duration = '0'
 
-        prt = 'Subjects partition '+', '.join(f'{s[i], self.partition[i]}' for i in range(len(self.partition)))
+        prt = 'Subjects partition ' + \
+            ', '.join(f'{s[i], self.partition[i]}' for i in range(
+                len(self.partition)))
         model = f'Model: {self.model.name}'
         model_config = f'Model config: {self._get_model_configs_info()}'
         exp_info = ' '.join([data, duration, prt, model, model_config])
@@ -663,7 +696,8 @@ class Evaluation(object):
                 their sum otherwise
         '''
         if self.dataset:
-            ts = len(self.dataset.test_epochs) if hasattr(self.dataset, 'test_epochs') else 0
+            ts = len(self.dataset.test_epochs) if hasattr(
+                self.dataset, 'test_epochs') else 0
             if self._equale_subjects():
                 return len(self.dataset.epochs)
             else:
@@ -674,7 +708,8 @@ class Evaluation(object):
     def _compile_model(self):
         '''Compile model using speficied model_config, default values otherwise
 
-        Sets model_compiled attribute to true after successful model compilation
+        Sets model_compiled attribute to true after successful model 
+            compilation
 
         Parameters
         ----------
@@ -728,7 +763,7 @@ class Evaluation(object):
 
         '''
         batch, ep, clbs = self._get_fit_configs()
-        
+
         if X_val is None:
             val = None
         else:
@@ -843,7 +878,15 @@ class Evaluation(object):
         return subjects < prt
 
     def _load_checkpoint(self):
-        '''
+        '''load saved checkpoint to resume evaluation
+        Parameters
+        ----------
+        no parameters
+
+        Returns
+        -------
+        checkpoint :
+            a checkpoint of a saved evaluation
         '''
         file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
         if os.path.exists(file_name):

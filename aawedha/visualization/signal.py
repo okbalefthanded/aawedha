@@ -4,8 +4,20 @@ from typing import Iterable
 
 
 def plot_grand_average(data=None, subject=None, channel='Cz'):
-    '''
-    '''
+    """Plot grande average ERPs.
+
+    Parameters
+    ----------
+    data : dataset instance
+        epoched data
+
+    subject : int, optional
+        subject index in dataset, if None plot grand average.
+
+    channel : list of str
+        channels to calculate average from, by default 'Cz'
+    """
+
     samples = data.epochs[0].shape[0]
     time = np.linspace(0., samples/data.fs, samples) * 1000
 

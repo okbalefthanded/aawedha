@@ -81,8 +81,12 @@ class SingleSubject(Evaluation):
             - list of subjects from the set of subjects available in dataset
             default : None, evaluate each subject
 
-        checkpoint : bool
-            if True, sets evaluation checkpoint for future operation resume, False otherwise
+        pointer : CheckPoint instance
+            save state of evaluation
+
+        check : bool
+            if True, sets evaluation checkpoint for future operation resume,
+            False otherwise
 
         Returns
         -------

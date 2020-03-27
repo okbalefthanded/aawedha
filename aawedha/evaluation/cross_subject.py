@@ -73,7 +73,12 @@ class CrossSubject(Evaluation):
 
         Parameters
         ----------
-        None
+        pointer : CheckPoint instance
+            save state of evaluation
+
+        check : bool
+            if True, sets evaluation checkpoint for future operation resume,
+            False otherwise
 
         Returns
         -------
