@@ -436,8 +436,9 @@ class SingleSubject(Evaluation):
             elif len(self.partition) == 3:
                 # generate test set from the entire set
                 if np.sum(np.diff(y) == 0) > np.sum(np.diff(y) == 1):
-                    tmp = np.random.choice(train, tr)
-                    folds.append([tmp, train[~np.in1d(train, tmp)], test])
+                    tmp = np.random.choice(train, tr, replace=False)
+                    idx = ~np.isin(train, tmp, assume_unique=True) 
+                    folds.append([tmp, train[idx], test])
                 else:
                     folds.append([train[:tr], train[tr:tr + vl], test])
         return folds
