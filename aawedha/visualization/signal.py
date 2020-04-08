@@ -1,3 +1,4 @@
+from aawedha.analysis.time_frequency import spectral_power, wavelet
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Iterable
@@ -66,3 +67,78 @@ def plot_grand_average(data=None, subject=None, channel='Cz'):
     plt.xlabel('Time (ms)')
     plt.ylabel('µV')
     plt.show()
+
+
+def plot_spectral_power(data, subject=0, channel='Poz'):
+    """Plot spectral power for a given subject in a dataset at
+    a specified electrode.
+
+    Parameters
+    ----------
+    data : dataset instance
+        epoched EEG signal dataset
+    subject : int
+        given index for a sujbect, by default 0 (first subject in the dataset)
+    channel : str, optional
+        electrode name, by default 'Poz' (suitable for SSVEP based experiments)
+    """
+
+    pwr, frequencies = spectral_power(data, subject, channel)
+
+    if data.paradigm.title == 'ERP':
+        stimuli = data.events[subject]
+    else:
+        stimuli = data.paradigm.frequencies
+
+    for fr in range(len(pwr)):
+        event = stimuli[fr]
+
+        if event == 'idle':
+            ff = np.zeros((3))
+        else:
+            event = float(event)
+            ff = np.array([event, 2*event, 3*event])
+        f_idx = np.logical_or(frequencies == ff[0], frequencies == ff[1], frequencies == ff[2])
+
+        plt.figure()
+        plt.plot(frequencies, pwr[fr])
+        plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
+        plt.xlim(0, 50)
+        plt.xlabel('Frequnecy [HZ]')
+        plt.ylabel('Power Spectrum')
+        plt.title(f'Subject: {subject + 1} Frequency: {stimuli[fr]}, at {channel}')
+
+
+def plot_time_frequency(data, subject=0, channel='POz', w=4.):
+    """Plot wavelet transform in a colormesh for each event in dataset
+
+    Parameters
+    ----------
+    data : dataset instance
+        epoched EEG signal dataset
+    subject : int
+        given index for a sujbect, by default 0 (first subject in the dataset)
+    channel : str, optional
+        electrode name, by default 'POz'
+
+    w = float
+        wavelet width
+    """
+    cwtm, t, freq = wavelet(data, subject, channel, w)
+
+    if data.paradigm.title == 'ERP':
+        stimuli = data.events[subject]
+    else:
+        stimuli = data.paradigm.frequencies
+
+    for ev in range(len(cwtm)):
+        fig, ax = plt.subplots()
+
+        im = ax.pcolormesh(t, freq, cwtm[ev], cmap='viridis')
+        ax.set_ylim(0, 50)
+        ax.set_xlabel('Time ms')
+        ax.set_ylabel('Frequency (Hz)')
+        ax.set_title(f'Subject: {subject + 1} Frequency: {stimuli[ev]}, at {channel}')
+        fig.colorbar(im, ax=ax)
+
+        plt.show()
