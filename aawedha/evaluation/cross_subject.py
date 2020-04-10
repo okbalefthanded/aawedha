@@ -135,17 +135,17 @@ class CrossSubject(Evaluation):
         if isinstance(self.dataset.epochs, np.ndarray) and self.dataset.epochs.ndim == 3:
             #
             self.dataset.recover_dim()
-        
+
         tfpr = {}
         # Aggregate results
         if res_auc:
             res = np.array([res_acc, res_auc])
-            #tfpr = np.array([res_fp, res_tp])
+            # tfpr = np.array([res_fp, res_tp])
             tfpr['fp'] = res_fp
             tfpr['tp'] = res_tp
         else:
             res = np.array(res_acc)
-            #tfpr = []
+            # tfpr = []
 
         self.results = self.results_reports(res, tfpr)
 
@@ -166,7 +166,9 @@ class CrossSubject(Evaluation):
         split = self._split_set(fold)
         # normalize data
         X_train, mu, sigma = self.fit_scale(split['X_train'])
-        X_val = self.transform_scale(split['X_val'], mu, sigma)
+        X_val = split['X_val']
+        if X_val:
+            X_val = self.transform_scale(split['X_val'], mu, sigma)
         X_test = self.transform_scale(split['X_test'], mu, sigma)
         Y_train = split['Y_train']
         Y_val = split['Y_val']
@@ -201,20 +203,23 @@ class CrossSubject(Evaluation):
         split = {}
         kernels = 1
         if isinstance(self.dataset.epochs, list):
-            # TODO
-            X_train, Y_train = self._cat_lists(fold, 0)
-            X_val, Y_val = self._cat_lists(fold, 1)
+            X_train, Y_train = self._cat_lists(fold, 0)            
             X_test, Y_test = self._cat_lists(fold, 2)
             classes = np.unique(Y_train)
             samples, channels, _ = X_train.shape
             X_train = X_train.transpose((2, 1, 0)).reshape(
-                (X_train.shape[2], kernels, channels, samples))
-            X_val = X_val.transpose((2, 1, 0)).reshape(
-                (X_val.shape[2], kernels, channels, samples))
+                (X_train.shape[2], kernels, channels, samples))        
             X_test = X_test.transpose((2, 1, 0)).reshape(
                 (X_test.shape[2], kernels, channels, samples))
-            Y_train = self.labels_to_categorical(Y_train)
-            Y_val = self.labels_to_categorical(Y_val)
+            if self._has_val():
+                X_val, Y_val = self._cat_lists(fold, 1)
+                X_val = X_val.transpose((2, 1, 0)).reshape(
+                    (X_val.shape[2], kernels, channels, samples))
+                Y_val = self.labels_to_categorical(Y_val)
+            else:
+                X_val, Y_val = None, None
+
+            Y_train = self.labels_to_categorical(Y_train)           
             Y_test = self.labels_to_categorical(Y_test)
 
         else:
@@ -233,12 +238,14 @@ class CrossSubject(Evaluation):
 
             X_train = x[self.folds[fold][0], :, :, :].reshape(
                 (tr * trials, kernels, channels, samples))
-            X_val = x[self.folds[fold][1], :, :, :].reshape(
-                (val * trials, kernels, channels, samples))
-
             ctg_dim = y.shape[2]
             Y_train = y[self.folds[fold][0], :].reshape((tr * trials, ctg_dim))
-            Y_val = y[self.folds[fold][1], :].reshape((val * trials, ctg_dim))
+            if self._has_val():
+                X_val = x[self.folds[fold][1], :, :, :].reshape(
+                        (val * trials, kernels, channels, samples))
+                Y_val = y[self.folds[fold][1], :].reshape((val * trials, ctg_dim))
+            else:
+                X_val, Y_val = None, None
 
             if hasattr(self.dataset, 'test_epochs'):
                 trs = self.dataset.test_epochs.shape[3]
@@ -291,9 +298,9 @@ class CrossSubject(Evaluation):
         if phase == 2:  # test phase
             if hasattr(self.dataset, 'test_epochs'):
                 X = np.concatenate([self.dataset.test_epochs[idx]
-                                    for idx in range(self.n_subjects)], axis=-1)
+                                    for idx in self.folds[fold][phase]], axis=-1)
                 Y = np.concatenate([self.dataset.test_y[idx]
-                                    for idx in range(self.n_subjects)], axis=-1)
+                                    for idx in self.folds[fold][phase]], axis=-1)
                 return X, Y
         X = np.concatenate([self.dataset.epochs[idx]
                             for idx in self.folds[fold][phase]], axis=-1)

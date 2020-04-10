@@ -896,3 +896,19 @@ class Evaluation(object):
             raise FileNotFoundError
         f.close()
         return chkpoint
+
+    def _has_val(self):
+        """test if evaluation has partition for validation phase
+
+        Returns
+        -------
+        int :
+           if 0 no validation, otherwise number of  parts from dataset to use in validation
+        """
+        train = self.partition[0]
+        if len(self.partition) == 3:
+            test = self.partition[2]
+        else:
+            test = 1
+
+        return self._get_n_subjects() - train - test
