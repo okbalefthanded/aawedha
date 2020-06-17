@@ -41,7 +41,7 @@ class CrossSet(Evaluation):
 
     _flatten()
 
-    _get_min_channels()   
+    _get_min_channels()
     """
 
     def __init__(self, source=[], target=[], partition=[],
@@ -52,6 +52,16 @@ class CrossSet(Evaluation):
                          verbose=verbose, lg=lg)
         self.source = source
         self.target = target
+
+    def __str__(self):
+        name = self.__class__.__name__
+        model = self.model.name if self.model else 'NotSet'
+        source_info = '\n'.join([str(src) for src in self.soure])
+        info = (f'Type: {name}',
+                f'Target Set: {self.target.info}'
+                f'Source: {source_info}',
+                f'Model: {model}')
+        return '\n'.joint(info)
 
     def select_channels(self, ds=[], chs=[], replacement={}):
         '''Select a subset of channels available among all datasets
@@ -390,14 +400,19 @@ class CrossSet(Evaluation):
         Returns
         -------
         rets : dict
-            dict of evaluation results compiled from models performance on the dataset
-            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
+            dict of evaluation results compiled from models performance on
+            the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds
+            (subjects x folds)
             - 'acc_mean' : double : Accuracy mean over all subjects and folds
-            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all
+            subjects
             For binary class tasks :
-            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
+            - 'auc' : 2d array : AUC for each subjects on each folds
+            (subjects x folds)
             - 'auc_mean' : double :  AUC mean over all subjects and folds
-            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all
+             subjects
             - 'tpr' : 1d array : True posititves rate
             - 'fpr' : 1d array : False posititves rate
 

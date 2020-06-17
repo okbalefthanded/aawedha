@@ -9,7 +9,7 @@ import numpy as np
 class Dummy(DataSet):
 
     def __init__(self, train_shape=(5, 512, 14, 100),
-                 test_shape=(5, 512, 14, 50), nb_classes=5):
+                 test_shape=(5, 512, 14, 50), nb_classes=5, fs=512):
         '''
         '''
         super().__init__(title='Dummy', ch_names=[],
@@ -23,6 +23,7 @@ class Dummy(DataSet):
                                         size=(test_shape[0], test_shape[3]))
         self.test_events = []
         #
+        self.fs = fs
         self.x_train = None
         self.x_val = None
         self.x_test = None

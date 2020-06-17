@@ -63,6 +63,18 @@ class DataSet(metaclass=ABCMeta):
         self.fs = fs
         self.doi = doi
 
+    def __str__(self):
+        subjects = len(self.epochs) if self.epochs else 0
+        epoch_length = self.epochs.shape[1] if self.epochs else 0.0
+        trials = self.epochs[-1] if self.epochs else 0
+        info = (f'DataSet: {self.title} | <{self.paradigm.title}>',
+                f'sampling rate: {self.fs}',
+                f'Subjects: {subjects}',
+                f'Epoch length: {epoch_length}'
+                f'Channels: {self.ch_names}',
+                f'Trials:{trials}')
+        return '\n'.joint(info)
+
     @abstractmethod
     def load_raw(self):
         pass

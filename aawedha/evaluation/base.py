@@ -48,6 +48,9 @@ class Evaluation(object):
         lg : bool
             if True uses logger to log experiment configurations and results, default False
 
+        logger : logger
+            used to log evaluation results
+
         predictions : ndarray of predictions
             models output for each example on the dataset :
                 - SingleSubject evaluaion : subjects x folds x Trials x dim
@@ -56,15 +59,23 @@ class Evaluation(object):
         cm : list
             confusion matrix per fold
 
-        results : dict of evaluation results compiled from models performance on the dataset
-            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
-            - 'acc_mean' : double : Accuracy mean over all subjects and folds
-            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
-            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
+        results : dict of evaluation results compiled from models performance
+        on the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds
+            (subjects x folds)
+            - 'acc_mean' : double : Accuracy mean over all subjects and
+            folds
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over
+            all subjects
+            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over
+            all folds [only for SingleSubject evaluation]
             For binary class tasks :
-            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
-            - 'auc_mean' : double :  AUC mean over all subjects and folds
-            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'auc' : 2d array : AUC for each subjects on each folds
+            (subjects x folds)
+            - 'auc_mean' : double :  AUC mean over all subjects and
+            folds
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over
+            all subjects
             - 'auc_mean_per_subj' :  AUC mean per Subject over all folds
                 [only for SingleSubject evaluation]
             - 'tpr' : 1d array : True posititves rate
@@ -128,6 +139,14 @@ class Evaluation(object):
         self.model_compiled = False
         self.model_config = {}
         self.current = None
+
+    def __str__(self):
+        name = self.__class__.__name__
+        model = self.model.name if self.model else 'NotSet'
+        info = (f'Type: {name}',
+                f'DataSet: {self.dataset.info}',
+                f'Model: {model}')
+        return '\n'.joint(info)
 
     @abc.abstractmethod
     def generate_split(self, nfolds):
@@ -581,7 +600,8 @@ class Evaluation(object):
 
     def log_experiment(self):
         '''Write in logger, evaluation information after completing a fold
-        Message format : date-time-logger_name-logging_level-{fold|subject}-{ACC|AUC}-performance
+        Message format :
+        date-time-logger_name-logging_level-{fold|subject}-{ACC|AUC}-performance
 
         Parameters
         ----------

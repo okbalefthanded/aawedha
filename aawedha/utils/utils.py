@@ -1,9 +1,21 @@
 import logging
 
 
-def log(fname='', logger_name=''):
-    '''
-    '''
+def log(fname='logger.log', logger_name='eval_log'):
+    """define a logger instance
+
+    Parameters
+    ----------
+    fname : str
+        logger file path
+    logger_name : str
+        logger name
+
+    Returns
+    -------
+    logger
+        logger instance
+    """
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.DEBUG)
     # Create handlers

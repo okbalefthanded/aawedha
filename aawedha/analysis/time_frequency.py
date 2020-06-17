@@ -1,10 +1,10 @@
 
 from scipy.fft import fft
 from scipy import signal
-import numpy as np 
+import numpy as np
 
 
-def spectral_power(data, subject=0, channel='Poz'):
+def spectral_power(data, subject=0, channel='POz'):
     """Calculate spectral power for each event in a given dataset
     for a subject at a specified channel
 
@@ -23,13 +23,14 @@ def spectral_power(data, subject=0, channel='Poz'):
         spectral power of each event in the dataset
 
     frequencies: ndarray
-        array of frequenices: 0 - nyquist 
+        array of frequenices: 0 - nyquist
     """
 
     samples, channels, trials = data.epochs[subject].shape
     y = data.y[subject]
     nyquist = data.fs / 2
-    frequencies = np.linspace(0, nyquist, np.floor(samples/2).astype(int)+1)
+    # frequencies = np.linspace(0, nyquist, np.floor(samples/2).astype(int)+1)
+    frequencies = np.arange(0, nyquist, data.fs/samples)
 
     ev_count = np.unique(data.events[subject]).size
 
@@ -98,3 +99,44 @@ def wavelet(data, subject=0, channel='POz', w=4.):
         cwtm.append(tmp)
 
     return cwtm, t, freq
+
+
+def snr(power, freqs, fs):
+    """Calculate frequency stimulation SNR
+
+    Reference:
+    "Brain–computer interface based on intermodulation frequency"
+    Xiaogang Chen, Zhikai Chen, Shangkai Gao and Xiaorong Gao
+    Journal of Neural Engineering, Volume 10, Number 6
+    https://doi.org/10.1088/1741-2560/10/6/066009
+
+
+    Parameters
+    ----------
+    power : list of 1d array
+        spectral power
+    freqs : list
+        ssvep stimuli
+    fs : int
+        sampling rate
+
+    Returns
+    -------
+    1d array
+        ssvep frequencies SNR
+    """
+    nyquist = fs / 2
+    samples = len(power[0])
+    # frequencies = np.linspace(0, nyquist, samples)
+    frequencies = np.arange(0, nyquist, nyquist/samples)
+    if freqs[0] == 'idle':
+        power = power[1:]
+        freqs = freqs[1:]
+    snr = []
+    for i in range(len(freqs)):
+        idx = np.argwhere(frequencies == float(freqs[i])).item()
+        adj = [idx + r for r in range(-4, 4) if r != 0]
+        # idx = np.logical_or.reduce([frequencies == float(freqs[i])+r for r in range(-4,4) if r !=0])
+        s = power[i][idx] / np.mean(power[i][adj])
+        snr.append(s.item())
+    return np.array(snr)
