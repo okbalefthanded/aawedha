@@ -6,3 +6,4 @@ keras
 tensorflow-addons
 matplotlib
 seaborn
+pynvml

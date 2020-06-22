@@ -113,6 +113,7 @@ class SingleSubject(Evaluation):
                 n_subj = self._fuse_data()
                 self.n_subjects = n_subj
         #
+        '''
         if self.current:
             operations = range(self.current, self.n_subjects)
         elif subject:
@@ -120,6 +121,9 @@ class SingleSubject(Evaluation):
         else:
             operations = range(self.n_subjects)
         #
+        '''
+        operations = self.get_operations(subject)
+
         if not self.model_compiled:
             self._compile_model()
 
@@ -152,7 +156,8 @@ class SingleSubject(Evaluation):
             if check:
                 pointer.set_checkpoint(subj+1, self.model)
 
-        if not isinstance(self.dataset.epochs, list) and self.dataset.epochs.ndim == 3:
+        if (not isinstance(self.dataset.epochs, list) and
+                self.dataset.epochs.ndim == 3):
             self.dataset.recover_dim()
 
         # Aggregate results
@@ -167,6 +172,34 @@ class SingleSubject(Evaluation):
             res = np.array(res_acc)
         #
         self.results = self.results_reports(res, tfpr)
+
+    def get_operations(self, subject=None):
+        """get an iterable object for evaluation, it can be
+        all subjects or a defined subset of subjects.
+        In case of long evaluation, the iterble starts from the current
+        index
+
+        Parameters
+        ----------
+        subject : list | int, optional
+            defined list of subjects or a just a single one, by default None
+
+        Returns
+        -------
+        range | list
+            selection of subjects to evaluate, from all subjects available to a
+            defined subset
+        """
+        if self.current and not subject:
+            operations = range(self.current, self.n_subjects)
+        elif type(subject) is list:
+            operations = subject
+        elif type(subject) is int:
+            operations = [subject]
+        else:
+            operations = range(self.n_subjects)
+
+        return operations
 
     def _single_subject(self, subj, indie=False):
         '''Evaluate a subject on each fold
@@ -269,8 +302,8 @@ class SingleSubject(Evaluation):
         return self.dataset.epochs.shape[0]  # n_subject
 
     def _split_set(self, x=None, y=None, subj=0, fold=0, indie=False):
-        '''Splits Subject data to be evaluated into train/validation/test sets following
-        the indices specified in the fold
+        '''Splits Subject data to be evaluated into train/validation/test
+        sets following the indices specified in the fold
 
         Parameters
         ----------
@@ -437,7 +470,7 @@ class SingleSubject(Evaluation):
                 # generate test set from the entire set
                 if np.sum(np.diff(y) == 0) > np.sum(np.diff(y) == 1):
                     tmp = np.random.choice(train, tr, replace=False)
-                    idx = ~np.isin(train, tmp, assume_unique=True) 
+                    idx = ~np.isin(train, tmp, assume_unique=True)
                     folds.append([tmp, train[idx], test])
                 else:
                     folds.append([train[:tr], train[tr:tr + vl], test])

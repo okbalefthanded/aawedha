@@ -2,7 +2,7 @@
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.models import load_model
-from aawedha.utils.utils import log
+from aawedha.utils.utils import log, get_gpu_name
 from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 import numpy as np
@@ -32,21 +32,28 @@ class Evaluation(object):
             configuration for data partioning into train/validation/test subset
             default a 3 integers list of:
                 In case of a single dataset without an independet Test set
-                - (folds/L, folds/M, folds/N) L+M+N = total trials in dataset for SingleSubject evaluation
-                - (L_subjects, M_subjects, N_subjects) L+M+N = total subjects in dataset for CrossSubject evaluation
+                - (folds/L, folds/M, folds/N) L+M+N = total trials in dataset
+                for SingleSubject evaluation
+                - (L_subjects, M_subjects, N_subjects) L+M+N = total subjects
+                in dataset for CrossSubject evaluation
             a 2 integers list of:
                 In case of a dataset with an independet Test set
-                - (folds/L, folds/M) L+M = T total trials in dataset for SingleSubject evaluation
-                - (L_subjects, M_subjects) L+M = S total subjects in dataset for CrossSubject evaluation
+                - (folds/L, folds/M) L+M = T total trials in dataset for
+                SingleSubject evaluation
+                - (L_subjects, M_subjects) L+M = S total subjects in dataset
+                for CrossSubject evaluation
 
         folds : a list of 3 1d numpy array
-            indices of trials(SingleSubject evaluation)/subjects(CrossSubjects evaluation) for each fold
+            indices of trials(SingleSubject evaluation)/subjects
+            (CrossSubjects evaluation) for each fold
 
         verbose : int
-            level of verbosity for model at fit method , 0 : silent, 1 : progress bar, 2 : one line per epoch
+            level of verbosity for model at fit method ,
+            0 : silent, 1 : progress bar, 2 : one line per epoch
 
         lg : bool
-            if True uses logger to log experiment configurations and results, default False
+            if True uses logger to log experiment configurations and results,
+            default False
 
         logger : logger
             used to log evaluation results
@@ -88,7 +95,8 @@ class Evaluation(object):
         model_history : list
             Keras history callbacks
 
-        model_config : dict of model configurations, used in compile() and fit().
+        model_config : dict of model configurations,
+        used in compile() and fit().
             compile :
             - loss : str : loss function to optimize during training
                 - default  : 'categorical_crossentropy'
@@ -144,7 +152,7 @@ class Evaluation(object):
         name = self.__class__.__name__
         model = self.model.name if self.model else 'NotSet'
         info = (f'Type: {name}',
-                f'DataSet: {self.dataset.info}',
+                f'DataSet: {str(self.dataset)}',
                 f'Model: {model}')
         return '\n'.joint(info)
 
@@ -163,7 +171,7 @@ class Evaluation(object):
         pass
 
     def resume(self, run=False):
-        '''Resume evaluation from where it was interrupted
+        """Resume evaluation from where it was interrupted
 
         Parameters
         ----------
@@ -174,21 +182,15 @@ class Evaluation(object):
         -------
         instance of evaluation
 
-        '''
-
-        '''
-        file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
-        if os.path.exists(file_name):
-            f = open(file_name, 'rb')
-            chkpoint = pickle.load(f)
-        else:
-            raise FileNotFoundError
-        f.close()
-        '''
+        """
         chk = self.reset(chkpoint=True)
         if run:
             self.run_evaluation(pointer=chk, check=True)
         return self
+
+    @abc.abstractmethod
+    def get_operations(self):
+        pass
 
     def set_dataset(self, dt=None):
         '''Instantiate dataset with dt
@@ -264,16 +266,25 @@ class Evaluation(object):
 
         Returns
         -------
-        results : dict of evaluation results compiled from models performance on the dataset
-            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
-            - 'acc_mean' : double : Accuracy mean over all subjects and folds
-            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
-            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
+        results : dict of evaluation results compiled from models performance
+        on the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds
+            (subjects x folds)
+            - 'acc_mean' : double : Accuracy mean over all subjects and
+            folds
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over
+            all subjects
+            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over
+            all folds [only for SingleSubject evaluation]
             For binary class tasks :
-            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
-            - 'auc_mean' : double :  AUC mean over all subjects and folds
-            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
-            - 'auc_mean_per_subj' :  AUC mean per Subject over all folds [only for SingleSubject evaluation]
+            - 'auc' : 2d array : AUC for each subjects on each folds
+            (subjects x folds)
+            - 'auc_mean' : double :  AUC mean over all subjects and
+            folds
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over
+            all subjects
+            - 'auc_mean_per_subj' :  AUC mean per Subject over all folds
+            [only for SingleSubject evaluation]
             - 'tpr' : 1d array : True posititves rate
             - 'fpr' : 1d array : False posititves rate
         '''
@@ -628,7 +639,8 @@ class Evaluation(object):
                 len(self.partition)))
         model = f'Model: {self.model.name}'
         model_config = f'Model config: {self._get_model_configs_info()}'
-        exp_info = ' '.join([data, duration, prt, model, model_config])
+        gpu = get_gpu_name()
+        exp_info = ' '.join([data, duration, prt, model, model_config, gpu])
         self.logger.debug(exp_info)
 
     def reset(self, chkpoint=False):
@@ -656,7 +668,6 @@ class Evaluation(object):
         if chkpoint:
             chk = self._load_checkpoint()
 
-        # if chkpoint:
         if chk:
             self.model = load_model(chk.model_name)
             self.folds = chk.folds
@@ -728,7 +739,7 @@ class Evaluation(object):
     def _compile_model(self):
         '''Compile model using speficied model_config, default values otherwise
 
-        Sets model_compiled attribute to true after successful model 
+        Sets model_compiled attribute to true after successful model
             compilation
 
         Parameters
@@ -779,7 +790,8 @@ class Evaluation(object):
             the model's loss and metrics performances per epoch
 
         probs : 2d array (n_examples x n_classes)
-            model's output on test data as probabilites of belonging to each class
+            model's output on test data as probabilites of belonging to
+            each class
 
         '''
         batch, ep, clbs = self._get_fit_configs()

@@ -1,3 +1,4 @@
+from pynvml import *
 import logging
 
 
@@ -32,3 +33,13 @@ def log(fname='logger.log', logger_name='eval_log'):
     # c_handler.setFormatter(c_format)
     # logger.addHandler(c_handler)
     return logger
+
+
+def get_gpu_name():
+    """Returns the device (GPU) name
+    """
+    nvmlInit()
+    handle = nvmlDeviceGetHandleByIndex(0)
+    name = nvmlDeviceGetName(handle).decode('UTF-8')
+    nvmlShutdown()
+    return name

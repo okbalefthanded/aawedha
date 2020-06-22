@@ -43,11 +43,12 @@ class SanDiego(DataSet):
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
                 stimulation = 4
-                #stimulation = 4 * self.fs
-                augmented = np.floor(4 * self.fs / epoch_duration).astype(int)                
-                #v = [eeg[onset + (stride * self.fs):onset + (stride * self.fs) + epoch_duration, :, :, :] for stride in range(augmented)]
+                # stimulation = 4 * self.fs
+                augmented = np.floor(4 * self.fs / epoch_duration).astype(int)
+                # v = [eeg[onset + (stride * self.fs):onset + (stride * self.fs) + epoch_duration, :, :, :] for stride in range(augmented)]
                 strides = list(np.arange(0, stimulation, ep))
-                v = [eeg[onset + (int(s) * self.fs):onset + (int(s) * self.fs) + epoch_duration, :, :, :] for s in strides]
+                v = [eeg[onset + (int(s) * self.fs):onset + (int(s) *
+                                                             self.fs) + epoch_duration, :, :, :] for s in strides]
                 eeg = np.concatenate(v, axis=2)
                 samples, channels, blocks, targets = eeg.shape
                 '''

@@ -4,6 +4,43 @@ from tensorflow.keras.layers import Conv1D, MaxPooling1D
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import Input, Flatten
+from scipy.fft import fft
+import numpy as np
+
+
+def fft_features(epochs=None, fs=512):
+    """Calculate FFT features of epochs in the range 3-33 Hz
+
+    Parameters
+    ----------
+    fs : int
+        sampling rate
+    epochs : dataset instance
+        EEG epoched trials (subjects x samples x channels x trials)
+    Returns
+    -------
+        ndarray
+    FFT features in the range of 3-33 Hz 
+    (subjects x frequency_points x channels x trials)
+    """
+    if epochs.ndim == 4:
+        subjects, samples, channels, trials = epochs.shape
+    elif epochs.ndim == 3:
+        subjects = 1
+        samples, channels, trials = epochs.shape
+    nyquist = fs / 2
+    frequencies = np.arange(0, nyquist, fs/samples)
+    freq_range = np.logical_and(frequencies >= 3., frequencies < 33.)
+    rg = sum(freq_range)
+    trials_fft = np.empty((subjects, rg, channels, trials))
+    for subj in range(subjects):
+        for tr in range(trials):
+            bins = fft(epochs[subj, :, :, tr]) / samples
+            bins = 2*np.abs(bins)
+            bins = bins[0:len(frequencies)]
+            # trials_fft.append(bins[freq_range, :])
+            trials_fft[subj, :, :, tr] = bins[freq_range, :]
+    return trials_fft
 
 
 def XU_JIANG(nb_classes=5, Samples=60, Chans=6):
@@ -16,7 +53,7 @@ def XU_JIANG(nb_classes=5, Samples=60, Chans=6):
     block1 = Activation('relu')(block1)
     block1 = MaxPooling2D(pool_size=(1, 3), strides=1, padding='valid')(block1)
 
-    block2 = Conv2D(16, (1, 30), padding='valid')(block1)
+    block2 = Conv2D(16, (1, Samples // 2), padding='valid')(block1)
     block2 = BatchNormalization(axis=1)(block2)
     block2 = Activation('relu')(block2)
 

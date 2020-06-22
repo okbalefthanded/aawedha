@@ -64,9 +64,15 @@ class DataSet(metaclass=ABCMeta):
         self.doi = doi
 
     def __str__(self):
-        subjects = len(self.epochs) if self.epochs else 0
-        epoch_length = self.epochs.shape[1] if self.epochs else 0.0
-        trials = self.epochs[-1] if self.epochs else 0
+        if type(self.epochs) is np.ndarray:
+            subjects = len(self.epochs)
+            epoch_length = self.epochs.shape[1]
+            trials = self.epochs[-1]
+        else:
+            subjects = 0
+            epoch_length = 0.0
+            trials = 0
+
         info = (f'DataSet: {self.title} | <{self.paradigm.title}>',
                 f'sampling rate: {self.fs}',
                 f'Subjects: {subjects}',

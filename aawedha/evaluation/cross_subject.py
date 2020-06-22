@@ -68,7 +68,7 @@ class CrossSubject(Evaluation):
             nfolds, self.n_subjects, train_phase, val_phase,
             test_phase, exclude_subj=excl)
 
-    def run_evaluation(self, pointer=None, check=False):
+    def run_evaluation(self, folds=None, pointer=None, check=False):
         '''Perform evaluation on subsets of subjects
 
         Parameters
@@ -100,12 +100,13 @@ class CrossSubject(Evaluation):
         if self.log:
             print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
             self.log_experiment()
-
+        '''
         if self.current:
             operations = range(self.current, len(self.folds))
         else:
             operations = range(len(self.folds))
-
+        '''
+        operations = self.get_operations(folds)
         # for fold in range(len(self.folds)):
         for fold in operations:
             #
@@ -133,7 +134,8 @@ class CrossSubject(Evaluation):
             if check:
                 pointer.set_checkpoint(fold+1, self.model)
             #
-        if isinstance(self.dataset.epochs, np.ndarray) and self.dataset.epochs.ndim == 3:
+        if (isinstance(self.dataset.epochs, np.ndarray) and
+                self.dataset.epochs.ndim == 3):
             #
             self.dataset.recover_dim()
 
@@ -149,6 +151,34 @@ class CrossSubject(Evaluation):
             # tfpr = []
 
         self.results = self.results_reports(res, tfpr)
+
+    def get_operations(self, folds=None):
+        """get an iterable object for evaluation, it can be
+        all folds or a defined subset of folds.
+        In case of long evaluation, the iterble starts from the current
+        index
+
+        Parameters
+        ----------
+        folds : list | int, optional
+            defined list of folds or a just a single one, by default None
+
+        Returns
+        -------
+        range | list
+            selection of folds to evaluate, from all folds available to a
+            defined subset
+        """
+        if self.current and not folds:
+            operations = range(self.current, len(self.folds))
+        elif type(folds) is list:
+            operations = folds
+        elif type(folds) is int:
+            operations = [folds]
+        else:
+            operations = range(len(self.folds))
+
+        return operations
 
     def _cross_subject(self, fold):
         '''Evaluate the subsets of subjects frawn from fold
@@ -204,12 +234,12 @@ class CrossSubject(Evaluation):
         split = {}
         kernels = 1
         if isinstance(self.dataset.epochs, list):
-            X_train, Y_train = self._cat_lists(fold, 0)            
+            X_train, Y_train = self._cat_lists(fold, 0)
             X_test, Y_test = self._cat_lists(fold, 2)
             classes = np.unique(Y_train)
             samples, channels, _ = X_train.shape
             X_train = X_train.transpose((2, 1, 0)).reshape(
-                (X_train.shape[2], kernels, channels, samples))        
+                (X_train.shape[2], kernels, channels, samples))
             X_test = X_test.transpose((2, 1, 0)).reshape(
                 (X_test.shape[2], kernels, channels, samples))
             if self._has_val():
@@ -220,7 +250,7 @@ class CrossSubject(Evaluation):
             else:
                 X_val, Y_val = None, None
 
-            Y_train = self.labels_to_categorical(Y_train)           
+            Y_train = self.labels_to_categorical(Y_train)
             Y_test = self.labels_to_categorical(Y_test)
 
         else:
@@ -243,19 +273,21 @@ class CrossSubject(Evaluation):
             Y_train = y[self.folds[fold][0], :].reshape((tr * trials, ctg_dim))
             if self._has_val():
                 X_val = x[self.folds[fold][1], :, :, :].reshape(
-                        (val * trials, kernels, channels, samples))
-                Y_val = y[self.folds[fold][1], :].reshape((val * trials, ctg_dim))
+                    (val * trials, kernels, channels, samples))
+                Y_val = y[self.folds[fold][1], :].reshape(
+                    (val * trials, ctg_dim))
             else:
                 X_val, Y_val = None, None
 
             if hasattr(self.dataset, 'test_epochs'):
                 trs = self.dataset.test_epochs.shape[3]
-                X_test = self.dataset.test_epochs[self.folds[fold][2]].transpose((0, 3, 2, 1))
+                X_test = self.dataset.test_epochs[self.folds[fold][2]].transpose(
+                    (0, 3, 2, 1))
                 X_test = X_test.reshape(
                     (trs * ts, kernels, channels, samples))
                 Y_test = self.labels_to_categorical(
-                            self.dataset.test_y[self.folds[fold][2]].reshape((trs*ts))
-                            )
+                    self.dataset.test_y[self.folds[fold][2]].reshape((trs*ts))
+                )
                 # X_test = self.dataset.test_epochs.transpose((0, 3, 2, 1))
                 # X_test = X_test.reshape(
                 #    (trs * self.n_subjects, kernels, channels, samples))
