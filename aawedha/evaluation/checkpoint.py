@@ -111,6 +111,7 @@ class CheckPoint(object):
         self.model_name = ''
         self.model_history = evl.model_history
         self.model_config = evl.model_config
+        self.initial_weights = evl.initial_weights
         self.predictions = evl.predictions
         self.cm = evl.cm
         self.results = evl.results

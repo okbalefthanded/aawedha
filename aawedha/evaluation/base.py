@@ -146,6 +146,7 @@ class Evaluation(object):
             self.logger = None
         self.model_compiled = False
         self.model_config = {}
+        self.initial_weights = []
         self.current = None
 
     def __str__(self):
@@ -576,6 +577,7 @@ class Evaluation(object):
         no value
         '''
         self.model = model
+        self.initial_weights = model.get_weights()
         if model_config:
             self.model_config = model_config
 
@@ -682,6 +684,7 @@ class Evaluation(object):
             self.log = chk.log
             self.logger = log(fname=chk.logger, logger_name='eval_log')
             self.verbose = chk.verbose
+            self.initial_weights = chk.initial_weights
 
         else:
             self.model = None
@@ -691,8 +694,14 @@ class Evaluation(object):
             self.model_history = {}
             self.model_compiled = False
             self.model_config = {}
+            self.initial_weights = []
 
         return chk
+
+    def reset_weights(self):
+        """reset model's weights to initial state (model's creation state)
+        """
+        self.model.set_weights(self.initial_weights)
 
     def _equale_subjects(self):
         '''Test whether dataset's train_epochs and test_epochs has same number
@@ -800,7 +809,9 @@ class Evaluation(object):
             val = None
         else:
             val = (X_val, Y_val)
-
+        #
+        self.reset_weights()
+        #
         history = self.model.fit(X_train, Y_train,
                                  batch_size=batch, epochs=ep,
                                  verbose=self.verbose,
@@ -935,7 +946,8 @@ class Evaluation(object):
         Returns
         -------
         int :
-           if 0 no validation, otherwise number of  parts from dataset to use in validation
+           if 0 no validation, otherwise number of parts from dataset to use
+            in validation
         """
         train = self.partition[0]
         if len(self.partition) == 3:

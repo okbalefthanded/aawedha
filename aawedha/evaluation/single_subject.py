@@ -12,11 +12,12 @@ class SingleSubject(Evaluation):
 
     Methods
     -------
-    _single_subject() for evaluation a single subject data at a time following the
-        same folds split generated.
+    _single_subject() for evaluation a single subject data at a time following 
+    the same folds split generated.
 
-    _fuse_data() when the dataset is beforehand split into train/test sets with different subjects
-          for each set, this method concatenates the subsets into a single set.
+    _fuse_data() when the dataset is beforehand split into train/test sets
+     with different subjects for each set, this method concatenates the 
+     subsets into a single set.
     '''
 
     def generate_split(self, nfolds=30, strategy='Kfold'):
@@ -38,7 +39,8 @@ class SingleSubject(Evaluation):
         no value, sets folds attribute with a list of arrays
         '''
         n_phase = len(self.partition)
-        train_phase, val_phase = self.partition[0], self.partition[1]
+        # train_phase, val_phase = self.partition[0], self.partition[1]
+        train_phase = self.partition[0]
         #
         if isinstance(self.dataset.y, list):
             #
@@ -48,11 +50,15 @@ class SingleSubject(Evaluation):
             n_trials = self.dataset.y.shape[1]
         #
         if n_phase == 2:
+            if hasattr(self.dataset, 'test_epochs'):
+                val_phase, test_phase = self.partition[1], 0
+            else:
+                val_phase, test_phase = 0, self.partition[1]
             # independent test set available
-            test_phase = 0
+            # test_phase = 0
         elif n_phase == 3:
             # generate a set set from the dataset
-            test_phase = self.partition[2]
+            val_phase, test_phase = self.partition[1], self.partition[2]
         else:
             # error : wrong partition
             raise AssertionError('Wrong partition scheme', self.partition)
@@ -156,6 +162,7 @@ class SingleSubject(Evaluation):
             if check:
                 pointer.set_checkpoint(subj+1, self.model)
 
+        #
         if (not isinstance(self.dataset.epochs, list) and
                 self.dataset.epochs.ndim == 3):
             self.dataset.recover_dim()
@@ -171,7 +178,8 @@ class SingleSubject(Evaluation):
         else:
             res = np.array(res_acc)
         #
-        self.results = self.results_reports(res, tfpr)
+        if len(operations) == self._get_n_subjects():
+            self.results = self.results_reports(res, tfpr)
 
     def get_operations(self, subject=None):
         """get an iterable object for evaluation, it can be
@@ -253,7 +261,10 @@ class SingleSubject(Evaluation):
             split = self._split_set(x, y, subj, fold, indie)
             # normalize data
             X_train, mu, sigma = self.fit_scale(split['X_train'])
-            X_val = self.transform_scale(split['X_val'], mu, sigma)
+            # X_val = self.transform_scale(split['X_val'], mu, sigma)
+            X_val = split['X_val']
+            if type(X_val) is np.ndarray:
+                X_val = self.transform_scale(split['X_val'], mu, sigma)
             X_test = self.transform_scale(split['X_test'], mu, sigma)
             '''
             X_train = split['X_train']
@@ -349,10 +360,12 @@ class SingleSubject(Evaluation):
             trials, kernels, samples = x.shape
 
         X_train = x[f[0]]
-        X_val = x[f[1]]
         Y_train = y[f[0]]
-        Y_val = y[f[1]]
+        X_val, Y_val = None, None
+        # X_val = x[f[1]]
+        # Y_val = y[f[1]]
         if indie:
+            # independent Test set
             if isinstance(self.dataset.test_epochs, list):
                 # TODO
                 trs = self.dataset.test_epochs[subj].shape[2]
@@ -369,11 +382,23 @@ class SingleSubject(Evaluation):
                     X_test = self.dataset.test_epochs[subj][:, :, :].transpose(
                         (2, 1, 0))
                     X_test = X_test.reshape((trs, kernels, channels, samples))
-
+            #
+            # validation data
+            if len(self.partition) == 2:
+                X_val = x[f[1]]
+                Y_val = y[f[1]]
+            #
             Y_test = self.labels_to_categorical(self.dataset.test_y[subj][:])
         else:
-            X_test = x[f[2]]
-            Y_test = y[f[2]]
+            if len(self.partition) == 2:
+                # X_val, Y_val = None, None
+                X_test = x[f[1]]
+                Y_test = y[f[1]]
+            else:
+                X_val = x[f[1]]
+                Y_val = y[f[1]]
+                X_test = x[f[2]]
+                Y_test = y[f[2]]
 
         split['X_train'] = X_train
         split['Y_train'] = Y_train
@@ -450,9 +475,10 @@ class SingleSubject(Evaluation):
         Returns
         -------
         folds : list of arrays
-            each fold has 3 arrays : one for train, one validation, one for test
-            if an independent test set is available in the dataset, this will have
-            only 2 array instead of 3
+            each fold has 3 arrays : one for train, one validation, one for
+             test
+            if an independent test set is available in the dataset,
+            this will have only 2 array instead of 3
         '''
         folds = []
         if stg == 'Kfold':

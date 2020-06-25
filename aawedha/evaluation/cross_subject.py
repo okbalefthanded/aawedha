@@ -133,7 +133,8 @@ class CrossSubject(Evaluation):
 
             if check:
                 pointer.set_checkpoint(fold+1, self.model)
-            #
+
+        #
         if (isinstance(self.dataset.epochs, np.ndarray) and
                 self.dataset.epochs.ndim == 3):
             #
@@ -150,7 +151,8 @@ class CrossSubject(Evaluation):
             res = np.array(res_acc)
             # tfpr = []
 
-        self.results = self.results_reports(res, tfpr)
+        if len(self.folds) == len(self.predictions):
+            self.results = self.results_reports(res, tfpr)
 
     def get_operations(self, folds=None):
         """get an iterable object for evaluation, it can be
@@ -198,7 +200,7 @@ class CrossSubject(Evaluation):
         # normalize data
         X_train, mu, sigma = self.fit_scale(split['X_train'])
         X_val = split['X_val']
-        if X_val:
+        if type(X_val) is np.ndarray:
             X_val = self.transform_scale(split['X_val'], mu, sigma)
         X_test = self.transform_scale(split['X_test'], mu, sigma)
         Y_train = split['Y_train']
@@ -216,8 +218,8 @@ class CrossSubject(Evaluation):
         return rets
 
     def _split_set(self, fold):
-        '''Splits subsets of Subjects data to be evaluated into train/validation/test sets following
-        the indices specified in the fold
+        '''Splits subsets of Subjects data to be evaluated into
+        train/validation/test sets following the indices specified in the fold
 
         Parameters
         ----------
