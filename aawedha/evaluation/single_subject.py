@@ -1,5 +1,7 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
+from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
+from aawedha.utils.evaluation_utils import fit_scale, transform_scale
 from sklearn.model_selection import KFold, StratifiedKFold
 import numpy as np
 
@@ -12,17 +14,17 @@ class SingleSubject(Evaluation):
 
     Methods
     -------
-    _single_subject() for evaluation a single subject data at a time following 
+    _single_subject() for evaluation a single subject data at a time following
     the same folds split generated.
 
     _fuse_data() when the dataset is beforehand split into train/test sets
-     with different subjects for each set, this method concatenates the 
+     with different subjects for each set, this method concatenates the
      subsets into a single set.
     '''
 
     def generate_split(self, nfolds=30, strategy='Kfold'):
-        '''Generate cross-validation folds following a cross-validation
-        strategy from { Kfold | ShuffleSplit }
+        """Generate cross-validation folds following a cross-validation
+        strategy from { Kfold | Stratified } #ShuffleSplit
 
         Parameters
         ----------
@@ -37,9 +39,8 @@ class SingleSubject(Evaluation):
         Returns
         -------
         no value, sets folds attribute with a list of arrays
-        '''
+        """
         n_phase = len(self.partition)
-        # train_phase, val_phase = self.partition[0], self.partition[1]
         train_phase = self.partition[0]
         #
         if isinstance(self.dataset.y, list):
@@ -55,7 +56,6 @@ class SingleSubject(Evaluation):
             else:
                 val_phase, test_phase = 0, self.partition[1]
             # independent test set available
-            # test_phase = 0
         elif n_phase == 3:
             # generate a set set from the dataset
             val_phase, test_phase = self.partition[1], self.partition[2]
@@ -69,16 +69,11 @@ class SingleSubject(Evaluation):
         val_phase = val_phase * part
         test_phase = test_phase * part
 
-        if strategy == 'Shuffle':
-            self.folds = self.get_folds(nfolds, n_trials, train_phase,
-                                        val_phase, test_phase,
-                                        exclude_subj=False)
-        else:
-            self.folds = self._get_folds(nfolds, n_trials, train_phase,
-                                         val_phase, test_phase, strategy)
+        self.folds = self.get_folds(nfolds, n_trials, train_phase,
+                                    val_phase, test_phase, strategy)
 
     def run_evaluation(self, subject=None, pointer=None, check=False):
-        '''Perform evaluation on each subject
+        """Perform evaluation on each subject
 
         Parameters
         ----------
@@ -97,7 +92,7 @@ class SingleSubject(Evaluation):
         Returns
         -------
         no value, sets results attribute
-        '''
+        """
         # generate folds if folds are empty
         if not self.folds:
             self.generate_split(nfolds=30)
@@ -119,15 +114,6 @@ class SingleSubject(Evaluation):
                 n_subj = self._fuse_data()
                 self.n_subjects = n_subj
         #
-        '''
-        if self.current:
-            operations = range(self.current, self.n_subjects)
-        elif subject:
-            operations = [subject]
-        else:
-            operations = range(self.n_subjects)
-        #
-        '''
         operations = self.get_operations(subject)
 
         if not self.model_compiled:
@@ -153,7 +139,8 @@ class SingleSubject(Evaluation):
 
             if self.log:
                 msg = f' Subj : {subj+1} ACC: {res_acc[-1]}'
-                if len(self.model.metrics) > 1:
+                # if len(self.model.metrics) > 1:
+                if len(self.model_config['metrics']) > 1:
                     msg += f' AUC: {res_auc[-1]}'
                 self.logger.debug(msg)
                 self.logger.debug(
@@ -161,7 +148,6 @@ class SingleSubject(Evaluation):
 
             if check:
                 pointer.set_checkpoint(subj+1, self.model)
-
         #
         if (not isinstance(self.dataset.epochs, list) and
                 self.dataset.epochs.ndim == 3):
@@ -181,8 +167,52 @@ class SingleSubject(Evaluation):
         if len(operations) == self._get_n_subjects():
             self.results = self.results_reports(res, tfpr)
 
+    # def _get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
+    def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
+        """Generate folds following a KFold cross-validation strategy
+
+        Parameters
+        ----------
+        nfolds : int
+            number of folds to generate
+            default : 4
+
+        n_trials : int | nd array
+            - int : same number of trials across all dataset epochs
+            - nd array : each subject has a specific number of trials in
+            dataset epochs
+            default : 0
+
+        tr : int
+            number of training trials to select
+            default : 0
+
+        vl : int
+            number of validation trials to select
+            default : 0
+
+        ts : int
+            number of test trials to select
+            default : 0
+
+        Returns
+        -------
+        folds : list of arrays
+            each fold has 3 arrays : one for train, one validation, one for
+            test, if an independent test set is available in the dataset,
+            this will have only 2 array instead of 3
+        """
+        if isinstance(n_trials, np.ndarray):
+            t = [np.arange(n) for n in n_trials]
+            folds = [self._get_split(nfolds, n, tr, vl, stg, i)
+                     for i, n in enumerate(t)]
+        else:
+            t = np.arange(n_trials)
+            folds = self._get_split(nfolds, t, tr, vl, stg)
+        return folds
+
     def get_operations(self, subject=None):
-        """get an iterable object for evaluation, it can be
+        """Get an iterable object for evaluation, it can be
         all subjects or a defined subset of subjects.
         In case of long evaluation, the iterble starts from the current
         index
@@ -210,7 +240,7 @@ class SingleSubject(Evaluation):
         return operations
 
     def _single_subject(self, subj, indie=False):
-        '''Evaluate a subject on each fold
+        """Evaluate a subject on each fold
 
         Parameters
         ----------
@@ -225,6 +255,7 @@ class SingleSubject(Evaluation):
         -------
         rets : list of tuple, length = nfolds
             contains subject's performance on each folds
+        """
         '''
         # prepare data
         kernels = 1  #
@@ -247,7 +278,9 @@ class SingleSubject(Evaluation):
 
         # x = x.reshape((trials, kernels, channels, samples))
         y = self.dataset.y[subj][:]
-        y = self.labels_to_categorical(y)
+        y = labels_to_categorical(y)
+        '''
+        x, y = self._get_data_pair(subj)
         rets = []
         # get in the fold!!!
         if isinstance(self.dataset.epochs, list):
@@ -260,27 +293,22 @@ class SingleSubject(Evaluation):
             #
             split = self._split_set(x, y, subj, fold, indie)
             # normalize data
-            X_train, mu, sigma = self.fit_scale(split['X_train'])
+            X_train, mu, sigma = fit_scale(split['X_train'])
             # X_val = self.transform_scale(split['X_val'], mu, sigma)
             X_val = split['X_val']
             if type(X_val) is np.ndarray:
-                X_val = self.transform_scale(split['X_val'], mu, sigma)
-            X_test = self.transform_scale(split['X_test'], mu, sigma)
-            '''
-            X_train = split['X_train']
-            X_val = split['X_val']
-            X_test = split['X_test']
-            '''
+                X_val = transform_scale(split['X_val'], mu, sigma)
+            X_test = transform_scale(split['X_test'], mu, sigma)
             #
             Y_train = split['Y_train']
             Y_test = split['Y_test']
             Y_val = split['Y_val']
             #
-            class_weights = self.class_weights(np.argmax(Y_train, axis=1))
+            cl_weights = class_weights(np.argmax(Y_train, axis=1))
             # evaluate model on subj on all folds
             self.model_history, probs = self._eval_model(X_train, Y_train,
                                                          X_val, Y_val, X_test,
-                                                         class_weights)
+                                                         cl_weights)
 
             # probs = self.model.predict(X_test)
             rets.append(self.measure_performance(Y_test, probs))
@@ -288,7 +316,7 @@ class SingleSubject(Evaluation):
         return rets
 
     def _fuse_data(self):
-        '''Concatenate train and test dataset in a single dataset
+        """Concatenate train and test dataset in a single dataset
 
         Sets dataset.epochs and dataset.y
 
@@ -300,7 +328,7 @@ class SingleSubject(Evaluation):
         -------
         int : number of subjects in the newly formed dataset by concatenation
 
-        '''
+        """
         # TODO : when epochs/y/test_epochs/y_test are lists???
         # make lists of lists
         if isinstance(self.dataset.epochs, list):
@@ -313,7 +341,7 @@ class SingleSubject(Evaluation):
         return self.dataset.epochs.shape[0]  # n_subject
 
     def _split_set(self, x=None, y=None, subj=0, fold=0, indie=False):
-        '''Splits Subject data to be evaluated into train/validation/test
+        """Splits Subject data to be evaluated into train/validation/test
         sets following the indices specified in the fold
 
         Parameters
@@ -343,7 +371,7 @@ class SingleSubject(Evaluation):
         split : dict of nd arrays
             X_train, Y_train, X_Val, Y_Val, X_test, Y_test
             train/validation/test EEG data and labels
-        '''
+        """
         # folds[0][0][0] : inconsistent fold subject trials
         # folds[0][0] : same trials numbers for all subjects
         split = {}
@@ -388,7 +416,7 @@ class SingleSubject(Evaluation):
                 X_val = x[f[1]]
                 Y_val = y[f[1]]
             #
-            Y_test = self.labels_to_categorical(self.dataset.test_y[subj][:])
+            Y_test = labels_to_categorical(self.dataset.test_y[subj][:])
         else:
             if len(self.partition) == 2:
                 # X_val, Y_val = None, None
@@ -408,52 +436,50 @@ class SingleSubject(Evaluation):
         split['Y_val'] = Y_val
         return split
 
-    def _get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
-        '''Generate folds following a KFold cross-validation strategy
+    def _get_data_pair(self, subj=0):
+        """Get data pair for a subject from the dataset.
+        Transform X,Y to Keras model input format.
 
         Parameters
         ----------
-        nfolds : int
-            number of folds to generate
-            default : 4
-
-        n_trials : int | nd array
-            - int : same number of trials across all dataset epochs
-            - nd array : each subject has a specific number of trials in dataset epochs
-            default : 0
-
-        tr : int
-            number of training trials to select
-            default : 0
-
-        vl : int
-            number of validation trials to select
-            default : 0
-
-        ts : int
-            number of test trials to select
-            default : 0
+        subj : int
+            Subject index in dataset
 
         Returns
         -------
-        folds : list of arrays
-            each fold has 3 arrays : one for train, one validation, one for test
-            if an independent test set is available in the dataset, this will have
-            only 2 array instead of 3
-        '''
-        if isinstance(n_trials, np.ndarray):
-            t = [np.arange(n) for n in n_trials]
-            # folds = []
-            # sbj = [self._get_split(nfolds, n, tr, vl) for n in t]
-            # folds.append(sbj)
-            folds = [self._get_split(nfolds, n, tr, vl, stg) for n in t]
+        X : ndarray
+            Subject data for evaluation (trials x kernels x channels x samples)
+            or (trials x kernels x samples)
+        Y : ndarray
+            class labels in categorical format
+            (trials x n_classes)
+        """
+        # prepare data
+        kernels = 1  #
+        if isinstance(self.dataset.epochs, list):
+            # TODO
+            x = self.dataset.epochs[subj]
+            samples, channels, trials = x.shape
+            x = x.transpose((2, 1, 0)).reshape(
+                (trials, kernels, channels, samples))
         else:
-            t = np.arange(n_trials)
-            folds = self._get_split(nfolds, t, tr, vl, stg)
-        return folds
+            if self.dataset.epochs.ndim == 4:
+                x = self.dataset.epochs[subj][:, :, :]
+                samples, channels, trials = x.shape
+                x = x.transpose((2, 1, 0)).reshape(
+                    (trials, kernels, channels, samples))
+            elif self.dataset.epochs.ndim == 3:
+                x = self.dataset.epochs[subj][:, :]
+                samples, trials = x.shape
+                x = x.transpose((1, 0)).reshape((trials, kernels, samples))
 
-    def _get_split(self, nfolds, t, tr, vl, stg):
-        '''Generate nfolds following a specified cross-validation strategy
+        # x = x.reshape((trials, kernels, channels, samples))
+        y = self.dataset.y[subj][:]
+        y = labels_to_categorical(y)
+        return x, y
+
+    def _get_split(self, nfolds, t, tr, vl, stg, subj=None):
+        """Generate nfolds following a specified cross-validation strategy
 
         Parameters
         ----------
@@ -479,12 +505,15 @@ class SingleSubject(Evaluation):
              test
             if an independent test set is available in the dataset,
             this will have only 2 array instead of 3
-        '''
+        """
         folds = []
         if stg == 'Kfold':
             cv = KFold(n_splits=nfolds).split(t)
         elif stg == 'Stratified':
-            y = self.dataset.y[0]
+            if type(subj) is int:
+                y = self.dataset.y[subj]
+            else:
+                y = self.dataset.y[0]
             # trs = np.arange(0, t)
             cv = StratifiedKFold(n_splits=nfolds).split(t, y)
         # for train, test in cv.split(t):

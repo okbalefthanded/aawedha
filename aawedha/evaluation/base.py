@@ -1,5 +1,4 @@
 
-from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.models import load_model
 from aawedha.utils.utils import log, get_gpu_name
@@ -7,7 +6,7 @@ from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.metrics import roc_curve, auc, confusion_matrix
 import numpy as np
 import datetime
-import random
+# import random
 import pickle
 import abc
 import os
@@ -336,7 +335,9 @@ class Evaluation(object):
 
         return results
 
-    def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
+    @abc.abstractmethod
+    def get_folds(self):
+        pass
         '''Generate train/validation/tes folds following Shuffle split strategy
 
         Parameters
@@ -359,6 +360,7 @@ class Evaluation(object):
         -------
         folds : list
         '''
+        """
         folds = []
         if hasattr(self.dataset, 'test_epochs'):
             if self.__class__.__name__ == 'CrossSubject':
@@ -418,106 +420,7 @@ class Evaluation(object):
                     folds.append([tmp[:tr], tmp[tr:tr + vl], tmp[-ts:]])
         #
         return folds
-
-    def fit_scale(self, X):
-        '''Estimate mean and standard deviation from train set
-        for normalization.
-        train data is normalized afterwards
-
-        Parameters
-        ----------
-        X : nd array (trials, kernels, channels, samples)
-            training data
-
-        Returns
-        -------
-        X :  nd array (trials, kernels, channels, samples)
-            normalized training data
-        mu : nd array (1, kernels, channels, samples)
-            mean over all trials
-        sigma : nd array (1, kernels, channels, samples)
-            standard deviation over all trials
-        '''
-        mu = X.mean(axis=0)
-        sigma = X.std(axis=0)
-        X = np.subtract(X, mu[None, :, :])
-        X = np.divide(X, sigma[None, :, :])
-        return X, mu, sigma
-
-    def transform_scale(self, X, mu, sigma):
-        '''Apply normalization on validation/test data using estimated
-        mean and std from fit_scale method
-
-        Parameters
-        ----------
-        X :  nd array (trials, kernels, samples, channels)
-            normalized training data
-        mu : nd array (1, kernels, samples, channels)
-            mean over all trials
-        sigma : nd array (1, kernels, samples, channels)
-            standard deviation over all trials
-
-        Returns
-        -------
-        X :  nd array (trials, kernels, samples, channels)
-            normalized data
-        '''
-        X = np.subtract(X, mu[None, :, :])
-        X = np.divide(X, sigma[None, :, :])
-        return X
-
-    def class_weights(self, y):
-        '''Calculates inverse of ratio of class' examples in train dataset
-        used to re-weight loss function in case of imbalanced classes in data
-
-        Parameters
-        ----------
-        y : 1d array of int
-            true labels
-
-        Returns
-        -------
-        cl_weights : dict of (int : float)
-            class_weight : class, 1 for each class if data classes are balanced
-
-        '''
-        cl_weights = {}
-        classes = np.unique(y)
-        n_perclass = [np.sum(y == cl) for cl in classes]
-        n_samples = np.sum(n_perclass)
-        ws = np.array([np.ceil(n_samples / cl).astype(int)
-                       for cl in n_perclass])
-        if np.unique(ws).size == 1:
-            # balanced classes
-            cl_weights = {cl: 1 for cl in classes}
-        else:
-            # unbalanced classes
-            if classes.size == 2:
-                cl_weights = {classes[ws == ws.max()].item(
-                ): ws.max(), classes[ws < ws.max()].item(): 1}
-            else:
-                cl_weights = {cl: ws[idx] for idx, cl in enumerate(classes)}
-        return cl_weights
-
-    def labels_to_categorical(self, y):
-        '''Convert numerical labels to categorical
-
-        Parameters
-        ----------
-        y : 1d array
-            true labels array in numerical format : 1,2,3,
-
-        Returns
-        -------
-        y : 2d array (n_examples x n_classes)
-            true labels in categorical format : example [1,0,0]
-        '''
-        classes = np.unique(y)
-        if np.isin(0, classes):
-            y = to_categorical(y)
-        else:
-            y = to_categorical(y - 1)
-        return y
+        """
 
     def save_model(self, folderpath=None):
         '''Save trained model in HDF5 format

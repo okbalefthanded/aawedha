@@ -1,5 +1,7 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
+from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
+from aawedha.utils.evaluation_utils import fit_scale, transform_scale
 from aawedha.analysis.utils import isfloat
 import numpy as np
 
@@ -313,6 +315,47 @@ class CrossSet(Evaluation):
 
         self.results = self.results_reports(res, tfpr)
 
+    def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
+        """Generate train/validation/tes folds following Shuffle split strategy
+
+        Parameters
+        ----------
+        nfolds : int
+            number of folds to generate
+        population : int
+            number of total trials/subjects available
+        tr : int
+            number of trials/subjects to include in train folds
+        vl : int
+            number of trials/subjects to include in validation folds
+        ts : int
+            number of trials/subjects to include in test folds
+
+        exclude_subj : bool (only in CrossSubject evaluation)
+            if True the target subject data will be excluded from train fold
+
+        Returns
+        -------
+        folds : list
+        """
+
+        folds = []
+
+        # list : nfolds : [nsubjects_train] [nsubjects_val][nsubjects_test]
+        for subj in range(self.n_subjects):
+            selection = np.arange(0, self.n_subjects)
+            if exclude_subj:
+                # fully cross-subject, no subject train data in fold
+                selection = np.delete(selection, subj)
+            for fold in range(nfolds):
+                np.random.shuffle(selection)
+                folds.append([np.array(selection[:tr]),
+                              np.array(selection[tr:tr + vl]),
+                              np.array([subj])
+                              ])
+        #
+        return folds
+
     def results_reports(self, res, tfpr={}):
         '''Collects evaluation results on a single dict
 
@@ -419,19 +462,19 @@ class CrossSet(Evaluation):
         '''
         split = self._split_set(fold)
         # normalize data
-        X_train, mu, sigma = self.fit_scale(split['X_train'])
+        X_train, mu, sigma = fit_scale(split['X_train'])
 
         if isinstance(split['X_val'], np.ndarray):
-            X_val = self.transform_scale(split['X_val'], mu, sigma)
+            X_val = transform_scale(split['X_val'], mu, sigma)
         else:
             X_val = split['X_val']
 
-        X_test = self.transform_scale(split['X_test'], mu, sigma)
+        X_test = transform_scale(split['X_test'], mu, sigma)
         Y_train = split['Y_train']
         Y_val = split['Y_val']
         Y_test = split['Y_test']
         #
-        cws = self.class_weights(np.argmax(Y_train, axis=1))
+        cws = class_weights(np.argmax(Y_train, axis=1))
         # evaluate model on subj on all folds
         self.model_history, probs = self._eval_model(X_train, Y_train,
                                                      X_val, Y_val, X_test,
@@ -541,14 +584,14 @@ class CrossSet(Evaluation):
         if isinstance(X_v, np.ndarray):
             tr_v = X_v.shape[-1]
             X_v = X_v.transpose((2, 0, 1)).reshape((tr_v, kernels, channels, samples))            
-            Y_v = self.labels_to_categorical(Y_v)
+            Y_v = labels_to_categorical(Y_v)
 
         split['X_train'] = X_t
         split['X_test'] = X_ts
         split['X_val'] = X_v
         split['Y_val'] = Y_v
-        split['Y_train'] = self.labels_to_categorical(Y_t)        
-        split['Y_test'] = self.labels_to_categorical(Y_ts)
+        split['Y_train'] = labels_to_categorical(Y_t)        
+        split['Y_test'] = labels_to_categorical(Y_ts)
         split['classes'] = classes
 
         return split
