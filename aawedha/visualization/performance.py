@@ -49,15 +49,21 @@ def plot_roc_curve(results={}, nfolds=4, subj=None):
     Parameters
     ----------
     results : dict,
-        dict of evaluation results compiled from models performance on the dataset
-            - 'acc' : 2d array : Accuracy for each subjects on each folds (subjects x folds)
+        dict of evaluation results compiled from models performance on
+        the dataset
+            - 'acc' : 2d array : Accuracy for each subjects on each folds
+            (subjects x folds)
             - 'acc_mean' : double : Accuracy mean over all subjects and folds
-            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all subjects
-            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over all folds [only for SingleSubject evaluation]
+            - 'acc_mean_per_fold' : 1d array : Accuracy mean per fold over all
+            subjects
+            - 'acc_mean_per_subj' : 1d array : Accuracy mean per Subject over
+            all folds [only for SingleSubject evaluation]
             For binary class tasks :
-            - 'auc' : 2d array : AUC for each subjects on each folds (subjects x folds)
+            - 'auc' : 2d array : AUC for each subjects on each folds
+             (subjects x folds)
             - 'auc_mean' : double :  AUC mean over all subjects and folds
-            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all subjects          
+            - 'auc_mean_per_fold' :  1d array : AUC mean per fold over all
+            subjects
             - 'auc_mean_per_subj' :  AUC mean per Subject over all folds
                 [only for SingleSubject evaluation]
             - 'tpr' : 1d array : True posititves rate
@@ -72,23 +78,23 @@ def plot_roc_curve(results={}, nfolds=4, subj=None):
     mean_fpr = np.linspace(0, 1, 100)
     tprs = []
     #
-    n_subjects = len(results['acc'])
+    n_subjects = len(results['accuracy'])
     if subj:
         operations = [subj]
     else:
         operations = range(n_subjects)
-    #    
+    #
     for s in operations:
         plt.figure()
-        for fld in range(nfolds):           
+        for fld in range(nfolds):
             if results['auc'].ndim == 1:
-                roc_auc = results['auc'][s] # 1fold
-                fpr = results['fpr'][s]
-                tpr = results['tpr'][s]
+                roc_auc = results['auc'][s]  # 1fold
+                fpr = results['fp'][s]
+                tpr = results['tp'][s]
             else:
                 roc_auc = results['auc'][s, fld]  # (subject, fold)
-                fpr = results['fpr'][s][fld]
-                tpr = results['tpr'][s][fld]
+                fpr = results['fp'][s][fld]
+                tpr = results['tp'][s][fld]
             tprs.append(interp(mean_fpr, fpr, tpr))
             plt.plot(fpr, tpr, lw=1, alpha=0.3,
                      label=f'ROC fold {fld} AUC = {roc_auc}')
@@ -172,12 +178,12 @@ def plot_subjects_perf(results={}):
     Returns
     -------
     fig: matplotlib pyplot figure instance.
- 
+
     ax : matplotlib Axes instance.
     """
     plt.rcParams["figure.figsize"] = (10, 5)
-    labels = ['acc_mean_per_subj', 'auc_mean_per_subj']
-    x = np.arange(len(results['acc_mean_per_subj']))  # the label locations
+    labels = ['accuracy_mean_per_subj', 'auc_mean_per_subj']
+    x = np.arange(len(results['accuracy_mean_per_subj']))  # the label locations
     width = 0.5  # the width of the bars
     y = iter([-1, 1])
     fig, ax = plt.subplots()

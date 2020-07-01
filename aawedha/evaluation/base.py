@@ -1,9 +1,9 @@
 
-from tensorflow.keras.metrics import AUC
 from tensorflow.keras.models import load_model
 from aawedha.utils.utils import log, get_gpu_name
 from aawedha.evaluation.checkpoint import CheckPoint
-from sklearn.metrics import roc_curve, auc, confusion_matrix
+from sklearn.metrics import roc_curve, confusion_matrix  # auc,
+import tensorflow as tf
 import numpy as np
 import datetime
 # import random
@@ -206,7 +206,7 @@ class Evaluation(object):
         '''
         self.dataset = dt
 
-    def measure_performance(self, Y_test, probs):
+    def measure_performance(self, Y_test, probs, perf):
         '''Measure model performance on dataset
 
         Calculates model performance on metrics and sets Confusion Matrix for
@@ -232,19 +232,32 @@ class Evaluation(object):
                 increasing true positive rate
         '''
         self.predictions.append(probs)  # ()
+        results = dict()
         preds = probs.argmax(axis=-1)
         y_true = Y_test.argmax(axis=-1)
         classes = Y_test.shape[1]
-        acc = np.mean(preds == y_true)
+        # acc = np.mean(preds == y_true)
 
         self.cm.append(confusion_matrix(Y_test.argmax(axis=-1), preds))
 
+        for metric, value in zip(self.model.metrics_names, perf):
+            results[metric] = value
+
         if classes == 2:
             fp_rate, tp_rate, thresholds = roc_curve(y_true, probs[:, 1])
-            auc_score = auc(fp_rate, tp_rate)
-            return acc.item(), auc_score.item(), fp_rate, tp_rate
-        else:
-            return acc.item()
+            viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
+            results['viz'] = viz
+            # results['fp_threshold'] = fp_rate
+            # results['tp_threshold'] = tp_rate
+            # auc_score = auc(fp_rate, tp_rate)
+            # return acc.item(), auc_score.item(), fp_rate, tp_rate
+            # return {'accuracy': acc.item(), 'auc': auc_score.item(),
+            #        'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
+            # return
+        # else:
+            # return acc.item()
+            # return {'accuracy': acc.item()}
+        return results
 
     def results_reports(self, res, tfpr={}):
         '''Collects evaluation results on a single dict
@@ -302,9 +315,20 @@ class Evaluation(object):
             elif self.__class__.__name__ == 'SingleSubject':
                 self.predictions = np.array(self.predictions).reshape(
                     (self.n_subjects, folds, examples, dim))
+                    
+        res = self._aggregate_results(res)
+
+        metrics = list(res.keys())
+        if self.dataset.get_n_classes() == 2:
+            metrics.remove('viz')
+
+        for metric in metrics:
+            res[metric + '_mean'] = np.array(res[metric]).mean()
+            res[metric + '_mean_per_fold'] = np.array(res[metric]).mean(axis=0)
+            if np.array(res[metric]).ndim == 2:
+                res[metric + '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
         #
-        results = {}
-        #
+        '''
         if tfpr:
             # res : (metric, subjects, folds)
             # means = res.mean(axis=-1) # mean across folds
@@ -332,8 +356,9 @@ class Evaluation(object):
             if self.__class__.__name__ == 'SingleSubject':
                 results['acc_mean_per_subj'] = res.mean(axis=1)
             results['acc_mean'] = res.mean()
-
-        return results
+        '''
+        # return results
+        return res
 
     @abc.abstractmethod
     def get_folds(self):
@@ -552,7 +577,7 @@ class Evaluation(object):
         '''Reset Attributes and results for a future evaluation with
             different model and same partition and folds
 
-        if chkpoint is passed, Evaluation attributes will be set to 
+        if chkpoint is passed, Evaluation attributes will be set to
         the state at where the evaulation was interrupted, this is used
         for operations resume
 
@@ -607,7 +632,7 @@ class Evaluation(object):
         self.model.set_weights(self.initial_weights)
 
     def _equale_subjects(self):
-        '''Test whether dataset's train_epochs and test_epochs has same number
+        """Test whether dataset's train_epochs and test_epochs has same number
         of subjects
 
         Parameters
@@ -618,16 +643,15 @@ class Evaluation(object):
         -------
         bool : True if number of subjects in training data equals the number of
         subjects in test data False otherwise
-        '''
-
-        ts = 0
-        tr = len(self.dataset.epochs)
+        """
+        test_epochs = 0
+        train_epochs = len(self.dataset.epochs)
         if hasattr(self.dataset, 'test_epochs'):
-            ts = len(self.dataset.test_epochs)
-        return tr == ts
+            test_epochs = len(self.dataset.test_epochs)
+        return train_epochs == test_epochs
 
     def _get_n_subjects(self):
-        '''Return number of subjects in dataset
+        """Return number of subjects in dataset
 
         Parameters
         ----------
@@ -637,19 +661,19 @@ class Evaluation(object):
         -------
         int : number of subjects if train/test subjects is the same
                 their sum otherwise
-        '''
+        """
         if self.dataset:
-            ts = len(self.dataset.test_epochs) if hasattr(
+            test_epochs = len(self.dataset.test_epochs) if hasattr(
                 self.dataset, 'test_epochs') else 0
             if self._equale_subjects():
                 return len(self.dataset.epochs)
             else:
-                return len(self.dataset.epochs) + ts
+                return len(self.dataset.epochs) + test_epochs
         else:
             return 0
 
     def _compile_model(self):
-        '''Compile model using speficied model_config, default values otherwise
+        """Compile model using speficied model_config, default values otherwise
 
         Sets model_compiled attribute to true after successful model
             compilation
@@ -662,22 +686,22 @@ class Evaluation(object):
         -------
         no value
 
+        """
+        # if not self.model_config:
+        khsara, optimizer, metrics = self._get_compile_configs()
         '''
-        if not self.model_config:
-            # some nice default configs
-            khsara, opt, mets = self._get_compile_configs()
         else:
             khsara = self.model_config['loss']
-            opt = self.model_config['optimizer']
-            mets = self.model_config['metrics']
-
+            optimizer = self.model_config['optimizer']
+            metrics = self.model_config['metrics']
+        '''
         self.model.compile(loss=khsara,
-                           optimizer=opt,
-                           metrics=mets
+                           optimizer=optimizer,
+                           metrics=metrics
                            )
         self.model_compiled = True
 
-    def _eval_model(self, X_train, Y_train, X_val, Y_val, X_test, cws):
+    def _eval_model(self, X_train, Y_train, X_val, Y_val, X_test, Y_test, cws):
         '''Train model on train/validation data and predict its output on test data
 
         Run model's fit() and predict() methods
@@ -722,10 +746,11 @@ class Evaluation(object):
                                  class_weight=cws,
                                  callbacks=clbs)
         probs = self.model.predict(X_test)
-        return history, probs
+        perf = self.model.evaluate(X_test, Y_test, verbose=self.verbose)
+        return history, probs, perf
 
     def _get_compile_configs(self):
-        '''Returns default model compile configurations as tuple
+        """Returns default model compile configurations as tuple
 
         Parameters
         ----------
@@ -739,25 +764,33 @@ class Evaluation(object):
             optimizer
         mets : list : str| keras metrics
             metrics
-        '''
+        """
         if self.dataset:
             classes = self.dataset.get_n_classes()
         else:
             classes = 0
 
-        if self.model_config:
-            mets = self.model_config['metrics']
-            khsara = self.model_config['loss']
-            opt = self.model_config['optimizer']
+        if 'compile' in self.model_config:
+            metrics = self.model_config['compile']['metrics']
+            khsara = self.model_config['compile']['loss']
+            optimizer = self.model_config['compile']['optimizer']
         else:
-            mets = ['accuracy']
+            # metrics = ['accuracy']
+            metrics = [tf.keras.metrics.Accuracy(name='accuracy')]
             if classes == 2:
                 khsara = 'binary_crossentropy'
-                mets.append(AUC())
+                metrics.extend([tf.keras.metrics.AUC(name='auc'),
+                               tf.keras.metrics.TruePositives(name='tp'),
+                               tf.keras.metrics.FalsePositives(name='fp'),
+                               tf.keras.metrics.TrueNegatives(name='tn'),
+                               tf.keras.metrics.FalseNegatives(name='fn'),
+                               tf.keras.metrics.Precision(name='precision'),
+                               tf.keras.metrics.Recall(name='recall')]
+                               )
             else:
                 khsara = 'categorical_crossentropy'
-            opt = 'adam'
-        return khsara, opt, mets
+            optimizer = 'adam'
+        return khsara, optimizer, metrics
 
     def _get_fit_configs(self):
         '''Returns fit configurations as tuple
@@ -775,10 +808,10 @@ class Evaluation(object):
         clbs : list
             keras callbacks added to be watched during training
         '''
-        if self.model_config:
-            batch = self.model_config['batch']
-            ep = self.model_config['epochs']
-            clbs = self.model_config['callbacks']
+        if 'fit' in self.model_config:
+            batch = self.model_config['fit']['batch']
+            ep = self.model_config['fit']['epochs']
+            clbs = self.model_config['fit']['callbacks']
         else:
             batch = 64
             ep = 300
@@ -801,7 +834,10 @@ class Evaluation(object):
         '''
         khsara, opt, mets = self._get_compile_configs()
         batch, ep, clbs = self._get_fit_configs()
-        model_config = f' Loss: {khsara} | Optimizer: {opt} | metrics: {mets} | batch_size: {batch} | epochs: {ep} | callbacks: {clbs}'
+        model_config = f' Loss: {khsara} | Optimizer: {opt} | \
+                            metrics: {mets} | batch_size: {batch} | \
+                            epochs: {ep} | \
+                            callbacks: {clbs}'
         return model_config
 
     def _assert_partiton(self, excl=False):
@@ -859,3 +895,29 @@ class Evaluation(object):
             test = 1
 
         return self._get_n_subjects() - train - test
+
+    def _aggregate_results(self, res):
+        """Aggregate subject's results from folds into a single list
+
+        Parameters
+        ----------
+        results : list of dict
+            each element in the list is a dict of performance
+            values in a fold
+
+        Returns
+        -------
+        dict of performance metrics
+        """
+        results = dict()
+        if type(res) is list:
+            metrics = res[0].keys()
+        else:
+            metrics = res.keys()
+        for metric in metrics:
+            tmp = []
+            for fold in res:
+                tmp.append(fold[metric])
+            results[metric] = tmp
+
+        return results

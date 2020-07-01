@@ -91,10 +91,11 @@ class CrossSubject(Evaluation):
 
         if not pointer and check:
             pointer = CheckPoint(self)
-
+        '''
         res_acc, res_auc = [], []
         res_tp, res_fp = [], []
-
+        '''
+        res = []
         if not self.model_compiled:
             self._compile_model()
 
@@ -110,6 +111,8 @@ class CrossSubject(Evaluation):
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
             rets = self._cross_subject(fold)
+            # fold_results = self._aggregate_results(rets)
+            '''
             if isinstance(rets, tuple):
                 res_acc.append(rets[0])
                 res_auc.append(rets[1])
@@ -126,6 +129,17 @@ class CrossSubject(Evaluation):
                 self.logger.debug(msg)
                 self.logger.debug(
                     f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+            '''
+            if self.log:
+                msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
+                # if len(self.model.metrics) > 1:
+                if len(self.model_config['metrics']) > 1:
+                    msg += f" AUC: {rets['auc']}"
+                self.logger.debug(msg)
+                self.logger.debug(
+                    f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+
+            res.append(rets)
 
             if check:
                 pointer.set_checkpoint(fold+1, self.model)
@@ -134,7 +148,7 @@ class CrossSubject(Evaluation):
                 self.dataset.epochs.ndim == 3):
             #
             self.dataset.recover_dim()
-
+        '''
         tfpr = {}
         # Aggregate results
         if res_auc:
@@ -145,9 +159,10 @@ class CrossSubject(Evaluation):
         else:
             res = np.array(res_acc)
             # tfpr = []
-
+        '''
         if len(self.folds) == len(self.predictions):
-            self.results = self.results_reports(res, tfpr)
+            # self.results = self.results_reports(res, tfpr)
+            self.results = self.results_reports(res)
 
     def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy
@@ -245,11 +260,12 @@ class CrossSubject(Evaluation):
         #
         cws = class_weights(np.argmax(Y_train, axis=1))
         # evaluate model on subj on all folds
-        self.model_history, probs = self._eval_model(X_train, Y_train,
-                                                     X_val, Y_val, X_test,
-                                                     cws)
+        self.model_history, probs, perf = self._eval_model(X_train, Y_train,
+                                                           X_val, Y_val,
+                                                           X_test, Y_test,
+                                                           cws)
         # probs = self.model.predict(X_test)
-        rets = self.measure_performance(Y_test, probs)
+        rets = self.measure_performance(Y_test, probs, perf)
 
         return rets
 

@@ -100,8 +100,11 @@ class SingleSubject(Evaluation):
         if not pointer and check:
             pointer = CheckPoint(self)
         #
+        '''
         res_acc = []
         res_auc, res_tp, res_fp = [], [], []
+        '''
+        res = []
 
         independent_test = False
 
@@ -129,14 +132,15 @@ class SingleSubject(Evaluation):
                 print(f'Evaluating Subject: {subj+1}/{len(operations)}...')
 
             rets = self._single_subject(subj, independent_test)
+            subj_results = self._aggregate_results(rets)
+            '''
             if isinstance(rets[0], tuple):
                 res_acc.append([elm[0] for elm in rets])
                 res_auc.append([elm[1] for elm in rets])
                 res_fp.append([elm[2] for elm in rets])
                 res_tp.append([elm[3] for elm in rets])
             else:
-                res_acc.append(rets)
-
+                res_acc.append(rets)            
             if self.log:
                 msg = f' Subj : {subj+1} ACC: {res_acc[-1]}'
                 # if len(self.model.metrics) > 1:
@@ -145,6 +149,17 @@ class SingleSubject(Evaluation):
                 self.logger.debug(msg)
                 self.logger.debug(
                     f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+            '''
+            if self.log:
+                msg = f" Subj : {subj+1} ACC: {subj_results['accuracy']}"
+                # if len(self.model.metrics) > 1:
+                if len(self.model_config['metrics']) > 1:
+                    msg += f" AUC: {subj_results['auc']}"
+                self.logger.debug(msg)
+                self.logger.debug(
+                    f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+
+            res.append(subj_results)
 
             if check:
                 pointer.set_checkpoint(subj+1, self.model)
@@ -152,7 +167,7 @@ class SingleSubject(Evaluation):
         if (not isinstance(self.dataset.epochs, list) and
                 self.dataset.epochs.ndim == 3):
             self.dataset.recover_dim()
-
+        '''
         # Aggregate results
         tfpr = {}
         if res_auc:
@@ -164,8 +179,10 @@ class SingleSubject(Evaluation):
         else:
             res = np.array(res_acc)
         #
+        '''
         if len(operations) == self._get_n_subjects():
-            self.results = self.results_reports(res, tfpr)
+            # self.results = self.results_reports(res, tfpr)
+            self.results = self.results_reports(res)
 
     # def _get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
@@ -306,12 +323,14 @@ class SingleSubject(Evaluation):
             #
             cl_weights = class_weights(np.argmax(Y_train, axis=1))
             # evaluate model on subj on all folds
-            self.model_history, probs = self._eval_model(X_train, Y_train,
-                                                         X_val, Y_val, X_test,
-                                                         cl_weights)
+            self.model_history, probs, perf = self._eval_model(X_train,
+                                                               Y_train,
+                                                               X_val, Y_val,
+                                                               X_test, Y_test,
+                                                               cl_weights)
 
             # probs = self.model.predict(X_test)
-            rets.append(self.measure_performance(Y_test, probs))
+            rets.append(self.measure_performance(Y_test, probs, perf))
 
         return rets
 
