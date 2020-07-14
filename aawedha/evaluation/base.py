@@ -2,11 +2,10 @@
 from tensorflow.keras.models import load_model
 from aawedha.utils.utils import log, get_gpu_name
 from aawedha.evaluation.checkpoint import CheckPoint
-from sklearn.metrics import roc_curve, confusion_matrix  # auc,
+from sklearn.metrics import roc_curve, confusion_matrix
 import tensorflow as tf
 import numpy as np
 import datetime
-# import random
 import pickle
 import abc
 import os
@@ -236,7 +235,6 @@ class Evaluation(object):
         preds = probs.argmax(axis=-1)
         y_true = Y_test.argmax(axis=-1)
         classes = Y_test.shape[1]
-        # acc = np.mean(preds == y_true)
 
         self.cm.append(confusion_matrix(Y_test.argmax(axis=-1), preds))
 
@@ -247,16 +245,7 @@ class Evaluation(object):
             fp_rate, tp_rate, thresholds = roc_curve(y_true, probs[:, 1])
             viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
             results['viz'] = viz
-            # results['fp_threshold'] = fp_rate
-            # results['tp_threshold'] = tp_rate
-            # auc_score = auc(fp_rate, tp_rate)
-            # return acc.item(), auc_score.item(), fp_rate, tp_rate
-            # return {'accuracy': acc.item(), 'auc': auc_score.item(),
-            #        'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
-            # return
-        # else:
-            # return acc.item()
-            # return {'accuracy': acc.item()}
+
         return results
 
     def results_reports(self, res, tfpr={}):
@@ -315,7 +304,7 @@ class Evaluation(object):
             elif self.__class__.__name__ == 'SingleSubject':
                 self.predictions = np.array(self.predictions).reshape(
                     (self.n_subjects, folds, examples, dim))
-                    
+
         res = self._aggregate_results(res)
 
         metrics = list(res.keys())
@@ -327,125 +316,12 @@ class Evaluation(object):
             res[metric + '_mean_per_fold'] = np.array(res[metric]).mean(axis=0)
             if np.array(res[metric]).ndim == 2:
                 res[metric + '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
-        #
-        '''
-        if tfpr:
-            # res : (metric, subjects, folds)
-            # means = res.mean(axis=-1) # mean across folds
-            r1 = np.array(res['acc'])
-            r2 = np.array(res['auc'])
-            results['auc'] = r2
-            results['acc'] = r1
-            results['acc_mean_per_fold'] = r1.mean(axis=0)
-            results['auc_mean_per_fold'] = r2.mean(axis=0)
-            results['acc_mean'] = r1.mean()
-            results['auc_mean'] = r2.mean()
-            #
-            if self.__class__.__name__ == 'SingleSubject':
-                results['acc_mean_per_subj'] = r1.mean(axis=1)
-                results['auc_mean_per_subj'] = r2.mean(axis=1)
-            #
-            results['fpr'] = tfpr['fp']
-            results['tpr'] = tfpr['tp']
-        else:
-            # res : (subjects, folds)
-            results['acc'] = res
-            # mean across folds
-            results['acc_mean_per_fold'] = res.mean(axis=0)
-            # mean across subjects and folds
-            if self.__class__.__name__ == 'SingleSubject':
-                results['acc_mean_per_subj'] = res.mean(axis=1)
-            results['acc_mean'] = res.mean()
-        '''
-        # return results
+
         return res
 
     @abc.abstractmethod
     def get_folds(self):
         pass
-        '''Generate train/validation/tes folds following Shuffle split strategy
-
-        Parameters
-        ----------
-        nfolds : int
-            number of folds to generate
-        population : int
-            number of total trials/subjects available
-        tr : int
-            number of trials/subjects to include in train folds
-        vl : int
-            number of trials/subjects to include in validation folds
-        ts : int
-            number of trials/subjects to include in test folds
-
-        exclude_subj : bool (only in CrossSubject evaluation)
-            if True the target subject data will be excluded from train fold
-
-        Returns
-        -------
-        folds : list
-        '''
-        """
-        folds = []
-        if hasattr(self.dataset, 'test_epochs'):
-            if self.__class__.__name__ == 'CrossSubject':
-                # independent test set
-                # list : nfolds : [nsubjects_train] [nsubjects_val]
-                for subj in range(self.n_subjects):
-                    selection = np.arange(0, self.n_subjects)
-                    if exclude_subj:
-                        # fully cross-subject, no subject train data in fold
-                        selection = np.delete(selection, subj)
-                    for fold in range(nfolds):
-                        np.random.shuffle(selection)
-                        folds.append([np.array(selection[:tr]),
-                                      np.array(selection[tr:tr + vl]),
-                                      np.array([subj])
-                                      ])
-            elif self.__class__.__name__ == 'SingleSubject':
-                # generate folds for test set from one set
-                pop = population
-                t = tr
-                v = vl
-                s = ts
-                for f in range(nfolds):
-                    if isinstance(population, np.ndarray):
-                        # inconsistent numbers of trials among subjects
-                        sbj = []
-                        for subj in range(self.n_subjects):
-                            pop = population[subj]
-                            t = tr[subj]
-                            v = vl[subj]
-                            s = ts[subj]
-                            tmp = np.array(random.sample(range(pop), pop))
-                            sbj.append([tmp[:t], tmp[t:t + v], tmp[-s:]])
-                        folds.append(sbj)
-                    else:
-                        # same numbers of trials for all subjects
-                        tmp = np.array(random.sample(range(pop), pop))
-                        folds.append([tmp[:t], tmp[t:t + v], tmp[-s:]])
-        else:
-            # generate folds for test set from one set
-            if self.__class__.__name__ != 'SingleSubject':
-                for subj in range(self.n_subjects):
-                    # exclude subject per default
-                    selection = np.arange(0, self.n_subjects)
-                    # fully cross-subject, no subject train data in fold
-                    selection = np.delete(selection, subj)
-                    for fold in range(nfolds):
-                        np.random.shuffle(selection)
-                        folds.append([np.array(selection[:tr]),
-                                      np.array(selection[tr:tr + vl]),
-                                      np.array([subj])
-                                      ])
-            else:
-                for _ in range(nfolds):
-                    tmp = np.array(random.sample(
-                        range(population), population))
-                    folds.append([tmp[:tr], tmp[tr:tr + vl], tmp[-ts:]])
-        #
-        return folds
-        """
 
     def save_model(self, folderpath=None):
         '''Save trained model in HDF5 format
@@ -689,12 +565,7 @@ class Evaluation(object):
         """
         # if not self.model_config:
         khsara, optimizer, metrics = self._get_compile_configs()
-        '''
-        else:
-            khsara = self.model_config['loss']
-            optimizer = self.model_config['optimizer']
-            metrics = self.model_config['metrics']
-        '''
+
         self.model.compile(loss=khsara,
                            optimizer=optimizer,
                            metrics=metrics
@@ -775,8 +646,7 @@ class Evaluation(object):
             khsara = self.model_config['compile']['loss']
             optimizer = self.model_config['compile']['optimizer']
         else:
-            # metrics = ['accuracy']
-            metrics = [tf.keras.metrics.Accuracy(name='accuracy')]
+            metrics = ['accuracy']
             if classes == 2:
                 khsara = 'binary_crossentropy'
                 metrics.extend([tf.keras.metrics.AUC(name='auc'),
@@ -819,7 +689,7 @@ class Evaluation(object):
         return batch, ep, clbs
 
     def _get_model_configs_info(self):
-        '''Construct a logging message to be added to logger at evaluation beginning
+        """Construct a logging message to be added to logger at evaluation beginning
 
         the message details the models configuration used for model
 
@@ -831,7 +701,7 @@ class Evaluation(object):
         -------
         model_config : str
             model's configuation
-        '''
+        """
         khsara, opt, mets = self._get_compile_configs()
         batch, ep, clbs = self._get_fit_configs()
         model_config = f' Loss: {khsara} | Optimizer: {opt} | \
@@ -841,7 +711,7 @@ class Evaluation(object):
         return model_config
 
     def _assert_partiton(self, excl=False):
-        '''Assert if partition to be used do not surpass number of subjects available
+        """Assert if partition to be used do not surpass number of subjects available
         in dataset
 
         Parameters
@@ -854,13 +724,13 @@ class Evaluation(object):
         -------
         bool : True if number of subjects is less than the sum of parition
             False otherwise
-        '''
+        """
         subjects = self._get_n_subjects()
         prt = np.sum(self.partition)
         return subjects < prt
 
     def _load_checkpoint(self):
-        '''load saved checkpoint to resume evaluation
+        """load saved checkpoint to resume evaluation
         Parameters
         ----------
         no parameters
@@ -869,7 +739,7 @@ class Evaluation(object):
         -------
         checkpoint :
             a checkpoint of a saved evaluation
-        '''
+        """
         file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
         if os.path.exists(file_name):
             f = open(file_name, 'rb')

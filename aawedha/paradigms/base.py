@@ -1,7 +1,7 @@
 """
     Base class for paradigms
 """
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 
 class Paradigm(metaclass=ABCMeta):

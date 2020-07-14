@@ -57,15 +57,18 @@ class Tsinghua(DataSet):
             del data
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
-                #stimulation = 5 * self.fs
-                augmented = np.floor(5 * self.fs / epoch_duration).astype(int)
-                #augmented = 4                
-                tg = eeg.shape[2]                
-                #v = [eeg[onset + (stride * self.fs):onset + (stride * self.fs) +
+                # stimulation = 5 * self.fs
+                # augmented = 4
+                tg = eeg.shape[2]
+                # v = [eeg[onset + (stride * self.fs):onset + (stride * self.fs) +
                 #         epoch_duration, :, :, :] for stride in range(augmented)]
                 stimulation = 5
+                augmented = np.floor(
+                    stimulation * self.fs / epoch_duration).astype(int)
                 strides = list(np.arange(0, stimulation, ep))
-                v = [eeg[onset + (int(s) * self.fs):onset + (int(s) * self.fs) + epoch_duration, :, :, :] for s in strides]                
+                # v = [eeg[onset + (int(s) * self.fs):onset + (int(s) *self.fs) + epoch_duration, :, :, :] for s in strides]
+                v = [eeg[onset + int(s * self.fs):onset + int(s * self.fs) +
+                         epoch_duration, :, :, :] for s in strides]
                 eeg = np.concatenate(v, axis=2)
                 samples, channels, targets, blocks = eeg.shape
                 y = np.tile(np.arange(1, tg + 1), (1, augmented))

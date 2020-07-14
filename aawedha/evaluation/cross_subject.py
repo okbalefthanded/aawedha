@@ -91,10 +91,7 @@ class CrossSubject(Evaluation):
 
         if not pointer and check:
             pointer = CheckPoint(self)
-        '''
-        res_acc, res_auc = [], []
-        res_tp, res_fp = [], []
-        '''
+
         res = []
         if not self.model_compiled:
             self._compile_model()
@@ -112,24 +109,6 @@ class CrossSubject(Evaluation):
 
             rets = self._cross_subject(fold)
             # fold_results = self._aggregate_results(rets)
-            '''
-            if isinstance(rets, tuple):
-                res_acc.append(rets[0])
-                res_auc.append(rets[1])
-                res_fp.append(rets[2])
-                res_tp.append(rets[3])
-            else:
-                res_acc.append(rets)
-
-            if self.log:
-                msg = f' Fold : {fold+1} ACC: {res_acc[-1]}'
-                # if len(self.model.metrics) > 1:
-                if len(self.model_config['metrics']) > 1:
-                    msg += f' AUC: {res_auc[-1]}'
-                self.logger.debug(msg)
-                self.logger.debug(
-                    f' Training stopped at epoch: {self.model_history.epoch[-1]}')
-            '''
             if self.log:
                 msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
                 # if len(self.model.metrics) > 1:
@@ -148,18 +127,7 @@ class CrossSubject(Evaluation):
                 self.dataset.epochs.ndim == 3):
             #
             self.dataset.recover_dim()
-        '''
-        tfpr = {}
-        # Aggregate results
-        if res_auc:
-            res = np.array([res_acc, res_auc])
-            # tfpr = np.array([res_fp, res_tp])
-            tfpr['fp'] = res_fp
-            tfpr['tp'] = res_tp
-        else:
-            res = np.array(res_acc)
-            # tfpr = []
-        '''
+
         if len(self.folds) == len(self.predictions):
             # self.results = self.results_reports(res, tfpr)
             self.results = self.results_reports(res)

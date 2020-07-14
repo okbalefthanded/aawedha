@@ -100,10 +100,7 @@ class SingleSubject(Evaluation):
         if not pointer and check:
             pointer = CheckPoint(self)
         #
-        '''
-        res_acc = []
-        res_auc, res_tp, res_fp = [], [], []
-        '''
+
         res = []
 
         independent_test = False
@@ -133,23 +130,7 @@ class SingleSubject(Evaluation):
 
             rets = self._single_subject(subj, independent_test)
             subj_results = self._aggregate_results(rets)
-            '''
-            if isinstance(rets[0], tuple):
-                res_acc.append([elm[0] for elm in rets])
-                res_auc.append([elm[1] for elm in rets])
-                res_fp.append([elm[2] for elm in rets])
-                res_tp.append([elm[3] for elm in rets])
-            else:
-                res_acc.append(rets)            
-            if self.log:
-                msg = f' Subj : {subj+1} ACC: {res_acc[-1]}'
-                # if len(self.model.metrics) > 1:
-                if len(self.model_config['metrics']) > 1:
-                    msg += f' AUC: {res_auc[-1]}'
-                self.logger.debug(msg)
-                self.logger.debug(
-                    f' Training stopped at epoch: {self.model_history.epoch[-1]}')
-            '''
+
             if self.log:
                 msg = f" Subj : {subj+1} ACC: {subj_results['accuracy']}"
                 # if len(self.model.metrics) > 1:
@@ -167,24 +148,11 @@ class SingleSubject(Evaluation):
         if (not isinstance(self.dataset.epochs, list) and
                 self.dataset.epochs.ndim == 3):
             self.dataset.recover_dim()
-        '''
-        # Aggregate results
-        tfpr = {}
-        if res_auc:
-            res = {}
-            res['acc'] = res_acc
-            res['auc'] = res_auc
-            tfpr['fp'] = res_fp
-            tfpr['tp'] = res_tp
-        else:
-            res = np.array(res_acc)
-        #
-        '''
+
         if len(operations) == self._get_n_subjects():
             # self.results = self.results_reports(res, tfpr)
             self.results = self.results_reports(res)
 
-    # def _get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
         """Generate folds following a KFold cross-validation strategy
 
@@ -265,7 +233,8 @@ class SingleSubject(Evaluation):
             subject id to be selected and evaluated
 
         indie : bool
-            True if independent set available in dataset, so no need to use the test fold.
+            True if independent set available in dataset, so no need to use
+            the test fold.
             default : False
 
         Returns
@@ -273,30 +242,6 @@ class SingleSubject(Evaluation):
         rets : list of tuple, length = nfolds
             contains subject's performance on each folds
         """
-        '''
-        # prepare data
-        kernels = 1  #
-        if isinstance(self.dataset.epochs, list):
-            # TODO
-            x = self.dataset.epochs[subj]
-            samples, channels, trials = x.shape
-            x = x.transpose((2, 1, 0)).reshape(
-                (trials, kernels, channels, samples))
-        else:
-            if self.dataset.epochs.ndim == 4:
-                x = self.dataset.epochs[subj][:, :, :]
-                samples, channels, trials = x.shape
-                x = x.transpose((2, 1, 0)).reshape(
-                    (trials, kernels, channels, samples))
-            elif self.dataset.epochs.ndim == 3:
-                x = self.dataset.epochs[subj][:, :]
-                samples, trials = x.shape
-                x = x.transpose((1, 0)).reshape((trials, kernels, samples))
-
-        # x = x.reshape((trials, kernels, channels, samples))
-        y = self.dataset.y[subj][:]
-        y = labels_to_categorical(y)
-        '''
         x, y = self._get_data_pair(subj)
         rets = []
         # get in the fold!!!
@@ -305,13 +250,11 @@ class SingleSubject(Evaluation):
         else:
             folds_range = range(len(self.folds))
 
-        # for fold in range(len(self.folds)):
         for fold in folds_range:
             #
             split = self._split_set(x, y, subj, fold, indie)
             # normalize data
             X_train, mu, sigma = fit_scale(split['X_train'])
-            # X_val = self.transform_scale(split['X_val'], mu, sigma)
             X_val = split['X_val']
             if type(X_val) is np.ndarray:
                 X_val = transform_scale(split['X_val'], mu, sigma)
@@ -409,8 +352,7 @@ class SingleSubject(Evaluation):
         X_train = x[f[0]]
         Y_train = y[f[0]]
         X_val, Y_val = None, None
-        # X_val = x[f[1]]
-        # Y_val = y[f[1]]
+
         if indie:
             # independent Test set
             if isinstance(self.dataset.test_epochs, list):
