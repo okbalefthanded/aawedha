@@ -66,8 +66,8 @@ class OpenBMISSVEP(DataSet):
                                band, self.fs, order)
                 mrk = data[0][0][2].squeeze() // stride
                 y = data[0][0][4].squeeze()
-                events = [elm.item()
-                          for elm in data[0][0][6].squeeze().tolist()]
+                ev = [elm.item()
+                      for elm in data[0][0][6].squeeze().tolist()]
                 if augment:
                     stimulation = 4 * self.fs
                     augmented = np.floor(
@@ -77,14 +77,14 @@ class OpenBMISSVEP(DataSet):
                                    * i, mrk) for i in range(augmented)]
                     eeg = np.concatenate(v, axis=2)
                     y = np.tile(y, augmented)
-                    events = np.tile(events, augmented)
+                    ev = np.tile(ev, augmented)
                 else:
                     eeg = eeg_epoch(cnt, epoch_duration, mrk)
                 del data
                 del cnt
                 x_subj.append(eeg)
                 y_subj.append(y)
-                events_subj.append(events)
+                events_subj.append(ev)
 
             X.append(np.concatenate(x_subj, axis=-1))
             Y.append(np.concatenate(y_subj, axis=-1))
