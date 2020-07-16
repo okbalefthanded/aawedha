@@ -10,17 +10,22 @@ import gzip
 
 class Exoskeleton(DataSet):
     """
-    SSVEP-based BCI of subjects operating an upper limb exoskeleton during a shared control
+    SSVEP-based BCI of subjects operating an upper limb exoskeleton during a
+    shared control
 
     References :
-    [1] Emmanuel K. Kalunga, Sylvain Chevallier, Olivier Rabreau, Eric Monacelli. Hybrid interface:
-    Integrating BCI in Multimodal Human-Machine Interfaces. IEEE/ASME International Conference
-    on Advanced Intelligent Mechatronics (AIM), 2014, Besancon, France.
-    [2] Emmanuel Kalunga, Sylvain Chevallier, Quentin Barthelemy. Data augmentation in
-    Riemannian space for Brain-Computer Interfaces, STAMLINS (ICML workshop),
+    [1] Emmanuel K. Kalunga, Sylvain Chevallier, Olivier Rabreau, Eric
+    Monacelli. Hybrid interface:
+    Integrating BCI in Multimodal Human-Machine Interfaces. IEEE/ASME
+    International Conference on Advanced Intelligent Mechatronics (AIM),
+    2014, Besancon, France.
+    [2] Emmanuel Kalunga, Sylvain Chevallier, Quentin Barthelemy. Data
+    augmentation in Riemannian space for Brain-Computer Interfaces,
+    STAMLINS (ICML workshop),
     2015, Lille, France.
-    [3] Emmanuel K. Kalunga, Sylvain Chevallier, Quentin Barthelemy. Online SSVEP-based BCI
-    using Riemannian Geometry. Neurocomputing, 2016. arXiv research report on arXiv:1501.03227.
+    [3] Emmanuel K. Kalunga, Sylvain Chevallier, Quentin Barthelemy. Online
+    SSVEP-based BCI using Riemannian Geometry. Neurocomputing, 2016.
+    arXiv research report on arXiv:1501.03227.
 
     """
 
