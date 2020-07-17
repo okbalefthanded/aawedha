@@ -40,9 +40,14 @@ class OpenBMISSVEP(DataSet):
         self.sessions = 100  # index of last trial in a session
 
     def load_raw(self, path=None, mode='', epoch_duration=[0, 4],
-                 band=[4.0, 45.0], order=6, augment=False, downsample=None):
+                 band=[4.0, 45.0], order=6, ch=None,
+                 augment=False, downsample=None):
         '''
         '''
+        ch_index = self._get_channels(self.ch_names)
+        if ch:
+            ch_index = self._get_channels(ch)
+
         stride = 1
         if downsample:
             stride = downsample
@@ -62,7 +67,7 @@ class OpenBMISSVEP(DataSet):
                 f = glob.glob(f'{path}/{sess}/s{subj}/*SSVEP.mat')[0]
                 data = loadmat(f)
                 data = data['EEG_SSVEP_'+mode]
-                cnt = bandpass(data[0][0][1][::stride, :],
+                cnt = bandpass(data[0][0][1][::stride, ch_index],
                                band, self.fs, order)
                 mrk = data[0][0][2].squeeze() // stride
                 y = data[0][0][4].squeeze()
@@ -71,8 +76,7 @@ class OpenBMISSVEP(DataSet):
                 if augment:
                     stimulation = 4 * self.fs
                     augmented = np.floor(
-                        stimulation / np.diff(epoch_duration))[0].astype(int)
-                    self.sessions = self.sessions * augmented
+                        stimulation / np.diff(epoch_duration))[0].astype(int)      
                     v = [eeg_epoch(cnt, epoch_duration + np.diff(epoch_duration)
                                    * i, mrk) for i in range(augmented)]
                     eeg = np.concatenate(v, axis=2)
@@ -90,15 +94,20 @@ class OpenBMISSVEP(DataSet):
             Y.append(np.concatenate(y_subj, axis=-1))
             events.append(np.concatenate(events_subj, axis=-1))
 
+        if augment and mode == 'test':
+            self.sessions = self.sessions * augmented
+
         X = np.array(X)
         Y = np.array(Y).squeeze()
         events = np.array(events).squeeze()
         return X, Y, events
 
-    def generate_set(self, load_path=None, epoch=[0, 4],
+    def generate_set(self, load_path=None,
+                     epoch=[0, 4],
                      band=[4.0, 45.0],
                      order=6, save_folder=None,
                      augment=False,
+                     channels=None,
                      downsample=None):
         '''
         '''
@@ -111,6 +120,7 @@ class OpenBMISSVEP(DataSet):
             epoch,
             band,
             order,
+            channels,
             augment,
             downsample
         )
@@ -121,9 +131,15 @@ class OpenBMISSVEP(DataSet):
             epoch,
             band,
             order,
+            channels,
             augment,
             downsample
         )
+
+        if channels:
+            self.ch_names = [self.ch_names[ch]
+                             for ch in self._get_channels(channels)]
+
         self.subjects = self._get_subjects(n_subjects=54)
         self.paradigm = self._get_paradigm()
         self.save_set(save_folder)

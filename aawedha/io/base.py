@@ -151,7 +151,7 @@ class DataSet(metaclass=ABCMeta):
     def select_channels(self, ch=[]):
         '''
         '''
-        indexes = [i for i, x in enumerate(self.ch_names) if x in ch]
+        indexes = self._get_channels(ch)
 
         self.ch_names = [self.ch_names[ch] for ch in indexes]
 
@@ -272,6 +272,21 @@ class DataSet(metaclass=ABCMeta):
             return len(np.unique(self.y[0]))
         else:
             return len(np.unique(self.y))
+
+    def _get_channels(self, ch=[]):
+        """returns indices of specific channels from channels in dataset
+
+        Parameters
+        ----------
+        ch : list
+            list of channels names
+
+        Returns
+        -------
+        list
+            list of channels indices in ch
+        """
+        return [i for i, x in enumerate(self.ch_names) if x in ch]
 
     def _resample_array(self, ndarray, up, down):
         '''
