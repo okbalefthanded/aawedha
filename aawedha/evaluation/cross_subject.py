@@ -112,7 +112,7 @@ class CrossSubject(Evaluation):
             if self.log:
                 msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
                 # if len(self.model.metrics) > 1:
-                if len(self.model_config['metrics']) > 1:
+                if len(self.model_config['compile']['metrics']) > 1:
                     msg += f" AUC: {rets['auc']}"
                 self.logger.debug(msg)
                 self.logger.debug(

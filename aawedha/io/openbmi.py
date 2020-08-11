@@ -76,7 +76,7 @@ class OpenBMISSVEP(DataSet):
                 if augment:
                     stimulation = 4 * self.fs
                     augmented = np.floor(
-                        stimulation / np.diff(epoch_duration))[0].astype(int)      
+                        stimulation / np.diff(epoch_duration))[0].astype(int)
                     v = [eeg_epoch(cnt, epoch_duration + np.diff(epoch_duration)
                                    * i, mrk) for i in range(augmented)]
                     eeg = np.concatenate(v, axis=2)
