@@ -48,7 +48,7 @@ class CrossSubject(Evaluation):
         no value, sets folds attribute with a list of arrays
         """
 
-        if self._assert_partiton(excl):
+        if self._assert_partition(excl):
             raise Exception(
                 f'Parition exceeds subjects count, use a different parition')
 

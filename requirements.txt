@@ -4,6 +4,7 @@ mne
 tensorflow
 keras
 tensorflow-addons
+scikit-learn
 matplotlib
 seaborn
 pynvml

@@ -209,7 +209,7 @@ class CrossSet(Evaluation):
 
         self.n_subjects = len(self.target.epochs)
 
-        if self._assert_partiton(excl):
+        if self._assert_partition(excl):
             raise Exception(
                 f'Parition exceeds subjects count, use a different parition')
 
@@ -644,7 +644,7 @@ class CrossSet(Evaluation):
 
         return intersection[idx]
 
-    def _assert_partiton(self, subjects=0, excl=False):
+    def _assert_partition(self, subjects=0, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
         in dataset
 

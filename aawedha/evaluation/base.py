@@ -1,6 +1,5 @@
-
 from tensorflow.keras.models import load_model
-from aawedha.utils.utils import log, get_gpu_name
+from aawedha.utils.utils import log, get_gpu_name, init_TPU
 from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.metrics import roc_curve, confusion_matrix
 import tensorflow as tf
@@ -12,7 +11,7 @@ import os
 
 
 class Evaluation(object):
-    '''Base class for evaluations
+    """Base class for evaluations
 
         Evaluation defines and control the main process for training and
         testing a given model on a given dataset following a certain
@@ -27,15 +26,15 @@ class Evaluation(object):
             the model to train/test on the dataset
 
         partition : list of 2 or 3 integers
-            configuration for data partioning into train/validation/test subset
+            configuration for data partitioning into train/validation/test subset
             default a 3 integers list of:
-                In case of a single dataset without an independet Test set
+                In case of a single dataset without an independent Test set
                 - (folds/L, folds/M, folds/N) L+M+N = total trials in dataset
                 for SingleSubject evaluation
                 - (L_subjects, M_subjects, N_subjects) L+M+N = total subjects
                 in dataset for CrossSubject evaluation
             a 2 integers list of:
-                In case of a dataset with an independet Test set
+                In case of a dataset with an independent Test set
                 - (folds/L, folds/M) L+M = T total trials in dataset for
                 SingleSubject evaluation
                 - (L_subjects, M_subjects) L+M = S total subjects in dataset
@@ -58,7 +57,7 @@ class Evaluation(object):
 
         predictions : ndarray of predictions
             models output for each example on the dataset :
-                - SingleSubject evaluaion : subjects x folds x Trials x dim
+                - SingleSubject evaluation : subjects x folds x Trials x dim
                 - CrossSubject evaluation : folds x Trials x dim
 
         cm : list
@@ -114,12 +113,12 @@ class Evaluation(object):
         model_compiled : bool, flag for model state
             default : False
 
-    '''
+    """
 
-    def __init__(self, dataset=None, model=None, partition=[], folds=[],
+    def __init__(self, dataset=None, model=None, partition=None, folds=None,
                  verbose=2, lg=False):
-        '''
-        '''
+        """
+        """
         self.dataset = dataset
         self.partition = partition
         self.folds = folds
@@ -153,7 +152,7 @@ class Evaluation(object):
         info = (f'Type: {name}',
                 f'DataSet: {str(self.dataset)}',
                 f'Model: {model}')
-        return '\n'.joint(info)
+        return '\n'.join(info)
 
     @abc.abstractmethod
     def generate_split(self, nfolds):
@@ -315,7 +314,8 @@ class Evaluation(object):
             res[metric + '_mean'] = np.array(res[metric]).mean()
             res[metric + '_mean_per_fold'] = np.array(res[metric]).mean(axis=0)
             if np.array(res[metric]).ndim == 2:
-                res[metric + '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
+                res[metric +
+                    '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
 
         return res
 
@@ -324,7 +324,7 @@ class Evaluation(object):
         pass
 
     def save_model(self, folderpath=None):
-        '''Save trained model in HDF5 format
+        """Save trained model in HDF5 format
         Uses the built-in save method in Keras Model object.
         model name will be: folderpath/modelname_paradigm_dataset.h5
 
@@ -337,7 +337,7 @@ class Evaluation(object):
         Returns
         -------
         no value
-        '''
+        """
 
         if not os.path.isdir('trained'):
             os.mkdir('trained')
@@ -350,7 +350,7 @@ class Evaluation(object):
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
-        '''Assign Model and model_config
+        """Assign Model and model_config
 
         Parameters
         ----------
@@ -379,7 +379,7 @@ class Evaluation(object):
         Returns
         -------
         no value
-        '''
+        """
         self.model = model
         self.initial_weights = model.get_weights()
         if model_config:
@@ -445,8 +445,13 @@ class Evaluation(object):
                 len(self.partition)))
         model = f'Model: {self.model.name}'
         model_config = f'Model config: {self._get_model_configs_info()}'
-        gpu = get_gpu_name()
-        exp_info = ' '.join([data, duration, prt, model, model_config, gpu])
+        device = self._get_device()
+        if device == 'GPU':
+            compute_engine = get_gpu_name()
+        else:
+            compute_engine = 'TPU'
+        exp_info = ' '.join([data, duration, prt, model,
+                             model_config, compute_engine])
         self.logger.debug(exp_info)
 
     def reset(self, chkpoint=False):
@@ -549,7 +554,7 @@ class Evaluation(object):
             return 0
 
     def _compile_model(self):
-        """Compile model using speficied model_config, default values otherwise
+        """Compile model using specified model_config, default values otherwise
 
         Sets model_compiled attribute to true after successful model
             compilation
@@ -563,17 +568,27 @@ class Evaluation(object):
         no value
 
         """
+        device = self._get_device()
         # if not self.model_config:
         khsara, optimizer, metrics = self._get_compile_configs()
 
-        self.model.compile(loss=khsara,
-                           optimizer=optimizer,
-                           metrics=metrics
-                           )
+        if device == 'GPU':
+            self.model.compile(loss=khsara,
+                               optimizer=optimizer,
+                               metrics=metrics
+                               )
+        elif device == 'TPU':
+            strategy = init_TPU()
+            with strategy.scope():
+                self.model = tf.keras.models.clone_model(self.model)
+                self.model.compile(loss=khsara,
+                                   optimizer=optimizer,
+                                   metrics=metrics
+                                   )
         self.model_compiled = True
 
     def _eval_model(self, X_train, Y_train, X_val, Y_val, X_test, Y_test, cws):
-        '''Train model on train/validation data and predict its output on test data
+        """Train model on train/validation data and predict its output on test data
 
         Run model's fit() and predict() methods
 
@@ -597,10 +612,10 @@ class Evaluation(object):
             the model's loss and metrics performances per epoch
 
         probs : 2d array (n_examples x n_classes)
-            model's output on test data as probabilites of belonging to
+            model's output on test data as probabilities of belonging to
             each class
 
-        '''
+        """
         batch, ep, clbs = self._get_fit_configs()
 
         if X_val is None:
@@ -610,12 +625,26 @@ class Evaluation(object):
         #
         self.reset_weights()
         #
-        history = self.model.fit(X_train, Y_train,
-                                 batch_size=batch, epochs=ep,
-                                 verbose=self.verbose,
-                                 validation_data=val,
-                                 class_weight=cws,
-                                 callbacks=clbs)
+        device = self._get_device()
+        history = {}
+        if device == 'GPU':
+            history = self.model.fit(X_train, Y_train,
+                                     batch_size=batch,
+                                     epochs=ep,
+                                     verbose=self.verbose,
+                                     validation_data=val,
+                                     class_weight=cws,
+                                     callbacks=clbs)
+        elif device == 'TPU':
+            history = self.model.fit(X_train, Y_train,
+                                     batch_size=batch,
+                                     epochs=ep,
+                                     steps_per_epoch=X_train.shape[0]//batch,
+                                     verbose=self.verbose,
+                                     validation_data=val,
+                                     class_weight=cws,
+                                     callbacks=clbs)
+
         probs = self.model.predict(X_test)
         perf = self.model.evaluate(X_test, Y_test, verbose=self.verbose)
         return history, probs, perf
@@ -650,12 +679,12 @@ class Evaluation(object):
             if classes == 2:
                 khsara = 'binary_crossentropy'
                 metrics.extend([tf.keras.metrics.AUC(name='auc'),
-                               tf.keras.metrics.TruePositives(name='tp'),
-                               tf.keras.metrics.FalsePositives(name='fp'),
-                               tf.keras.metrics.TrueNegatives(name='tn'),
-                               tf.keras.metrics.FalseNegatives(name='fn'),
-                               tf.keras.metrics.Precision(name='precision'),
-                               tf.keras.metrics.Recall(name='recall')]
+                                tf.keras.metrics.TruePositives(name='tp'),
+                                tf.keras.metrics.FalsePositives(name='fp'),
+                                tf.keras.metrics.TrueNegatives(name='tn'),
+                                tf.keras.metrics.FalseNegatives(name='fn'),
+                                tf.keras.metrics.Precision(name='precision'),
+                                tf.keras.metrics.Recall(name='recall')]
                                )
             else:
                 khsara = 'categorical_crossentropy'
@@ -710,7 +739,7 @@ class Evaluation(object):
                             callbacks: {clbs}'
         return model_config
 
-    def _assert_partiton(self, excl=False):
+    def _assert_partition(self, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
         in dataset
 
@@ -791,3 +820,16 @@ class Evaluation(object):
             results[metric] = tmp
 
         return results
+
+    def _get_device(self):
+        """Returns compute engine : GPU / TPU
+
+        Returns
+        -------
+        str
+            computer engine for training
+        """
+        device = 'GPU'
+        if 'device' in self.model_config:
+            device = self.model_config['device']
+        return device

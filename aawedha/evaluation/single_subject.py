@@ -7,7 +7,7 @@ import numpy as np
 
 
 class SingleSubject(Evaluation):
-    '''Single Subject Evaluation
+    """Single Subject Evaluation
 
     derived from base Evaluation class, takes same attributes and overrides
     generate_split() and run_evaluation().
@@ -20,7 +20,7 @@ class SingleSubject(Evaluation):
     _fuse_data() when the dataset is beforehand split into train/test sets
      with different subjects for each set, this method concatenates the
      subsets into a single set.
-    '''
+    """
 
     def generate_split(self, nfolds=30, strategy='Kfold'):
         """Generate cross-validation folds following a cross-validation
@@ -100,7 +100,6 @@ class SingleSubject(Evaluation):
         if not pointer and check:
             pointer = CheckPoint(self)
         #
-
         res = []
 
         independent_test = False
@@ -199,7 +198,7 @@ class SingleSubject(Evaluation):
     def get_operations(self, subject=None):
         """Get an iterable object for evaluation, it can be
         all subjects or a defined subset of subjects.
-        In case of long evaluation, the iterble starts from the current
+        In case of long evaluation, the iterable starts from the current
         index
 
         Parameters
@@ -326,7 +325,7 @@ class SingleSubject(Evaluation):
 
         indie : bool
             True if independent data set is available, False otherwise
-            defaul : False
+            default : False
 
         Returns
         -------

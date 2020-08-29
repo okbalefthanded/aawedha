@@ -3,7 +3,7 @@ import numpy as np
 
 
 def class_weights(y):
-    '''Calculates inverse of ratio of class' examples in train dataset
+    """Calculates inverse of ratio of class' examples in train dataset
     used to re-weight loss function in case of imbalanced classes in data
 
     Parameters
@@ -16,7 +16,7 @@ def class_weights(y):
     cl_weights : dict of (int : float)
         class_weight : class, 1 for each class if data classes are balanced
 
-    '''
+    """
     cl_weights = {}
     classes = np.unique(y)
     n_perclass = [np.sum(y == cl) for cl in classes]
@@ -59,7 +59,7 @@ def labels_to_categorical(y):
 
 
 def fit_scale(X):
-    '''Estimate mean and standard deviation from train set
+    """Estimate mean and standard deviation from train set
     for normalization.
     train data is normalized afterwards
 
@@ -76,7 +76,7 @@ def fit_scale(X):
         mean over all trials
     sigma : nd array (1, kernels, channels, samples)
         standard deviation over all trials
-    '''
+    """
     mu = X.mean(axis=0)
     sigma = X.std(axis=0)
     X = np.subtract(X, mu[None, :, :])

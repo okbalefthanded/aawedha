@@ -1,5 +1,7 @@
 from pynvml import *
+import tensorflow as tf
 import logging
+import os
 
 
 def log(fname='logger.log', logger_name='eval_log'):
@@ -23,7 +25,8 @@ def log(fname='logger.log', logger_name='eval_log'):
     f_handler = logging.FileHandler(fname, mode='a')
     f_handler.setLevel(logging.DEBUG)
     # Create formatters and add it to handlers
-    f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    f_format = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
     # Add handlers to the logger
     logger.addHandler(f_handler)
@@ -43,3 +46,38 @@ def get_gpu_name():
     name = nvmlDeviceGetName(handle).decode('UTF-8')
     nvmlShutdown()
     return name
+
+
+def get_tpu_address():
+    """Return TPU Address
+
+    Returns
+    -------
+        TPU address
+    """
+    try:
+        device_name = os.environ['COLAB_TPU_ADDR']
+        TPU_ADDRESS = 'grpc://' + device_name
+        print('Found TPU at: {}'.format(TPU_ADDRESS))
+    except KeyError:
+        print('TPU not found')
+    return TPU_ADDRESS
+
+
+def init_TPU():
+    """initialize TPU for training on TPUs
+
+    Returns
+    -------
+    TPUStrategy
+    """
+    TPU_ADDRESS = get_tpu_address()
+    resolver = tf.distribute.cluster_resolver.TPUClusterResolver(TPU_ADDRESS)
+    tf.config.experimental_connect_to_cluster(resolver)
+
+    # This is the TPU initialization code that has to be at the beginning.
+    tf.tpu.experimental.initialize_tpu_system(resolver)
+    # print("All devices: ", tf.config.list_logical_devices('TPU'))
+
+    strategy = tf.distribute.TPUStrategy(resolver)
+    return strategy
