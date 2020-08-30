@@ -1,4 +1,3 @@
-
 from scipy.fft import fft
 from scipy import signal
 import numpy as np
@@ -13,7 +12,7 @@ def spectral_power(data, subject=0, channel='POz'):
     data : dataset instance
         epoched EEG signal dataset
     subject : int
-        given index for a sujbect, by default 0 (first subject in the dataset)
+        given index for a subject, by default 0 (first subject in the dataset)
     channel : str, optional
         electrode name, by default 'Poz'
 
@@ -23,7 +22,7 @@ def spectral_power(data, subject=0, channel='POz'):
         spectral power of each event in the dataset
 
     frequencies: ndarray
-        array of frequenices: 0 - nyquist
+        array of frequencies: 0 - nyquist
     """
 
     samples, channels, trials = data.epochs[subject].shape
@@ -53,7 +52,7 @@ def spectral_power(data, subject=0, channel='POz'):
 
 
 def wavelet(data, subject=0, channel='POz', w=4.):
-    """Calculate continous wavelet transform for a specific subject
+    """Calculate continuous wavelet transform for a specific subject
     in a dataset at a specific channel location, using Morelet wavelet
 
     Parameters
@@ -61,7 +60,7 @@ def wavelet(data, subject=0, channel='POz', w=4.):
     data : dataset instance
         epoched EEG signal dataset
     subject : int
-        given index for a sujbect, by default 0 (first subject in the dataset)
+        given index for a subject, by default 0 (first subject in the dataset)
     channel : str, optional
         electrode name, by default 'POz'
 

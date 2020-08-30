@@ -1,7 +1,6 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
-from aawedha.utils.evaluation_utils import fit_scale, transform_scale
+from aawedha.utils.evaluation_utils import class_weights
 import numpy as np
 
 
@@ -108,7 +107,6 @@ class CrossSubject(Evaluation):
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
             rets = self._cross_subject(fold)
-            # fold_results = self._aggregate_results(rets)
             if self.log:
                 msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
                 # if len(self.model.metrics) > 1:
@@ -155,7 +153,6 @@ class CrossSubject(Evaluation):
         -------
         folds : list
         """
-
         folds = []
 
         # list : nfolds : [nsubjects_train] [nsubjects_val][nsubjects_test]
@@ -176,7 +173,7 @@ class CrossSubject(Evaluation):
     def get_operations(self, folds=None):
         """get an iterable object for evaluation, it can be
         all folds or a defined subset of folds.
-        In case of long evaluation, the iterble starts from the current
+        In case of long evaluation, the iterable starts from the current
         index
 
         Parameters
@@ -202,7 +199,7 @@ class CrossSubject(Evaluation):
         return operations
 
     def _cross_subject(self, fold):
-        """Evaluate the subsets of subjects frawn from fold
+        """Evaluate the subsets of subjects drawn from fold
 
         Parameters
         ----------
@@ -214,27 +211,21 @@ class CrossSubject(Evaluation):
         rets : tuple
             folds performance
         """
-        #
         split = self._split_set(fold)
-        # normalize data
-        X_train, mu, sigma = fit_scale(split['X_train'])
-        X_val = split['X_val']
-        if type(X_val) is np.ndarray:
-            X_val = transform_scale(split['X_val'], mu, sigma)
-        X_test = transform_scale(split['X_test'], mu, sigma)
+        X_train = split['X_train']
         Y_train = split['Y_train']
-        Y_val = split['Y_val']
+        X_test = split['X_test']
         Y_test = split['Y_test']
+        X_val = split['X_val']
+        Y_val = split['Y_val']
         #
-        cws = class_weights(np.argmax(Y_train, axis=1))
+        cws = class_weights(Y_train)
         # evaluate model on subj on all folds
         self.model_history, probs, perf = self._eval_model(X_train, Y_train,
                                                            X_val, Y_val,
                                                            X_test, Y_test,
                                                            cws)
-        # probs = self.model.predict(X_test)
         rets = self.measure_performance(Y_test, probs, perf)
-
         return rets
 
     def _split_set(self, fold):
@@ -254,73 +245,23 @@ class CrossSubject(Evaluation):
             classes : array of values used to denote class labels
         """
         split = {}
-        kernels = 1
-        if isinstance(self.dataset.epochs, list):
-            X_train, Y_train = self._cat_lists(fold, 0)
-            X_test, Y_test = self._cat_lists(fold, 2)
-            classes = np.unique(Y_train)
-            samples, channels, _ = X_train.shape
-            X_train = X_train.transpose((2, 1, 0)).reshape(
-                (X_train.shape[2], kernels, channels, samples))
-            X_test = X_test.transpose((2, 1, 0)).reshape(
-                (X_test.shape[2], kernels, channels, samples))
-            if self._has_val():
-                X_val, Y_val = self._cat_lists(fold, 1)
-                X_val = X_val.transpose((2, 1, 0)).reshape(
-                    (X_val.shape[2], kernels, channels, samples))
-                Y_val = labels_to_categorical(Y_val)
-            else:
-                X_val, Y_val = None, None
 
-            Y_train = labels_to_categorical(Y_train)
-            Y_test = labels_to_categorical(Y_test)
+        X_train, Y_train = self._cat_lists(fold, 0)
+        X_test, Y_test = self._cat_lists(fold, 2)
+        X_train = X_train.transpose((2, 1, 0))
+        X_test = X_test.transpose((2, 1, 0))
 
+        if self._has_val():
+            X_val, Y_val = self._cat_lists(fold, 1)
+            X_val = X_val.transpose((2, 1, 0))
         else:
-            x = self.dataset.epochs
-            subjects, samples, channels, trials = x.shape
-            y = self.dataset.y
-            x = x.transpose((0, 3, 2, 1))
-            #
-            classes = np.unique(y)
-            y = labels_to_categorical(y)
-            # n_subjects per train/val/test
-            tr, val = self.partition[0], self.partition[1]
-            ts = 1  # hold a subject for test (default)
-            if len(self.partition) == 3:
-                ts = self.partition[2]
+            X_val, Y_val = None, None
 
-            X_train = x[self.folds[fold][0], :, :, :].reshape(
-                (tr * trials, kernels, channels, samples))
-            ctg_dim = y.shape[2]
-            Y_train = y[self.folds[fold][0], :].reshape((tr * trials, ctg_dim))
-            if self._has_val():
-                X_val = x[self.folds[fold][1], :, :, :].reshape(
-                    (val * trials, kernels, channels, samples))
-                Y_val = y[self.folds[fold][1], :].reshape(
-                    (val * trials, ctg_dim))
-            else:
-                X_val, Y_val = None, None
-
-            if hasattr(self.dataset, 'test_epochs'):
-                trs = self.dataset.test_epochs.shape[3]
-                X_test = self.dataset.test_epochs[self.folds[fold][2]].transpose(
-                    (0, 3, 2, 1))
-                X_test = X_test.reshape(
-                    (trs * ts, kernels, channels, samples))
-                Y_test = labels_to_categorical(
-                    self.dataset.test_y[self.folds[fold][2]].reshape((trs*ts))
-                )
-                # X_test = self.dataset.test_epochs.transpose((0, 3, 2, 1))
-                # X_test = X_test.reshape(
-                #    (trs * self.n_subjects, kernels, channels, samples))
-                # Y_test = tf_utils.to_categorical(self.dataset.test_y)
-                # Y_test = self.labels_to_categorical(
-                #    self.dataset.test_y.reshape((self.n_subjects * trs)))
-            else:
-                X_test = x[self.folds[fold][2], :, :, :].reshape(
-                    (ts * trials, kernels, channels, samples))
-                Y_test = y[self.folds[fold][2], :].reshape(
-                    (ts * trials, ctg_dim))
+        if Y_train.min() != 0:
+            Y_train -= 1
+            Y_test -= 1
+            if Y_val is not None:
+                Y_val -= 1
 
         split['X_train'] = X_train
         split['X_val'] = X_val
@@ -328,7 +269,6 @@ class CrossSubject(Evaluation):
         split['Y_train'] = Y_train
         split['Y_val'] = Y_val
         split['Y_test'] = Y_test
-        split['classes'] = classes
         return split
 
     def _cat_lists(self, fold=0, phase=0):

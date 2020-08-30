@@ -1,7 +1,6 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
-from aawedha.utils.evaluation_utils import fit_scale, transform_scale
+from aawedha.utils.evaluation_utils import class_weights
 from sklearn.model_selection import KFold, StratifiedKFold
 import numpy as np
 
@@ -252,28 +251,21 @@ class SingleSubject(Evaluation):
         for fold in folds_range:
             #
             split = self._split_set(x, y, subj, fold, indie)
-            # normalize data
-            X_train, mu, sigma = fit_scale(split['X_train'])
-            X_val = split['X_val']
-            if type(X_val) is np.ndarray:
-                X_val = transform_scale(split['X_val'], mu, sigma)
-            X_test = transform_scale(split['X_test'], mu, sigma)
-            #
+            X_train = split['X_train']
             Y_train = split['Y_train']
+            X_test = split['X_test']
             Y_test = split['Y_test']
+            X_val = split['X_val']
             Y_val = split['Y_val']
             #
-            cl_weights = class_weights(np.argmax(Y_train, axis=1))
+            cl_weights = class_weights(Y_train)
             # evaluate model on subj on all folds
             self.model_history, probs, perf = self._eval_model(X_train,
                                                                Y_train,
                                                                X_val, Y_val,
                                                                X_test, Y_test,
                                                                cl_weights)
-
-            # probs = self.model.predict(X_test)
             rets.append(self.measure_performance(Y_test, probs, perf))
-
         return rets
 
     def _fuse_data(self):
@@ -342,41 +334,28 @@ class SingleSubject(Evaluation):
             f = self.folds[subj][fold][:]  # subject, fold, phase
         else:
             f = self.folds[fold][:]
-
+        '''
         if x.ndim == 4:
             trials, kernels, channels, samples = x.shape
         elif x.ndim == 3:
             trials, kernels, samples = x.shape
-
+        '''
         X_train = x[f[0]]
         Y_train = y[f[0]]
         X_val, Y_val = None, None
-
         if indie:
             # independent Test set
-            if isinstance(self.dataset.test_epochs, list):
-                # TODO
-                trs = self.dataset.test_epochs[subj].shape[2]
-                X_test = self.dataset.test_epochs[subj].transpose((2, 1, 0))
-                X_test = X_test.reshape((trs, kernels, channels, samples))
+            X_test = self.dataset.test_epochs[subj]
+            if X_test.ndim == 3:
+                shape = (2, 1, 0)
             else:
-                if self.dataset.test_epochs.ndim == 3:
-                    sbj, s, t = self.dataset.test_epochs.shape
-                    # self.dataset.test_epochs = self.dataset.test_epochs.reshape((sbj, s, 1, t))
-                    X_test = self.dataset.test_epochs[subj].transpose((1, 0))
-                    X_test = X_test.reshape((t, kernels, samples))
-                elif self.dataset.test_epochs.ndim == 4:
-                    trs = self.dataset.test_epochs[0].shape[2]
-                    X_test = self.dataset.test_epochs[subj][:, :, :].transpose(
-                        (2, 1, 0))
-                    X_test = X_test.reshape((trs, kernels, channels, samples))
-            #
+                shape = (1, 0)
+            X_test = X_test.transpose(shape)
             # validation data
             if len(self.partition) == 2:
                 X_val = x[f[1]]
                 Y_val = y[f[1]]
-            #
-            Y_test = labels_to_categorical(self.dataset.test_y[subj][:])
+            Y_test = self.dataset.test_y[subj][:].astype(int)
         else:
             if len(self.partition) == 2:
                 # X_val, Y_val = None, None
@@ -387,6 +366,12 @@ class SingleSubject(Evaluation):
                 Y_val = y[f[1]]
                 X_test = x[f[2]]
                 Y_test = y[f[2]]
+
+        if Y_train.min() != 0:
+            Y_train -= 1
+            Y_test -= 1
+            if Y_val is not None:
+                Y_val -= 1
 
         split['X_train'] = X_train
         split['Y_train'] = Y_train
@@ -407,6 +392,7 @@ class SingleSubject(Evaluation):
 
         Returns
         -------
+        # TODO
         X : ndarray
             Subject data for evaluation (trials x kernels x channels x samples)
             or (trials x kernels x samples)
@@ -415,27 +401,13 @@ class SingleSubject(Evaluation):
             (trials x n_classes)
         """
         # prepare data
-        kernels = 1  #
-        if isinstance(self.dataset.epochs, list):
-            # TODO
-            x = self.dataset.epochs[subj]
-            samples, channels, trials = x.shape
-            x = x.transpose((2, 1, 0)).reshape(
-                (trials, kernels, channels, samples))
+        x = self.dataset.epochs[subj]
+        if x.ndim == 3:
+            shape = (2, 1, 0)
         else:
-            if self.dataset.epochs.ndim == 4:
-                x = self.dataset.epochs[subj][:, :, :]
-                samples, channels, trials = x.shape
-                x = x.transpose((2, 1, 0)).reshape(
-                    (trials, kernels, channels, samples))
-            elif self.dataset.epochs.ndim == 3:
-                x = self.dataset.epochs[subj][:, :]
-                samples, trials = x.shape
-                x = x.transpose((1, 0)).reshape((trials, kernels, samples))
-
-        # x = x.reshape((trials, kernels, channels, samples))
+            shape = (1, 0)
+        x = x.transpose(shape)
         y = self.dataset.y[subj][:]
-        y = labels_to_categorical(y)
         return x, y
 
     def _get_split(self, nfolds, t, tr, vl, stg, subj=None):

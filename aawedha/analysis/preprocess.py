@@ -3,7 +3,7 @@ import numpy as np
 
 
 def bandpass(eeg, band, fs, order=2):
-    ''' Bandpass Filtering for Continuous/epoched EEG data
+    """ Bandpass Filtering for Continuous/epoched EEG data
 
     Parameters
     ----------
@@ -23,13 +23,13 @@ def bandpass(eeg, band, fs, order=2):
     -------
     ndarray
         filtered EEG data
-    '''
+    """
     B, A = sig.butter(order, np.array(band) / (fs / 2), btype='bandpass')
     return sig.filtfilt(B, A, eeg, axis=0)
 
 
 def eeg_epoch(eeg, epoch_length, markers):
-    '''Segment continuous EEG data into epochs of epoch_length following the
+    """Segment continuous EEG data into epochs of epoch_length following the
         stimulus onset in markers
 
     Parameters
@@ -47,7 +47,7 @@ def eeg_epoch(eeg, epoch_length, markers):
     -------
     eeg_epochs : ndarray (samples, channels, trials)
             epoched EEG (Fortran ordering aka MATLAB format)
-    '''
+    """
 
     channels = int(eeg.shape[1])
     epoch_length = np.around(epoch_length)

@@ -3,7 +3,7 @@ import os
 
 
 class CheckPoint(object):
-    '''Checkpoint class used to save evaluation state for futrue
+    '''Checkpoint class used to save evaluation state for future
     resume after interruption
 
     this class is a reduced version of Evaluation in terms of attributes
@@ -112,6 +112,7 @@ class CheckPoint(object):
         self.model_history = evl.model_history
         self.model_config = evl.model_config
         self.initial_weights = evl.initial_weights
+        self.normalizer = evl.normalizer
         self.predictions = evl.predictions
         self.cm = evl.cm
         self.results = evl.results

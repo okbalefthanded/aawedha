@@ -17,6 +17,8 @@ def class_weights(y):
         class_weight : class, 1 for each class if data classes are balanced
 
     """
+    if y.min() != 0:
+        y = y - 1
     cl_weights = {}
     classes = np.unique(y)
     n_perclass = [np.sum(y == cl) for cl in classes]
@@ -25,7 +27,8 @@ def class_weights(y):
                    for cl in n_perclass])
     if np.unique(ws).size == 1:
         # balanced classes
-        cl_weights = {cl: 1 for cl in classes}
+        # cl_weights = {cl: 1 for cl in classes}
+        cl_weights = None
     else:
         # unbalanced classes
         if classes.size == 2:

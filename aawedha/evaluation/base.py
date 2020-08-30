@@ -1,7 +1,8 @@
-from tensorflow.keras.models import load_model
+from tensorflow.keras.layers.experimental import preprocessing
 from aawedha.utils.utils import log, get_gpu_name, init_TPU
-from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.metrics import roc_curve, confusion_matrix
+from aawedha.evaluation.checkpoint import CheckPoint
+from tensorflow.keras.models import load_model
 import tensorflow as tf
 import numpy as np
 import datetime
@@ -82,8 +83,8 @@ class Evaluation(object):
             all subjects
             - 'auc_mean_per_subj' :  AUC mean per Subject over all folds
                 [only for SingleSubject evaluation]
-            - 'tpr' : 1d array : True posititves rate
-            - 'fpr' : 1d array : False posititves rate
+            - 'tpr' : 1d array : True positives rate
+            - 'fpr' : 1d array : False positives rate
 
         n_subjects : int
             number of subjects in dataset if the train and test set have same
@@ -144,6 +145,7 @@ class Evaluation(object):
         self.model_compiled = False
         self.model_config = {}
         self.initial_weights = []
+        self.normalizer = preprocessing.Normalization(axis=(1, 2))
         self.current = None
 
     def __str__(self):
@@ -156,16 +158,24 @@ class Evaluation(object):
 
     @abc.abstractmethod
     def generate_split(self, nfolds):
-        '''Generate train/validation/test split
-            Overriden in each type of evaluation : SingleSubject | CrossSubject
-        '''
+        """Generate train/validation/test split
+            Overridden in each type of evaluation : SingleSubject | CrossSubject
+        """
         pass
 
     @abc.abstractmethod
     def run_evaluation(self):
-        '''Main evaluation process
-            Overriden in each type of evaluation : SingleSubject | CrossSubject
-        '''
+        """Main evaluation process
+            Overridden in each type of evaluation : SingleSubject | CrossSubject
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_operations(self):
+        pass
+
+    @abc.abstractmethod
+    def get_folds(self):
         pass
 
     def resume(self, run=False):
@@ -186,12 +196,8 @@ class Evaluation(object):
             self.run_evaluation(pointer=chk, check=True)
         return self
 
-    @abc.abstractmethod
-    def get_operations(self):
-        pass
-
     def set_dataset(self, dt=None):
-        '''Instantiate dataset with dt
+        """Instantiate dataset with dt
 
         Parameters
         ----------
@@ -201,11 +207,11 @@ class Evaluation(object):
         Returns
         -------
         no value
-        '''
+        """
         self.dataset = dt
 
     def measure_performance(self, Y_test, probs, perf):
-        '''Measure model performance on dataset
+        """Measure model performance on dataset
 
         Calculates model performance on metrics and sets Confusion Matrix for
         each fold
@@ -228,27 +234,26 @@ class Evaluation(object):
                 increasing false positive rate
             tp_rate : 1d array
                 increasing true positive rate
-        '''
+        """
         self.predictions.append(probs)  # ()
         results = dict()
         preds = probs.argmax(axis=-1)
-        y_true = Y_test.argmax(axis=-1)
-        classes = Y_test.shape[1]
+        classes = Y_test.max()
 
-        self.cm.append(confusion_matrix(Y_test.argmax(axis=-1), preds))
+        self.cm.append(confusion_matrix(Y_test, preds))
 
         for metric, value in zip(self.model.metrics_names, perf):
             results[metric] = value
 
         if classes == 2:
-            fp_rate, tp_rate, thresholds = roc_curve(y_true, probs[:, 1])
+            fp_rate, tp_rate, thresholds = roc_curve(Y_test, probs[:, 1])
             viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
             results['viz'] = viz
 
         return results
 
     def results_reports(self, res, tfpr={}):
-        '''Collects evaluation results on a single dict
+        """Collects evaluation results on a single dict
 
         Parameters
         ----------
@@ -288,7 +293,7 @@ class Evaluation(object):
             [only for SingleSubject evaluation]
             - 'tpr' : 1d array : True posititves rate
             - 'fpr' : 1d array : False posititves rate
-        '''
+        """
 
         if isinstance(self.dataset.epochs, np.ndarray):
             folds = len(self.folds)
@@ -318,10 +323,6 @@ class Evaluation(object):
                     '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
 
         return res
-
-    @abc.abstractmethod
-    def get_folds(self):
-        pass
 
     def save_model(self, folderpath=None):
         """Save trained model in HDF5 format
@@ -380,13 +381,20 @@ class Evaluation(object):
         -------
         no value
         """
-        self.model = model
-        self.initial_weights = model.get_weights()
         if model_config:
-            self.model_config = model_config
+            self.set_config(model_config)
+            # self.model_config = model_config
+
+        self.initial_weights = model.get_weights()
+        input_shape = model.layers[0].input_shape[0][1:]
+        model_name = f'{model.name}_norm_'
+        self.model = tf.keras.models.Sequential([
+            self.normalizer,
+            tf.keras.layers.Reshape(input_shape),
+            model], name=model_name)
 
     def set_config(self, model_config):
-        '''Setter for model_config
+        """Setter for model_config
 
         Parameters
         ----------
@@ -412,11 +420,11 @@ class Evaluation(object):
         Returns
         -------
         no value
-        '''
+        """
         self.model_config = model_config
 
     def log_experiment(self):
-        '''Write in logger, evaluation information after completing a fold
+        """Write in logger, evaluation information after completing a fold
         Message format :
         date-time-logger_name-logging_level-{fold|subject}-{ACC|AUC}-performance
 
@@ -427,7 +435,7 @@ class Evaluation(object):
         Returns
         -------
         no value
-        '''
+        """
         s = ['train', 'val', 'test']
 
         if self.dataset:
@@ -455,11 +463,11 @@ class Evaluation(object):
         self.logger.debug(exp_info)
 
     def reset(self, chkpoint=False):
-        '''Reset Attributes and results for a future evaluation with
+        """Reset Attributes and results for a future evaluation with
             different model and same partition and folds
 
         if chkpoint is passed, Evaluation attributes will be set to
-        the state at where the evaulation was interrupted, this is used
+        the state at where the evaluation was interrupted, this is used
         for operations resume
 
         Parameters
@@ -474,7 +482,7 @@ class Evaluation(object):
         chk : CheckPoint instance
             checkpoint object to set Evaluation state back where it was
             interrupted
-        '''
+        """
         chk = None
         if chkpoint:
             chk = self._load_checkpoint()
@@ -494,6 +502,7 @@ class Evaluation(object):
             self.logger = log(fname=chk.logger, logger_name='eval_log')
             self.verbose = chk.verbose
             self.initial_weights = chk.initial_weights
+            self.normalizer = chk.normalizer
 
         else:
             self.model = None
@@ -510,7 +519,11 @@ class Evaluation(object):
     def reset_weights(self):
         """reset model's weights to initial state (model's creation state)
         """
-        self.model.set_weights(self.initial_weights)
+        # self.model.set_weights(self.initial_weights)
+        # layer 0 : Normalization
+        # layer 1 : Reshape
+        # layer 2 : Model
+        self.model.layers[2].set_weights(self.initial_weights)
 
     def _equale_subjects(self):
         """Test whether dataset's train_epochs and test_epochs has same number
@@ -566,7 +579,6 @@ class Evaluation(object):
         Returns
         -------
         no value
-
         """
         device = self._get_device()
         # if not self.model_config:
@@ -587,7 +599,8 @@ class Evaluation(object):
                                    )
         self.model_compiled = True
 
-    def _eval_model(self, X_train, Y_train, X_val, Y_val, X_test, Y_test, cws):
+    def _eval_model(self, X_train, Y_train, X_val,
+                    Y_val, X_test, Y_test, cws):
         """Train model on train/validation data and predict its output on test data
 
         Run model's fit() and predict() methods
@@ -623,30 +636,26 @@ class Evaluation(object):
         else:
             val = (X_val, Y_val)
         #
+        self.normalizer.adapt(X_train)
         self.reset_weights()
         #
         device = self._get_device()
         history = {}
-        if device == 'GPU':
-            history = self.model.fit(X_train, Y_train,
-                                     batch_size=batch,
-                                     epochs=ep,
-                                     verbose=self.verbose,
-                                     validation_data=val,
-                                     class_weight=cws,
-                                     callbacks=clbs)
-        elif device == 'TPU':
-            history = self.model.fit(X_train, Y_train,
-                                     batch_size=batch,
-                                     epochs=ep,
-                                     steps_per_epoch=X_train.shape[0]//batch,
-                                     verbose=self.verbose,
-                                     validation_data=val,
-                                     class_weight=cws,
-                                     callbacks=clbs)
+        spe = None
+        if device == 'TPU':
+            spe = X_train.shape[0] // batch
+
+        history = self.model.fit(X_train, Y_train,
+                                 batch_size=batch,
+                                 epochs=ep,
+                                 steps_per_epoch=spe,
+                                 verbose=self.verbose,
+                                 validation_data=val,
+                                 class_weight=cws,
+                                 callbacks=clbs)
 
         probs = self.model.predict(X_test)
-        perf = self.model.evaluate(X_test, Y_test, verbose=self.verbose)
+        perf = self.model.evaluate(X_test, Y_test, verbose=0)
         return history, probs, perf
 
     def _get_compile_configs(self):
@@ -677,7 +686,8 @@ class Evaluation(object):
         else:
             metrics = ['accuracy']
             if classes == 2:
-                khsara = 'binary_crossentropy'
+                # khsara = 'binary_crossentropy'
+                khsara = 'sparse_categorical_crossentropy'
                 metrics.extend([tf.keras.metrics.AUC(name='auc'),
                                 tf.keras.metrics.TruePositives(name='tp'),
                                 tf.keras.metrics.FalsePositives(name='fp'),
@@ -687,12 +697,12 @@ class Evaluation(object):
                                 tf.keras.metrics.Recall(name='recall')]
                                )
             else:
-                khsara = 'categorical_crossentropy'
+                khsara = 'sparse_categorical_crossentropy'
             optimizer = 'adam'
         return khsara, optimizer, metrics
 
     def _get_fit_configs(self):
-        '''Returns fit configurations as tuple
+        """Returns fit configurations as tuple
 
         Parameters
         ----------
@@ -704,18 +714,18 @@ class Evaluation(object):
             batch size
         ep : int
             epochs number
-        clbs : list
+        clbks : list
             keras callbacks added to be watched during training
-        '''
+        """
         if 'fit' in self.model_config:
             batch = self.model_config['fit']['batch']
             ep = self.model_config['fit']['epochs']
-            clbs = self.model_config['fit']['callbacks']
+            clbks = self.model_config['fit']['callbacks']
         else:
             batch = 64
             ep = 300
-            clbs = []
-        return batch, ep, clbs
+            clbks = []
+        return batch, ep, clbks
 
     def _get_model_configs_info(self):
         """Construct a logging message to be added to logger at evaluation beginning
@@ -729,7 +739,7 @@ class Evaluation(object):
         Returns
         -------
         model_config : str
-            model's configuation
+            model's configuration
         """
         khsara, opt, mets = self._get_compile_configs()
         batch, ep, clbs = self._get_fit_configs()
