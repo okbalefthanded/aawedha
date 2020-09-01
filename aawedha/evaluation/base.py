@@ -1,6 +1,7 @@
 from tensorflow.keras.layers.experimental import preprocessing
 from aawedha.utils.utils import log, get_gpu_name, init_TPU
 from sklearn.metrics import roc_curve, confusion_matrix
+from aawedha.utils.evaluation_utils import class_weights
 from aawedha.evaluation.checkpoint import CheckPoint
 from tensorflow.keras.models import load_model
 import tensorflow as tf
@@ -137,8 +138,8 @@ class Evaluation(object):
             else:
                 title = ''
             now = datetime.datetime.now().strftime('%c').replace(' ', '_')
-            f = 'aawedha/logs/'+'_'.join([self.__class__.__name__,
-                                          title, now, '.log'])
+            f = 'aawedha/logs/' + '_'.join([self.__class__.__name__,
+                                            title, now, '.log'])
             self.logger = log(fname=f, logger_name='eval_log')
         else:
             self.logger = None
@@ -347,7 +348,7 @@ class Evaluation(object):
         prdg = self.dataset.paradigm.title
         dt = self.dataset.title
         filepath = folderpath + '/' + \
-            '_'.join([self.model.name, prdg, dt, '.h5'])
+                   '_'.join([self.model.name, prdg, dt, '.h5'])
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
@@ -386,12 +387,20 @@ class Evaluation(object):
             # self.model_config = model_config
 
         self.initial_weights = model.get_weights()
-        input_shape = model.layers[0].input_shape[0][1:]
+        if model.layers[0].input_shape is list:
+            # model created using Functional API
+            input_shape = model.layers[0].input_shape[0][1:]
+        else:
+            # model created using Sequential class
+            input_shape = model.layers[0].input_shape[1:]
+
         model_name = f'{model.name}_norm_'
         self.model = tf.keras.models.Sequential([
             self.normalizer,
             tf.keras.layers.Reshape(input_shape),
-            model], name=model_name)
+            model
+            ],
+            name=model_name)
 
     def set_config(self, model_config):
         """Setter for model_config
@@ -441,16 +450,16 @@ class Evaluation(object):
         if self.dataset:
             data = f' Dataset: {self.dataset.title}'
             if isinstance(self.dataset.epochs, list):
-                duration = f' epoch duration:{self.dataset.epochs[0].shape[0]/self.dataset.fs} sec'
+                duration = f' epoch duration:{self.dataset.epochs[0].shape[0] / self.dataset.fs} sec'
             else:
-                duration = f' epoch duration:{self.dataset.epochs.shape[1]/self.dataset.fs} sec'
+                duration = f' epoch duration:{self.dataset.epochs.shape[1] / self.dataset.fs} sec'
         else:
             data = ''
             duration = '0'
 
         prt = 'Subjects partition ' + \
-            ', '.join(f'{s[i], self.partition[i]}' for i in range(
-                len(self.partition)))
+              ', '.join(f'{s[i], self.partition[i]}' for i in range(
+                  len(self.partition)))
         model = f'Model: {self.model.name}'
         model_config = f'Model config: {self._get_model_configs_info()}'
         device = self._get_device()
@@ -584,12 +593,12 @@ class Evaluation(object):
         # if not self.model_config:
         khsara, optimizer, metrics = self._get_compile_configs()
 
-        if device == 'GPU':
+        if device != 'TPU':
             self.model.compile(loss=khsara,
                                optimizer=optimizer,
                                metrics=metrics
                                )
-        elif device == 'TPU':
+        else:
             strategy = init_TPU()
             with strategy.scope():
                 self.model = tf.keras.models.clone_model(self.model)
@@ -627,7 +636,7 @@ class Evaluation(object):
         probs : 2d array (n_examples x n_classes)
             model's output on test data as probabilities of belonging to
             each class
-
+        perf :
         """
         batch, ep, clbs = self._get_fit_configs()
 
@@ -657,6 +666,33 @@ class Evaluation(object):
         probs = self.model.predict(X_test)
         perf = self.model.evaluate(X_test, Y_test, verbose=0)
         return history, probs, perf
+
+    def _eval_split(self, split={}):
+        """
+
+        Parameters
+        ----------
+        split
+
+        Returns
+        -------
+
+        """
+        X_train = split['X_train']
+        Y_train = split['Y_train']
+        X_test = split['X_test']
+        Y_test = split['Y_test']
+        X_val = split['X_val']
+        Y_val = split['Y_val']
+        #
+        cws = class_weights(Y_train)
+        # evaluate model on subj on all folds
+        self.model_history, probs, perf = self._eval_model(X_train, Y_train,
+                                                           X_val, Y_val,
+                                                           X_test, Y_test,
+                                                           cws)
+        rets = self.measure_performance(Y_test, probs, perf)
+        return rets
 
     def _get_compile_configs(self):
         """Returns default model compile configurations as tuple
@@ -839,7 +875,12 @@ class Evaluation(object):
         str
             computer engine for training
         """
-        device = 'GPU'
+        # test if env got GPU
+        device = 'GPU'  # default
         if 'device' in self.model_config:
-            device = self.model_config['device']
-        return device
+            return self.model_config['device']
+        else:
+            devices = [dev.device_type for dev in tf.config.get_visible_devices()]
+            if 'GPU' not in devices:
+                device = 'CPU'
+            return device

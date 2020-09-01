@@ -2,10 +2,10 @@ numpy
 pandas
 mne
 tensorflow
-keras
 tensorflow-addons
 scikit-learn
 scipy
 matplotlib
 seaborn
+pytest
 pynvml

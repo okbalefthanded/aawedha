@@ -2,7 +2,6 @@
     Dummy dataset for experimenting
 '''
 from aawedha.io.base import DataSet
-from tensorflow.keras.utils import to_categorical
 import numpy as np
 
 
@@ -10,8 +9,8 @@ class Dummy(DataSet):
 
     def __init__(self, train_shape=(5, 512, 14, 100),
                  test_shape=(5, 512, 14, 50), nb_classes=5, fs=512):
-        '''
-        '''
+        """
+        """
         super().__init__(title='Dummy', ch_names=[],
                          fs=None, doi='')
         mu, sigma = 0.0, 1.0
@@ -35,23 +34,15 @@ class Dummy(DataSet):
         NotImplementedError
 
     def generate_set(self):
-        '''
-        '''
-        kernels = 1
+        """
+        """
         val_trials = round(self.epochs.shape[3]*0.8)
-        sbj, samples, channels, trials = self.epochs.shape
-        self.x_train = self.epochs[:, :, :, :val_trials].transpose(
-            (0, 3, 2, 1)).reshape(
-                (sbj, val_trials, kernels, channels, samples))
-        self.x_val = self.epochs[:, :, :, val_trials:].transpose(
-            (0, 3, 2, 1)).reshape(
-                (sbj, trials-val_trials, kernels, channels, samples))
-        trials = self.test_epochs.shape[3]
-        self.x_test = self.test_epochs.transpose((0, 3, 2, 1)).reshape(
-            (sbj, trials, kernels, channels, samples))
-        self.y_train = to_categorical(self.y[:val_trials])
-        self.y_val = to_categorical(self.y[val_trials:])
-        self.y_test = to_categorical(self.test_y)
+        self.x_train = self.epochs[:, :, :, :val_trials]
+        self.x_val = self.epochs[:, :, :, val_trials:]
+        self.x_test = self.test_epochs
+        self.y_train = self.y[:, val_trials]
+        self.y_val = self.y[:, val_trials:]
+        self.y_test = self.test_y
 
     def get_path(self):
         NotImplementedError

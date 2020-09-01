@@ -118,7 +118,6 @@ def EEGNet(nb_classes, Chans=64, Samples=128,
       dropoutType     : Either SpatialDropout2D or Dropout, passed as a string.
 
     """
-
     if dropoutType == 'SpatialDropout2D':
         dropoutType = SpatialDropout2D
     elif dropoutType == 'Dropout':

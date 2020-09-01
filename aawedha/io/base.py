@@ -79,7 +79,7 @@ class DataSet(metaclass=ABCMeta):
                 f'Epoch length: {epoch_length}'
                 f'Channels: {self.ch_names}',
                 f'Trials:{trials}')
-        return '\n'.joint(info)
+        return '\n'.join(info)
 
     @abstractmethod
     def load_raw(self):

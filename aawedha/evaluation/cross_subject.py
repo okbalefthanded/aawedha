@@ -1,6 +1,5 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.utils.evaluation_utils import class_weights
 import numpy as np
 
 
@@ -212,20 +211,7 @@ class CrossSubject(Evaluation):
             folds performance
         """
         split = self._split_set(fold)
-        X_train = split['X_train']
-        Y_train = split['Y_train']
-        X_test = split['X_test']
-        Y_test = split['Y_test']
-        X_val = split['X_val']
-        Y_val = split['Y_val']
-        #
-        cws = class_weights(Y_train)
-        # evaluate model on subj on all folds
-        self.model_history, probs, perf = self._eval_model(X_train, Y_train,
-                                                           X_val, Y_val,
-                                                           X_test, Y_test,
-                                                           cws)
-        rets = self.measure_performance(Y_test, probs, perf)
+        rets = self._eval_split(split)
         return rets
 
     def _split_set(self, fold):

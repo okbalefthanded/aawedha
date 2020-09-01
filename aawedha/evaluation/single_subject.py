@@ -1,6 +1,5 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.utils.evaluation_utils import class_weights
 from sklearn.model_selection import KFold, StratifiedKFold
 import numpy as np
 
@@ -251,21 +250,7 @@ class SingleSubject(Evaluation):
         for fold in folds_range:
             #
             split = self._split_set(x, y, subj, fold, indie)
-            X_train = split['X_train']
-            Y_train = split['Y_train']
-            X_test = split['X_test']
-            Y_test = split['Y_test']
-            X_val = split['X_val']
-            Y_val = split['Y_val']
-            #
-            cl_weights = class_weights(Y_train)
-            # evaluate model on subj on all folds
-            self.model_history, probs, perf = self._eval_model(X_train,
-                                                               Y_train,
-                                                               X_val, Y_val,
-                                                               X_test, Y_test,
-                                                               cl_weights)
-            rets.append(self.measure_performance(Y_test, probs, perf))
+            rets.append(self._eval_split(split))
         return rets
 
     def _fuse_data(self):
