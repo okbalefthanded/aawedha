@@ -320,8 +320,7 @@ class Evaluation(object):
             res[metric + '_mean'] = np.array(res[metric]).mean()
             res[metric + '_mean_per_fold'] = np.array(res[metric]).mean(axis=0)
             if np.array(res[metric]).ndim == 2:
-                res[metric +
-                    '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
+                res[metric + '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
 
         return res
 
@@ -387,7 +386,7 @@ class Evaluation(object):
             # self.model_config = model_config
 
         self.initial_weights = model.get_weights()
-        if model.layers[0].input_shape is list:
+        if type(model.layers[0].input_shape) is list:
             # model created using Functional API
             input_shape = model.layers[0].input_shape[0][1:]
         else:
@@ -884,3 +883,8 @@ class Evaluation(object):
             if 'GPU' not in devices:
                 device = 'CPU'
             return device
+
+    def _log_results(self):
+        """Log metrics means after the end of an evaluation to logger"""
+        means = [f'{metric}: {v}' for metric, v in self.results.items() if 'mean' in metric]
+        self.logger.debug(' / '.join(means))

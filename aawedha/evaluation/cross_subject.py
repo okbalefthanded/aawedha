@@ -128,6 +128,8 @@ class CrossSubject(Evaluation):
         if len(self.folds) == len(self.predictions):
             # self.results = self.results_reports(res, tfpr)
             self.results = self.results_reports(res)
+            if self.log:
+                self._log_results()
 
     def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy

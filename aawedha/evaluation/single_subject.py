@@ -149,6 +149,9 @@ class SingleSubject(Evaluation):
         if len(operations) == self._get_n_subjects():
             # self.results = self.results_reports(res, tfpr)
             self.results = self.results_reports(res)
+            if self.log:
+                self._log_results()
+
 
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
         """Generate folds following a KFold cross-validation strategy
