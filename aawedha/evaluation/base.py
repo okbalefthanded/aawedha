@@ -146,7 +146,7 @@ class Evaluation(object):
         self.model_compiled = False
         self.model_config = {}
         self.initial_weights = []
-        self.normalizer = preprocessing.Normalization(axis=(1, 2))
+        self.normalizer = None # preprocessing.Normalization(axis=(1, 2))
         self.current = None
 
     def __str__(self):
@@ -385,6 +385,11 @@ class Evaluation(object):
             self.set_config(model_config)
             # self.model_config = model_config
 
+        # UNRESOLVED : due to TF disconnected graph issue that will occur
+        # if we use the below code, we'll revert back to the old code where
+        # we didn't modify any layer of the model, i.e. it's set as it is
+        # defined at/outside this method call.
+        '''
         if type(model.layers[0].input_shape) is list:
             # model created using Functional API
             input_shape = model.layers[0].input_shape[0][1:]
@@ -398,7 +403,7 @@ class Evaluation(object):
             layer_input = 0
 
         input_type = type(model.layers[layer_input]).__name__
-
+        
         if input_type is not 'Normalization':
             model_name = f'{model.name}_norm_'
             model_input = tf.keras.Input(shape=input_shape[1:])
@@ -411,7 +416,11 @@ class Evaluation(object):
             self.model = tf.keras.models.Model(inputs=model_input, outputs=hidden, name=model_name)
         else:
             self.model = model
-
+        '''
+        self.model = model
+        for layer in self.model.layers:
+            if type(layer).__name__ is 'Normalization':
+                self.normalizer = layer
         self.initial_weights = self.model.get_weights()
 
     def set_config(self, model_config):
@@ -657,8 +666,8 @@ class Evaluation(object):
         else:
             val = (X_val, Y_val)
         #
-        self.normalizer.adapt(X_train)
         self.reset_weights()
+        self.normalizer.adapt(X_train)
         #
         device = self._get_device()
         history = {}

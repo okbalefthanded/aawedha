@@ -44,7 +44,8 @@
 """
 
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Activation, Permute, Dropout
+from tensorflow.keras.layers.experimental.preprocessing import Normalization
+from tensorflow.keras.layers import Dense, Activation, Permute, Dropout, Reshape
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, AveragePooling2D
 from tensorflow.keras.layers import SeparableConv2D, DepthwiseConv2D
 from tensorflow.keras.layers import BatchNormalization
@@ -190,8 +191,10 @@ def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
         raise ValueError('dropoutType must be one of SpatialDropout2D '
                          'or Dropout, passed as a string.')
 
-    input1 = Input(shape=(1, Chans, Samples))
-
+    # input1 = Input(shape=(1, Chans, Samples))
+    input1 = Input(shape=(Chans, Samples))
+    input1 = Normalization(axis=(1,2))(input1)
+    input1 = Reshape(input_shape=(1,Chans, Samples))(input1)
     ##################################################################
     block1 = Conv2D(F1, (1, kernLength), padding='same',
                     input_shape=(1, Chans, Samples),
