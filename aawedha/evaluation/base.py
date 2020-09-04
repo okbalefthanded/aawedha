@@ -385,7 +385,6 @@ class Evaluation(object):
             self.set_config(model_config)
             # self.model_config = model_config
 
-        self.initial_weights = model.get_weights()
         if type(model.layers[0].input_shape) is list:
             # model created using Functional API
             input_shape = model.layers[0].input_shape[0][1:]
@@ -393,13 +392,27 @@ class Evaluation(object):
             # model created using Sequential class
             input_shape = model.layers[0].input_shape[1:]
 
-        model_name = f'{model.name}_norm_'
-        self.model = tf.keras.models.Sequential([
-            self.normalizer,
-            tf.keras.layers.Reshape(input_shape),
-            model
-            ],
-            name=model_name)
+        if type(model.layers[0]).__name__ is 'InputLayer':
+            layer_input = 1
+        else:
+            layer_input = 0
+
+        input_type = type(model.layers[layer_input]).__name__
+
+        if input_type is not 'Normalization':
+            model_name = f'{model.name}_norm_'
+            model_input = tf.keras.Input(shape=input_shape[1:])
+            norm = self.normalizer(model_input)
+            hidden = tf.keras.layers.Reshape(input_shape)(norm)
+            for layer in model.layers:
+                if type(layer).__name__ is 'InputLayer':
+                    continue
+                hidden = layer(hidden)
+            self.model = tf.keras.models.Model(inputs=model_input, outputs=hidden, name=model_name)
+        else:
+            self.model = model
+
+        self.initial_weights = self.model.get_weights()
 
     def set_config(self, model_config):
         """Setter for model_config
@@ -527,11 +540,11 @@ class Evaluation(object):
     def reset_weights(self):
         """reset model's weights to initial state (model's creation state)
         """
-        # self.model.set_weights(self.initial_weights)
+        self.model.set_weights(self.initial_weights)
         # layer 0 : Normalization
         # layer 1 : Reshape
         # layer 2 : Model
-        self.model.layers[2].set_weights(self.initial_weights)
+        # self.model.layers[2].set_weights(self.initial_weights)
 
     def _equale_subjects(self):
         """Test whether dataset's train_epochs and test_epochs has same number
