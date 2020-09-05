@@ -193,12 +193,13 @@ def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
 
     # input1 = Input(shape=(1, Chans, Samples))
     input1 = Input(shape=(Chans, Samples))
-    input1 = Normalization(axis=(1,2))(input1)
-    input1 = Reshape(input_shape=(1,Chans, Samples))(input1)
+    ##################################################################
+    norm = Normalization(axis=(1, 2))(input1)
+    reshape = Reshape((1, Chans, Samples))(norm)
     ##################################################################
     block1 = Conv2D(F1, (1, kernLength), padding='same',
                     input_shape=(1, Chans, Samples),
-                    use_bias=False)(input1)
+                    use_bias=False)(reshape)
     block1 = BatchNormalization(axis=1)(block1)
     block1 = DepthwiseConv2D((Chans, 1), use_bias=False,
                              depth_multiplier=D,
