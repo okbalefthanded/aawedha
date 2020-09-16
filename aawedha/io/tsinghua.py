@@ -9,12 +9,12 @@ import glob
 
 
 class Tsinghua(DataSet):
-    '''
+    """
     Tsinghua SSVEP sampled sinusoidal joint frequency-phase modulation (JFPM)
     [1} X. Chen, Y. Wang, M. Nakanishi, X. Gao, T. -P. Jung, S. Gao,
        "High-speed spelling with a noninvasive brain-computer interface",
        Proc. Int. Natl. Acad. Sci. U. S. A, 112(44): E6058-6067, 2015.
-    '''
+    """
 
     def __init__(self):
         super().__init__(title='Tsinghua',
@@ -30,62 +30,52 @@ class Tsinghua(DataSet):
                          doi='http://dx.doi.org/10.1073/pnas.1508080112'
                          )
 
-    def load_raw(self, path=None, epoch_duration=1,
-                 band=[5.0, 45.0], order=6, augment=False):
+    def load_raw(self, path=None, ch=None, epoch_duration=1,
+                 band=[5.0, 45.0], order=6, augment=False,
+                 method='divide', slide=0.1):
         '''
         '''
+        if ch:
+            chans = self.select_channels(ch)
+        else:
+            chans = range(len(self.ch_names))
         list_of_files = np.array(glob.glob(path + '/S*.mat'))
-        indices = np.array([int(re.findall(r'\d+', n)[0])
-                            for n in list_of_files]) - 1
-        onset = int(0.5 * self.fs)
-        '''
-        epoch_duration = np.round(
-            np.array(epoch_duration + 0.5) * self.fs).astype(int)
-        '''
+        indices = np.array([int(re.findall(r'\d+', n)[0]) for n in list_of_files]) - 1
         ep = epoch_duration
-        epoch_duration = np.round(
-            np.array(epoch_duration) * self.fs).astype(int)
         n_subjects = 35
-
-        X = []
-        Y = []
-        augmented = 0
-
+        X, Y = [], []
+        # augmented = 0
+        onset = int(0.5 * self.fs)
+        stimulation = 5
         for subj in range(n_subjects):
             data = loadmat(list_of_files[indices == subj][0])
             eeg = data['data'].transpose((1, 0, 2, 3))
+            eeg = eeg[:, chans, :, :]
             del data
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
                 # stimulation = 5 * self.fs
                 # augmented = 4
                 tg = eeg.shape[2]
-                # v = [eeg[onset + (stride * self.fs):onset + (stride * self.fs) +
-                #         epoch_duration, :, :, :] for stride in range(augmented)]
-                stimulation = 5
-                augmented = np.floor(
-                    stimulation * self.fs / epoch_duration).astype(int)
-                strides = list(np.arange(0, stimulation, ep))
-                # v = [eeg[onset + (int(s) * self.fs):onset + (int(s) *self.fs) + epoch_duration, :, :, :] for s in strides]
-                v = [eeg[onset + int(s * self.fs):onset + int(s * self.fs) +
-                         epoch_duration, :, :, :] for s in strides]
+                # stimulation = 5
+                # augmented = np.floor(stimulation * self.fs / epoch_duration).astype(int)
+                # strides = list(np.arange(0, stimulation, ep))
+                # v=[eeg[onset + int(s * self.fs):onset + int(s * self.fs) + epoch_duration, :, :, :] for s in strides]
+                # v = self._get_augmented(eeg, ep, method, slide)
+                v = self._get_augmented_epoched(eeg, ep, stimulation, onset, slide, method)
                 eeg = np.concatenate(v, axis=2)
                 samples, channels, targets, blocks = eeg.shape
-                y = np.tile(np.arange(1, tg + 1), (1, augmented))
+                # y = np.tile(np.arange(1, tg + 1), (1, augmented))
+                y = np.tile(np.arange(1, tg + 1), (1, len(v)))
                 y = np.tile(y, (1, blocks))
                 del v  # saving some RAM
             else:
+                epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
                 eeg = eeg[onset:epoch_duration, :, :, :]
                 samples, channels, targets, blocks = eeg.shape
                 y = np.tile(np.arange(1, targets + 1), (1, blocks))
 
-            X.append(
-                eeg.reshape(
-                    (samples,
-                     channels,
-                     blocks *
-                     targets),
-                    order='F'))
+            X.append(eeg.reshape((samples, channels,blocks * targets), order='F'))
             Y.append(y)
             del eeg
             del y
@@ -94,13 +84,14 @@ class Tsinghua(DataSet):
         Y = np.array(Y).squeeze()
         return X, Y
 
-    def generate_set(self, load_path=None, epoch=1, band=[5.0, 45.0],
-                     order=6, save_folder=None, augment=False):
+    def generate_set(self, load_path=None, ch=None, epoch=1, band=[5.0, 45.0],
+                     order=6, save_folder=None, augment=False,
+                     method='divide', slide=0.1):
         '''
         '''
-        self.epochs, self.y = self.load_raw(load_path,
+        self.epochs, self.y = self.load_raw(load_path,ch,
                                             epoch, band, order,
-                                            augment)
+                                            augment, method, slide)
         self.subjects = self._get_subjects(path=load_path)
         self.paradigm = self._get_paradigm()
         self.events = self._get_events()
@@ -118,13 +109,13 @@ class Tsinghua(DataSet):
 
         return events
 
-    def _get_subjects(self, n_subject=0, path=None):
+    @staticmethod
+    def _get_subjects(n_subject=0, path=None):
         '''
         '''
         sub_file = path + '/Sub_info.txt'
-        f = open(sub_file, 'r')
-        info = f.read().split('\n')[2:]
-        f.close()
+        with open(sub_file, 'r') as f:
+            info = f.read().split('\n')[2:]
         return [Subject(id=s.split()[0], gender=s.split()[1],
                         age=s.split()[2], handedness=s.split()[3])
                 for s in info if len(s) > 0]

@@ -1,6 +1,5 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
-from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
 from scipy.io import loadmat
 import numpy as np
@@ -41,7 +40,8 @@ class OpenBMISSVEP(DataSet):
 
     def load_raw(self, path=None, mode='', epoch_duration=[0, 4],
                  band=[4.0, 45.0], order=6, ch=None,
-                 augment=False, downsample=None):
+                 augment=False, downsample=None,
+                 method='divide', slide=0.1):
         '''
         '''
         ch_index = self._get_channels(self.ch_names)
@@ -50,39 +50,40 @@ class OpenBMISSVEP(DataSet):
 
         stride = 1
         if downsample:
-            stride = downsample
+            stride = int(downsample)
+
         sessions = ['session1', 'session2']
         n_subjects = 54
         if isinstance(epoch_duration, list):
             epoch_duration = (np.array(epoch_duration) * self.fs).astype(int)
         else:
-            epoch_duration = (
-                np.array([0, epoch_duration]) * self.fs).astype(int)
+            epoch_duration = (np.array([0, epoch_duration]) * self.fs).astype(int)
         X, Y = [], []
         events = []
-
+        stimulation = 4 * self.fs
         for subj in range(1, n_subjects+1):
             x_subj, y_subj, events_subj = [], [], []
             for sess in sessions:
                 f = glob.glob(f'{path}/{sess}/s{subj}/*SSVEP.mat')[0]
                 data = loadmat(f)
                 data = data['EEG_SSVEP_'+mode]
-                cnt = bandpass(data[0][0][1][::stride, ch_index],
-                               band, self.fs, order)
+                cnt = bandpass(data[0][0][1][::stride, ch_index], band, self.fs, order)
                 mrk = data[0][0][2].squeeze() // stride
                 y = data[0][0][4].squeeze()
-                ev = [elm.item()
-                      for elm in data[0][0][6].squeeze().tolist()]
+                ev = [elm.item() for elm in data[0][0][6].squeeze().tolist()]
                 if augment:
-                    stimulation = 4 * self.fs
-                    augmented = np.floor(
-                        stimulation / np.diff(epoch_duration))[0].astype(int)
-                    v = [eeg_epoch(cnt, epoch_duration + np.diff(epoch_duration)
-                                   * i, mrk) for i in range(augmented)]
+                    # stimulation = 4 * self.fs
+                    # augmented = np.floor(stimulation / np.diff(epoch_duration))[0].astype(int)
+                    # v = [eeg_epoch(cnt, epoch_duration + np.diff(epoch_duration) * i, mrk) for i in range(augmented)]
+                    # v = self._get_augmented(cnt, epoch_duration, mrk, slide, method)
+                    v = self._get_augmented_cnt(cnt, epoch_duration, mrk, stimulation, slide, method)
+                    augmented = len(v)
                     eeg = np.concatenate(v, axis=2)
                     y = np.tile(y, augmented)
                     ev = np.tile(ev, augmented)
+                    del v
                 else:
+                    augmented = 1
                     eeg = eeg_epoch(cnt, epoch_duration, mrk)
                 del data
                 del cnt
@@ -108,11 +109,13 @@ class OpenBMISSVEP(DataSet):
                      order=6, save_folder=None,
                      augment=False,
                      channels=None,
-                     downsample=None):
+                     downsample=None,
+                     method='divide',
+                     slide=0.1):
         '''
         '''
         if downsample:
-            self.fs = self.fs // downsample
+            self.fs = self.fs // int(downsample)
 
         self.epochs, self.y, self.events = self.load_raw(
             load_path,
@@ -122,7 +125,9 @@ class OpenBMISSVEP(DataSet):
             order,
             channels,
             augment,
-            downsample
+            downsample,
+            method,
+            slide
         )
 
         self.test_epochs, self.test_y, self.test_events = self.load_raw(
@@ -133,12 +138,13 @@ class OpenBMISSVEP(DataSet):
             order,
             channels,
             augment,
-            downsample
+            downsample,
+            method,
+            slide
         )
 
         if channels:
-            self.ch_names = [self.ch_names[ch]
-                             for ch in self._get_channels(channels)]
+            self.ch_names = [self.ch_names[ch] for ch in self._get_channels(channels)]
 
         self.subjects = self._get_subjects(n_subjects=54)
         self.paradigm = self._get_paradigm()
@@ -146,10 +152,6 @@ class OpenBMISSVEP(DataSet):
 
     def get_path(self):
         NotImplementedError
-
-    def _get_subjects(self, n_subjects=0):
-        return [Subject(id='S' + str(s), gender='', age=0, handedness='')
-                for s in range(1, n_subjects + 1)]
 
     def _get_paradigm(self):
         return SSVEP(title='SSVEP_ON_OFF', control='Sync',

@@ -1,6 +1,5 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
-from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
 import numpy as np
 import glob
@@ -30,15 +29,20 @@ class MultiDay(DataSet):
         self.test_y = []
         self.test_events = []
 
-    def load_raw(self, path=None, mode='', epoch_duration=[0, 6],
-                 band=[3.0, 50.0], order=6, augment=False):
+    def load_raw(self, path=None, ch=None, mode='', epoch_duration=[0, 6],
+                 band=[3.0, 50.0], order=6, augment=False,
+                 method='divide', slide=0.1):
         '''
         '''
+        if ch:
+            channels = self.select_channels(ch)
+        else:
+            channels = range(33)
+
         if isinstance(epoch_duration, list):
             epoch_duration = (np.array(epoch_duration) * self.fs).astype(int)
         else:
-            epoch_duration = (
-                np.array([0, epoch_duration]) * self.fs).astype(int)
+            epoch_duration = (np.array([0, epoch_duration]) * self.fs).astype(int)
 
         if mode == 'train':
             session = '/Day1'
@@ -46,10 +50,10 @@ class MultiDay(DataSet):
             session = '/Day2'
 
         subjects_list = glob.glob(path+'/S*')
-        subjects_list.pop(23)  # exclude S24 because of a faulty file
+        # subjects_list.pop(23)  # exclude S24 because of a faulty file
         X, Y = [], []
         records = 6
-
+        stimulation = 6 * self.fs
         for subj in subjects_list:
             k = 0
             x_subj, y_subj = [], []
@@ -61,29 +65,36 @@ class MultiDay(DataSet):
                 # raw continuous EEG (samples x channels)
                 x = cnt['cnt/x'].value.T
                 y_orig = mrk['mrk/event/desc'].value.astype(int).squeeze()
-                markers_orig = np.around(
-                    mrk['mrk/time'].value / 5).astype(int).squeeze()
+                # FIXME : this was a temporary hack before contacting the authors to
+                # FIXME : fix the markers downsampling
+                # markers_orig = np.around(mrk['mrk/time'].value / 5).astype(int).squeeze()
+                markers_orig = np.around(mrk['mrk/time'].value).astype(int).squeeze()
                 #
-                x = x[:, :33]  # keeps only EEG channels
+                # x = x[:, :33]  # keeps only EEG channels
+                x = x[:, channels]
                 x = bandpass(x, band, self.fs, order)
                 only_stimulations = y_orig != 5
-                if i >= 2 and i < 4:
+                if 2 <= i < 4:
                     k = 4
                 elif i >= 4:
                     k = 8
                 y = y_orig[only_stimulations] + k
                 markers = markers_orig[only_stimulations]
                 if augment:
-                    stimulation = 6 * self.fs
-                    augmented = np.floor(
-                        stimulation / np.diff(epoch_duration))[0].astype(int)
-                    v = [eeg_epoch(x, epoch_duration + np.diff(epoch_duration)
-                                   * i, markers) for i in range(augmented)]
+                    # stimulation = 6 * self.fs
+                    # augmented = np.floor(stimulation / np.diff(epoch_duration))[0].astype(int)
+                    # v=[eeg_epoch(x, epoch_duration + np.diff(epoch_duration) * i, markers) for i in range(augmented)]
+                    # v = self._get_augmented(x, epoch_duration, markers, slide, method)
+                    v = self._get_augmented_cnt(x, epoch_duration, markers, stimulation, slide, method)
+
                     eeg = np.concatenate(v, axis=2)
-                    y = np.tile(y, augmented)
+                    # y = np.tile(y, augmented)
+                    y = np.tile(y, len(v))
+                    del v
                 else:
                     eeg = eeg_epoch(x, epoch_duration, markers)
                 #
+                del x
                 cnt.close()
                 mrk.close()
                 x_subj.append(eeg)
@@ -96,22 +107,28 @@ class MultiDay(DataSet):
         Y = np.array(Y).squeeze()
         return X, Y
 
-    def generate_set(self, load_path=None, epoch=[0, 6],
+    def generate_set(self, load_path=None, ch=None,
+                     epoch=[0, 6],
                      band=[3.0, 50.0],
                      order=6, save_folder=None,
-                     augment=False):
+                     augment=False,
+                     method='divide', slide=0.1):
         '''
         '''
-        self.epochs, self.y = self.load_raw(load_path, 'train',
+        self.epochs, self.y = self.load_raw(load_path, ch,
+                                            'train',
                                             epoch, band,
-                                            order, augment
+                                            order, augment,
+                                            method, slide
                                             )
 
-        self.test_epochs, self.test_y = self.load_raw(load_path,
+        self.test_epochs, self.test_y = self.load_raw(load_path, ch,
                                                       'test', epoch,
-                                                      band, order, augment
+                                                      band, order, augment,
+                                                      method, slide
                                                       )
-        self.subjects = self._get_subjects(n_subjects=29)
+        # self.subjects = self._get_subjects(n_subjects=29)
+        self.subjects = self._get_subjects(n_subjects=30)
         self.paradigm = self._get_paradigm()
         self.events = self._get_events(self.y)
         self.test_events = self._get_events(self.test_y)
@@ -132,10 +149,6 @@ class MultiDay(DataSet):
             ev.append(events)
         return ev
 
-    def _get_subjects(self, n_subjects=0):
-        return [Subject(id='S' + str(s), gender='', age=0, handedness='')
-                for s in range(1, n_subjects + 1)]
-
     def _get_paradigm(self):
         return SSVEP(title='SSVEP_ON_OFF', control='Sync',
                      stimulation=6000,
@@ -148,7 +161,8 @@ class MultiDay(DataSet):
                                   ]
                      )
 
-    def h5ref_to_strings(self, hf, ref):
+    @staticmethod
+    def h5ref_to_strings(hf, ref):
         """convert HDF5 reference object to String.
 
         Parameters

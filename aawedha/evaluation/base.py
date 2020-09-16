@@ -146,7 +146,7 @@ class Evaluation(object):
         self.model_compiled = False
         self.model_config = {}
         self.initial_weights = []
-        self.normalizer = None # preprocessing.Normalization(axis=(1, 2))
+        #  self.normalizer = None # preprocessing.Normalization(axis=(1, 2))
         self.current = None
 
     def __str__(self):
@@ -418,9 +418,11 @@ class Evaluation(object):
             self.model = model
         '''
         self.model = model
+        '''
         for layer in self.model.layers:
             if type(layer).__name__ is 'Normalization':
                 self.normalizer = layer
+        '''
         self.initial_weights = self.model.get_weights()
 
     def set_config(self, model_config):
@@ -472,11 +474,14 @@ class Evaluation(object):
             data = f' Dataset: {self.dataset.title}'
             if isinstance(self.dataset.epochs, list):
                 duration = f' epoch duration:{self.dataset.epochs[0].shape[0] / self.dataset.fs} sec'
+                data_shape = f'{len(self.dataset.epochs), self.dataset.epochs[0].shape} list'
             else:
                 duration = f' epoch duration:{self.dataset.epochs.shape[1] / self.dataset.fs} sec'
+                data_shape = f'{self.dataset.epochs.shape}'
         else:
             data = ''
             duration = '0'
+            data_shape = '[]'
 
         prt = 'Subjects partition ' + \
               ', '.join(f'{s[i], self.partition[i]}' for i in range(
@@ -488,7 +493,7 @@ class Evaluation(object):
             compute_engine = get_gpu_name()
         else:
             compute_engine = 'TPU'
-        exp_info = ' '.join([data, duration, prt, model,
+        exp_info = ' '.join([data, duration, data_shape, prt, model,
                              model_config, compute_engine])
         self.logger.debug(exp_info)
 
@@ -532,7 +537,7 @@ class Evaluation(object):
             self.logger = log(fname=chk.logger, logger_name='eval_log')
             self.verbose = chk.verbose
             self.initial_weights = chk.initial_weights
-            self.normalizer = chk.normalizer
+            # self.normalizer = chk.normalizer
 
         else:
             self.model = None
@@ -667,7 +672,9 @@ class Evaluation(object):
             val = (X_val, Y_val)
         #
         self.reset_weights()
-        self.normalizer.adapt(X_train)
+        self._normalize(X_train)
+        # if self.normalizer:
+        #     self.normalizer.adapt(X_train)
         #
         device = self._get_device()
         history = {}
@@ -699,12 +706,9 @@ class Evaluation(object):
         -------
 
         """
-        X_train = split['X_train']
-        Y_train = split['Y_train']
-        X_test = split['X_test']
-        Y_test = split['Y_test']
-        X_val = split['X_val']
-        Y_val = split['Y_val']
+        X_train, Y_train = split['X_train'], split['Y_train']
+        X_test, Y_test = split['X_test'], split['Y_test']
+        X_val, Y_val = split['X_val'], split['Y_val']
         #
         cws = class_weights(Y_train)
         # evaluate model on subj on all folds
@@ -757,6 +761,17 @@ class Evaluation(object):
                 khsara = 'sparse_categorical_crossentropy'
             optimizer = 'adam'
         return khsara, optimizer, metrics
+
+    def _normalize(self, X_train):
+        """Adapt normalization layer if it's inside the model
+        Parameters
+        ----------
+        X_train : ndarray
+            training data n_samples x channels x samples
+        """
+        for layer in self.model.layers:
+            if type(layer).__name__ is "Normalization":
+                layer.adapt(X_train)
 
     def _get_fit_configs(self):
         """Returns fit configurations as tuple
@@ -825,7 +840,8 @@ class Evaluation(object):
         prt = np.sum(self.partition)
         return subjects < prt
 
-    def _load_checkpoint(self):
+    @staticmethod
+    def _load_checkpoint():
         """load saved checkpoint to resume evaluation
         Parameters
         ----------
@@ -862,7 +878,8 @@ class Evaluation(object):
 
         return self._get_n_subjects() - train - test
 
-    def _aggregate_results(self, res):
+    @staticmethod
+    def _aggregate_results(res):
         """Aggregate subject's results from folds into a single list
 
         Parameters

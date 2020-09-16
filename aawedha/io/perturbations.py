@@ -1,6 +1,5 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
-from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass
 from scipy.io import loadmat
 import numpy as np
@@ -32,41 +31,55 @@ class Perturbations(DataSet):
         self.test_y = []
         self.test_events = []
 
-    def load_raw(self, path=None, mode='', epoch_duration=3,
-                 band=[5.0, 45.0], order=6, augment=False):
-        ep = epoch_duration
-        epoch_duration = np.round(
-            np.array(epoch_duration) * self.fs).astype(int)
+    def load_raw(self, path=None, ch=None, downsample=4, mode='', epoch_duration=3,
+                 band=[5.0, 45.0], order=6, augment=False,
+                 method='divide', slide=0.1):
 
-        X = []
-        Y = []
-        augmented = 0
-        eeg_channels = self._get_eeg_channels()
-        onset = 0
+        ep = epoch_duration
+        X, Y = [], []
+        # augmented = 0
+        factor = 1
+        if downsample:
+            factor = 4
+
+        if ch:
+            eeg_channels = self.select_channels(ch)
+        else:
+            eeg_channels = self._get_eeg_channels()
+        # onset = 0
         if mode == 'train':
             path = path + '/*mat'
+            mode_key = 'circle_order'
         else:
             path = path + '/*control.mat'
+            mode_key = 'subject_selection_vector'
         files_list = glob.glob(path)
+        stimulation = 3
         for f in files_list:
             data = loadmat(f)
-            x = data['data_matrix'][eeg_channels, :, :].transpose((1, 0, 2))
+            x = data['data_matrix'][eeg_channels, ::factor, :].transpose((1, 0, 2))
+            y = data[mode_key].squeeze()
+            '''
             if mode == 'train':
                 y = data['circle_order'].squeeze()
             else:
                 y = data['subject_selection_vector'].squeeze()
+            '''
             x = bandpass(x, band=band, fs=self.fs, order=order)
             if augment:
-                stimulation = 3
-                augmented = np.floor(
-                    stimulation * self.fs / epoch_duration).astype(int)
-                strides = list(np.arange(0, stimulation, ep))
-                v = [x[onset + int(s * self.fs):onset + int(s *
-                                                            self.fs) + epoch_duration, :, :] for s in strides]
+                # stimulation = 3
+                # augmented = np.floor(stimulation * self.fs / epoch_duration).astype(int)
+                # strides = list(np.arange(0, stimulation, ep))
+                # v = [x[onset + int(s * self.fs):onset + int(s * self.fs) + epoch_duration, :, :] for s in strides]
+                # v = self._get_augmented(x, ep, method, slide)
+                v = self._get_augmented_epoched(x, ep, stimulation, slide=slide, method=method)
                 x = np.concatenate(v, axis=2)
-                y = np.tile(y, augmented)
+                # y = np.tile(y, augmented)
+                y = np.tile(y, len(v))
+                del v
             else:
-                x = x[0:epoch_duration, :, :]
+                epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
+                x = x[:epoch_duration, :, :]
 
             X.append(x)
             Y.append(y)
@@ -75,31 +88,77 @@ class Perturbations(DataSet):
         Y = np.array(Y).squeeze()
         return X, Y
 
-    def generate_set(self, load_path=None, epoch=1,
+    def generate_set(self, load_path=None, ch=None,
+                     downsample=4,
+                     epoch=1,
                      band=[5.0, 45.0],
                      order=6, save_folder=None,
-                     augment=False):
+                     augment=False,
+                     method='divide',
+                     slide=0.1):
         '''
         '''
         offline = load_path + '/OFFLINE'
         online = load_path + '/ONLINE'
-        self.epochs, self.y = self.load_raw(offline, 'train',
+        if downsample:
+            self.fs = self.fs // int(downsample)
+
+        self.epochs, self.y = self.load_raw(offline, ch, downsample,
+                                            'train',
                                             epoch, band,
-                                            order, augment
+                                            order, augment,
+                                            method, slide
                                             )
 
-        self.test_epochs, self.test_y = self.load_raw(online,
+        self.test_epochs, self.test_y = self.load_raw(online, ch, downsample,
                                                       'test', epoch,
-                                                      band, order, augment
+                                                      band, order, augment,
+                                                      method, slide
                                                       )
         self.subjects = self._get_subjects(n_subjects=24)
         self.paradigm = self._get_paradigm()
         self.events = self._get_events(self.y)
         self.test_events = self._get_events(self.test_y)
-
-        eeg_channels = self._get_eeg_channels()
-        self.ch_names = [self.ch_names[i] for i in eeg_channels]
+        if not ch:
+            eeg_channels = self._get_eeg_channels()
+            self.ch_names = [self.ch_names[i] for i in eeg_channels]
         self.save_set(save_folder)
+
+    def _get_augmented(self, eeg, epoch, method='divide', slide=0.1):
+        """Segment a single epoch of a continuous signal into augmented epochs
+
+         Parameters
+        ----------
+        eeg : ndarray
+            epoched EEG signal : samples x channels x blocks x targets
+        epoch : array
+            onset of epoch length
+        slide : float
+            stride for sliding window segmentation method in seconds
+        method : str
+            segmentation method :
+                - divide : divide epochs by length of epochs, no overlapping
+                - slide : sliding window by a stride, overlapping
+        Returns
+        -------
+        v : list
+            list of segmented epochs belonging to the same class/target
+        """
+        onset = 0
+        epoch_duration = np.round(np.array(epoch) * self.fs).astype(int)
+        stimulation = 3
+        v = []
+
+        if method == 'divide':
+            strides = range(np.floor(stimulation * self.fs / epoch_duration).astype(int))
+            v = [eeg[onset + int(s * self.fs):onset + int(s * self.fs) + epoch_duration, :, :] for s in strides]
+        elif method == 'slide':
+            augmented = int((stimulation - epoch) // slide) + 1
+            ops = range(augmented)
+            slide = int(slide * self.fs)
+            v = [eeg[onset + slide * s:onset + slide * s + epoch_duration, :, :] for s in ops]
+
+        return v
 
     def get_path(self):
         NotImplementedError
@@ -116,11 +175,8 @@ class Perturbations(DataSet):
             ev.append(events)
         return ev
 
-    def _get_subjects(self, n_subjects=0):
-        return [Subject(id='S' + str(s), gender='', age=0, handedness='')
-                for s in range(1, n_subjects + 1)]
-
-    def _get_paradigm(self):
+    @staticmethod
+    def _get_paradigm():
         return SSVEP(title='SSVEP_ON_OFF', control='Sync',
                      stimulation=3000,
                      break_duration=1000, repetition=25,
@@ -131,6 +187,5 @@ class Perturbations(DataSet):
 
     def _get_eeg_channels(self):
         exclude = ['EOGL', 'EOGC', 'EOGR', 'BIP1']
-        eeg_channels = [i for i in range(
-            64) if self.ch_names[i] not in exclude]
+        eeg_channels = [i for i in range(64) if self.ch_names[i] not in exclude]
         return eeg_channels

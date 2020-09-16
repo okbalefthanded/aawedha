@@ -112,7 +112,7 @@ class CheckPoint(object):
         self.model_history = evl.model_history
         self.model_config = evl.model_config
         self.initial_weights = evl.initial_weights
-        self.normalizer = evl.normalizer
+        # self.normalizer = evl.normalizer
         self.predictions = evl.predictions
         self.cm = evl.cm
         self.results = evl.results

@@ -152,7 +152,6 @@ class SingleSubject(Evaluation):
             if self.log:
                 self._log_results()
 
-
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
         """Generate folds following a KFold cross-validation strategy
 

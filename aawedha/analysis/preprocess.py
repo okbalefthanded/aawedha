@@ -35,7 +35,7 @@ def eeg_epoch(eeg, epoch_length, markers):
     Parameters
     ----------
     eeg : ndarray (samples, channels)
-        contiunous EEG data
+        continuous EEG data
 
     epoch_length : ndarray (2,)
         epoch start and stop in samples

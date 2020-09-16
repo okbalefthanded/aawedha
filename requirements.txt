@@ -5,6 +5,7 @@ tensorflow
 tensorflow-addons
 scikit-learn
 scipy
+h5py
 matplotlib
 seaborn
 pytest

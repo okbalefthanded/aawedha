@@ -1,6 +1,5 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
-from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
 import numpy as np
 import pickle
@@ -40,13 +39,13 @@ class Exoskeleton(DataSet):
         self.test_events = []
 
     def load_raw(self, path=None, mode='', epoch_duration=[2, 5],
-                 band=[5.0, 45.0], order=6, augment=False):
+                 band=[5.0, 45.0], order=6, augment=False,
+                 method='divide', slide=0.1):
         '''
         '''
         files_list = sorted(glob.glob(path + '/s*'))
         n_subjects = 12
-        X = []
-        Y = []
+        X, Y = [], []
         for subj in range(n_subjects):
             session = glob.glob(files_list[subj] + '/*.pz')
             if mode == 'train':
@@ -55,7 +54,7 @@ class Exoskeleton(DataSet):
                 records = [len(session) - 1]
             x, y = self._get_epoched(session, records,
                                      epoch_duration, band,
-                                     order, augment)
+                                     order, augment, method, slide)
             X.append(x)
             Y.append(y)
 
@@ -65,21 +64,28 @@ class Exoskeleton(DataSet):
         # Y = np.array(Y)
         return X, Y
 
-    def generate_set(self, load_path=None, epoch=[2, 5],
+    def generate_set(self, load_path=None,
+                     epoch=[2, 5],
                      band=[5., 45.],
                      order=6,
                      save_folder=None,
-                     augment=False):
+                     augment=False,
+                     method='divide',
+                     slide=0.1):
         '''
         '''
         self.epochs, self.y = self.load_raw(load_path, 'train',
                                             epoch, band,
-                                            order, augment
+                                            order, augment,
+                                            method,
+                                            slide
                                             )
 
         self.test_epochs, self.test_y = self.load_raw(load_path,
                                                       'test', epoch,
-                                                      band, order, augment
+                                                      band, order, augment,
+                                                      method,
+                                                      slide
                                                       )
 
         self.subjects = self._get_subjects(n_subjects=12)
@@ -90,38 +96,39 @@ class Exoskeleton(DataSet):
 
     def _get_epoched(self, files=[], records=[],
                      epoch=[2, 5], band=[5., 45.],
-                     order=6, augment=False):
-        '''
-        '''
+                     order=6, augment=False, method='divide', slide=0.1):
+        """
+        """
         OVTK_StimulationId_VisualStimulationStart = 32779
         labels = [33024, 33025, 33026, 33027]
         if isinstance(epoch, list):
             epoch = (np.array(epoch) * self.fs).astype(int)
         else:
             epoch = (np.array([0, epoch]) * self.fs).astype(int)
-        x = []
-        y = []
+        x, y = [], []
+        stimulation = 5 * self.fs
         for sess in records:
             f = gzip.open(files[sess], 'rb')
             df = pickle.load(f, encoding='latin1')
-            raw_signal = df['raw_signal'] * 1000  # samples, channels
+            raw_signal = df['raw_signal'] * 1000  # (samples x channels)
             event_pos = df['event_pos'].reshape((df['event_pos'].shape[0]))
             event_type = df['event_type'].reshape((df['event_type'].shape[0]))
-            desc_idx = np.logical_or.reduce(
-                [event_type == lb for lb in labels])
+            desc_idx = np.logical_or.reduce([event_type == lb for lb in labels])
             desc = event_type[desc_idx]
             # y.append(desc - 33023)
-            pos = event_pos[event_type ==
-                            OVTK_StimulationId_VisualStimulationStart]
+            pos = event_pos[event_type == OVTK_StimulationId_VisualStimulationStart]
             raw_signal = bandpass(raw_signal, band, self.fs, order)
             if augment:
+                '''
                 stimulation = 5 * self.fs
-                augmented = np.floor(
-                    stimulation / np.diff(epoch))[0].astype(int)
-                v = [eeg_epoch(raw_signal, epoch + np.diff(epoch) * i, pos)
-                     for i in range(augmented)]
+                augmented = np.floor(stimulation / np.diff(epoch))[0].astype(int)
+                v = [eeg_epoch(raw_signal, epoch + np.diff(epoch) * i, pos) for i in range(augmented)]
+                '''
+                # v = self._get_augmented(raw_signal, epoch, pos, slide=slide, method=method)
+                v = self._get_augmented_cnt(raw_signal, epoch, pos, stimulation, slide=slide, method=method)
                 epchs = np.concatenate(v, axis=2)
-                y.append(np.tile(desc - 33023, augmented))
+                # y.append(np.tile(desc - 33023, augmented))
+                y.append(np.tile(desc - 33023, len(v)))
             else:
                 y.append(desc - 33023)
                 epchs = eeg_epoch(raw_signal, epoch, pos)
@@ -137,8 +144,8 @@ class Exoskeleton(DataSet):
         return x, y  # epochs and labels
 
     def _get_events(self, y):
-        '''
-        '''
+        """
+        """
         ev = []
         for i in range(len(y)):
             events = np.empty(y[i].shape, dtype=object)
@@ -148,10 +155,6 @@ class Exoskeleton(DataSet):
             ev.append(events)
         return ev
 
-    def _get_subjects(self, n_subjects=0):
-        return [Subject(id='S' + str(s), gender='M', age=0, handedness='')
-                for s in range(1, n_subjects + 1)]
-
     def _get_paradigm(self):
         return SSVEP(title='SSVEP_LED', control='Async',
                      stimulation=5000,
@@ -160,7 +163,8 @@ class Exoskeleton(DataSet):
                      stim_type='ON_OFF', frequencies=['idle', '13.', '21.', '17.'],
                      )
 
-    def flatten(self, list_of_lists=[]):
+    @staticmethod
+    def flatten(list_of_lists=[]):
         return [item for sublist in list_of_lists for item in sublist]
 
     def get_path(self):

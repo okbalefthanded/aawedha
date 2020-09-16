@@ -3,6 +3,8 @@
 """
 from abc import ABCMeta, abstractmethod
 from aawedha.analysis.utils import isfloat
+from aawedha.analysis.preprocess import eeg_epoch
+from aawedha.paradigms.subject import Subject
 from scipy.signal import resample_poly
 import numpy as np
 import os
@@ -53,8 +55,8 @@ class DataSet(metaclass=ABCMeta):
     """
 
     def __init__(self, title='', ch_names=[], fs=None, doi=''):
-        self.epochs = []
-        self.y = []
+        self.epochs = None
+        self.y = None
         self.events = []
         self.paradigm = None
         self.subjects = []
@@ -78,7 +80,7 @@ class DataSet(metaclass=ABCMeta):
                 f'Subjects: {subjects}',
                 f'Epoch length: {epoch_length}'
                 f'Channels: {self.ch_names}',
-                f'Trials:{trials}')
+                f'Trials: {trials}')
         return '\n'.join(info)
 
     @abstractmethod
@@ -93,6 +95,15 @@ class DataSet(metaclass=ABCMeta):
     def get_path(self):
         pass
 
+    @abstractmethod
+    def _get_paradigm(self):
+        pass
+
+    @staticmethod
+    def _get_subjects(n_subjects=0):
+        return [Subject(id=f'S{s}', gender='M', age=0, handedness='')
+                for s in range(1, n_subjects + 1)]
+
     def save_set(self, save_folder=None):
         '''
         '''
@@ -105,9 +116,13 @@ class DataSet(metaclass=ABCMeta):
 
         fname = save_folder + '/' + self.title + '.pkl'
         print(f'Saving dataset {self.title} to destination: {fname}')
+        with open(fname, 'wb') as f:
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        '''    
         f = open(fname, 'wb')
         pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         f.close()
+        '''
         # log if verbose
 
     def load_set(self, file_name=None, subjects=[], ch=[]):
@@ -122,7 +137,7 @@ class DataSet(metaclass=ABCMeta):
         if subjects:
             data.select_subjects(subjects)
         if ch:
-            data.select_channels(ch)
+            _ = data.select_channels(ch)
         return data
 
     def flatten(self):
@@ -155,15 +170,19 @@ class DataSet(metaclass=ABCMeta):
 
         self.ch_names = [self.ch_names[ch] for ch in indexes]
 
-        if type(self.epochs) is list:
-            self.epochs = [ep[:, indexes, :] for ep in self.epochs]
-            if hasattr(self, 'test_epochs'):
-                self.test_epochs = [ep[:, indexes, :]
-                                    for ep in self.test_epochs]
-        else:
-            self.epochs = self.epochs[:, :, indexes, :]
-            if hasattr(self, 'test_epochs'):
-                self.test_epochs = self.test_epochs[:, :, indexes, :]
+        if self.epochs is not None:
+            if type(self.epochs) is list:
+                self.epochs = [ep[:, indexes, :] for ep in self.epochs]
+                if hasattr(self, 'test_epochs'):
+                    if self.test_epochs:
+                        self.test_epochs = [ep[:, indexes, :] for ep in self.test_epochs]
+            else:
+                self.epochs = self.epochs[:, :, indexes, :]
+                if hasattr(self, 'test_epochs'):
+                    if self.test_epochs:
+                        self.test_epochs = self.test_epochs[:, :, indexes, :]
+
+        return indexes
 
     def rearrange(self, target_events=[], v=0):
         '''Rearragne dataset by selecting a subset of epochs and their
@@ -215,7 +234,7 @@ class DataSet(metaclass=ABCMeta):
                 if k[i] == 'idle':
                     idx = np.where(self.events[sbj] == 'idle')[0]
                 else:
-                    idx = np.logical_and(e > float(k[i])-v, e < float(k[i])+v)
+                    idx = np.logical_and(e > float(k[i]) - v, e < float(k[i]) + v)
                 if isinstance(self.y, list):
                     self.y[sbj][idx] = d[k[i]]
                 else:
@@ -249,21 +268,21 @@ class DataSet(metaclass=ABCMeta):
         channels = len(self.ch_names)
         if type(self.epochs) is list:
             self.epochs = [ep.reshape(
-                           (ep.shape[0] / channels, channels, ep.shape[1]))
-                           for ep in self.epochs]
+                (ep.shape[0] / channels, channels, ep.shape[1]))
+                for ep in self.epochs]
 
             if hasattr(self, 'test_epochs'):
                 self.test_epochs = [ep.reshape(
-                                    (ep.shape[0] / channels, channels, ep.shape[1]))
-                                    for ep in self.test_epochs]
+                    (ep.shape[0] / channels, channels, ep.shape[1]))
+                    for ep in self.test_epochs]
         else:
             subjects, samples, trials = self.epochs.shape
             self.epochs = self.epochs.reshape(
-                (subjects, samples/channels, channels, trials))
+                (subjects, samples / channels, channels, trials))
             if hasattr(self, 'test_epochs'):
                 subjects, samples, trials = self.test_epochs.shape
                 self.test_epochs = self.test_epochs.reshape(
-                    (subjects, samples/channels, channels, trials))
+                    (subjects, samples / channels, channels, trials))
 
     def get_n_classes(self):
         '''
@@ -272,6 +291,38 @@ class DataSet(metaclass=ABCMeta):
             return len(np.unique(self.y[0]))
         else:
             return len(np.unique(self.y))
+
+    def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, slide=0.1, method='divide'):
+
+        v = []
+        # stimulation = 5 * self.fs
+        if method == 'divide':
+            augmented = range(np.floor(stimulation / np.diff(epoch))[0].astype(int))
+            v = [eeg_epoch(raw_signal, epoch + np.diff(epoch) * i, pos) for i in augmented]
+
+        elif method == 'slide':
+            slide = np.ceil(slide * self.fs).astype(int)
+            augmented = range(int((stimulation - np.diff(epoch)) // slide) + 1)
+            v = [eeg_epoch(raw_signal, epoch + (slide * i), pos) for i in augmented]
+
+        return v
+
+    def _get_augmented_epoched(self, eeg, epoch, stimulation, onset=0, slide=0.1, method='divide'):
+
+        # onset = int(0.5 * self.fs)
+        epoch_duration = np.round(np.array(epoch) * self.fs).astype(int)
+        # stimulation = 5
+        v = []
+
+        if method == 'divide':
+            strides = range(np.floor(stimulation * self.fs / epoch_duration).astype(int))
+            v = [eeg[onset + int(s * self.fs):onset + int(s * self.fs) + epoch_duration] for s in strides]
+        elif method == 'slide':
+            augmented = range(int((stimulation - epoch) // slide) + 1)
+            slide = int(slide * self.fs)
+            v = [eeg[onset + slide * s:onset + slide * s + epoch_duration] for s in augmented]
+
+        return v
 
     def _get_channels(self, ch=[]):
         """returns indices of specific channels from channels in dataset
@@ -288,7 +339,11 @@ class DataSet(metaclass=ABCMeta):
         """
         return [i for i, x in enumerate(self.ch_names) if x in ch]
 
-    def _resample_array(self, ndarray, up, down):
+    def _set_channels(self, channels):
+        self.ch_names = channels
+
+    @staticmethod
+    def _resample_array(ndarray, up, down):
         '''
         '''
         if isinstance(ndarray, list):
@@ -299,15 +354,16 @@ class DataSet(metaclass=ABCMeta):
 
         return ndarray
 
-    def _reshape(self, tensor=None):
+    @staticmethod
+    def _reshape(tensor=None):
         '''
         '''
         if tensor.ndim == 4:
             subjects, samples, channels, trials = tensor.shape
-            return tensor.reshape((subjects, samples*channels, trials))
+            return tensor.reshape((subjects, samples * channels, trials))
         elif tensor.ndim == 3:
             samples, channels, trials = tensor.shape
-            return tensor.reshape((samples*channels, trials))
+            return tensor.reshape((samples * channels, trials))
 
     def _get_ind(self, ev, sbj, v):
         '''
@@ -323,7 +379,7 @@ class DataSet(metaclass=ABCMeta):
             # rg = float(ev) + rng
             # idx = np.logical_or.reduce([e == r for r in rg])
             # tmp = np.concatenate((tmp, np.where(idx == True)[0]))
-            idx = np.logical_and(e > float(ev)-v, e < float(ev)+v)
+            idx = np.logical_and(e > float(ev) - v, e < float(ev) + v)
             tmp = np.concatenate((tmp, np.where(idx)[0]))
 
         return tmp
