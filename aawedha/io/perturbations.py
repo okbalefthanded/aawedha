@@ -31,10 +31,123 @@ class Perturbations(DataSet):
         self.test_y = []
         self.test_events = []
 
+    def generate_set(self, load_path=None, ch=None,
+                     downsample=4,
+                     epoch=1,
+                     band=[5.0, 45.0],
+                     order=6, save_folder=None,
+                     augment=False,
+                     method='divide',
+                     slide=0.1):
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        ch : list, optional
+            default : None, keep all channels
+        downsample: int, optional
+            down-sampling factor
+            default : 4
+        epoch : int
+            epoch duration in seconds relative to trials' onset
+            default : 1
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [5., 45.]
+        order : int
+            band-pass filter order
+            default: 6
+        save_folder : str
+            DataSet object saving folder path
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+
+        Returns
+        -------
+        """
+        offline = load_path + '/OFFLINE'
+        online = load_path + '/ONLINE'
+        if downsample:
+            self.fs = self.fs // int(downsample)
+
+        self.epochs, self.y = self.load_raw(offline, ch, downsample,
+                                            'train',
+                                            epoch, band,
+                                            order, augment,
+                                            method, slide
+                                            )
+
+        self.test_epochs, self.test_y = self.load_raw(online, ch, downsample,
+                                                      'test', epoch,
+                                                      band, order, augment,
+                                                      method, slide
+                                                      )
+        self.subjects = self._get_subjects(n_subjects=24)
+        self.paradigm = self._get_paradigm()
+        self.events = self._get_events(self.y)
+        self.test_events = self._get_events(self.test_y)
+        if not ch:
+            eeg_channels = self._get_eeg_channels()
+            self.ch_names = [self.ch_names[i] for i in eeg_channels]
+        self.save_set(save_folder)
+
     def load_raw(self, path=None, ch=None, downsample=4, mode='', epoch_duration=3,
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
+        """Read and process raw data into structured arrays
 
+        Parameters
+        ----------
+        path : str
+            raw data folder path
+        ch : list, optional
+            default : None, keep all channels
+        downsample: int, optional
+            down-sampling factor
+            default : 4
+        mode : str
+            data acquisition session mode: 'train' or 'test'
+        epoch_duration : int
+            epoch duration in seconds relative to trials' onset
+            default : 3
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [5., 45.]
+        order : int
+            band-pass filter order
+            default: 6
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+        Returns
+        -------
+        x : nd array (subjects x samples x channels x trials)
+            epoched EEG data for the entire set or train/test phase
+        y : nd array (subjects x trials)
+            class labels for the entire set or train/test phase
+        """
         ep = epoch_duration
         X, Y = [], []
         # augmented = 0
@@ -88,84 +201,18 @@ class Perturbations(DataSet):
         Y = np.array(Y).squeeze()
         return X, Y
 
-    def generate_set(self, load_path=None, ch=None,
-                     downsample=4,
-                     epoch=1,
-                     band=[5.0, 45.0],
-                     order=6, save_folder=None,
-                     augment=False,
-                     method='divide',
-                     slide=0.1):
-        '''
-        '''
-        offline = load_path + '/OFFLINE'
-        online = load_path + '/ONLINE'
-        if downsample:
-            self.fs = self.fs // int(downsample)
-
-        self.epochs, self.y = self.load_raw(offline, ch, downsample,
-                                            'train',
-                                            epoch, band,
-                                            order, augment,
-                                            method, slide
-                                            )
-
-        self.test_epochs, self.test_y = self.load_raw(online, ch, downsample,
-                                                      'test', epoch,
-                                                      band, order, augment,
-                                                      method, slide
-                                                      )
-        self.subjects = self._get_subjects(n_subjects=24)
-        self.paradigm = self._get_paradigm()
-        self.events = self._get_events(self.y)
-        self.test_events = self._get_events(self.test_y)
-        if not ch:
-            eeg_channels = self._get_eeg_channels()
-            self.ch_names = [self.ch_names[i] for i in eeg_channels]
-        self.save_set(save_folder)
-
-    def _get_augmented(self, eeg, epoch, method='divide', slide=0.1):
-        """Segment a single epoch of a continuous signal into augmented epochs
-
-         Parameters
-        ----------
-        eeg : ndarray
-            epoched EEG signal : samples x channels x blocks x targets
-        epoch : array
-            onset of epoch length
-        slide : float
-            stride for sliding window segmentation method in seconds
-        method : str
-            segmentation method :
-                - divide : divide epochs by length of epochs, no overlapping
-                - slide : sliding window by a stride, overlapping
-        Returns
-        -------
-        v : list
-            list of segmented epochs belonging to the same class/target
-        """
-        onset = 0
-        epoch_duration = np.round(np.array(epoch) * self.fs).astype(int)
-        stimulation = 3
-        v = []
-
-        if method == 'divide':
-            strides = range(np.floor(stimulation * self.fs / epoch_duration).astype(int))
-            v = [eeg[onset + int(s * self.fs):onset + int(s * self.fs) + epoch_duration, :, :] for s in strides]
-        elif method == 'slide':
-            augmented = int((stimulation - epoch) // slide) + 1
-            ops = range(augmented)
-            slide = int(slide * self.fs)
-            v = [eeg[onset + slide * s:onset + slide * s + epoch_duration, :, :] for s in ops]
-
-        return v
-
     def get_path(self):
         NotImplementedError
 
     def _get_events(self, y):
-        '''
-        '''
+        """Attaches the experiments paradigm frequencies to
+        class labels
+        y : nd array (subjects x trials)
+            class labels
+        Returns
+        -------
+        ev: nd array (subjects x trials)
+        """
         ev = []
         for i, _ in enumerate(y):
             events = np.empty(y[i].shape, dtype=object)
@@ -186,6 +233,13 @@ class Perturbations(DataSet):
                      )
 
     def _get_eeg_channels(self):
+        """Get EEG channels indices in the original channel montage that also contains
+        EOG channels
+        Returns
+        -------
+        eeg_channels : list
+            indices of eeg channels
+        """
         exclude = ['EOGL', 'EOGC', 'EOGR', 'BIP1']
         eeg_channels = [i for i in range(64) if self.ch_names[i] not in exclude]
         return eeg_channels

@@ -18,10 +18,10 @@ def spectral_power(data, subject=0, channel='POz'):
 
     Returns
     -------
-    pwr : list of ndarray (1 x samples/2 + 1)
+    pwr : list of nd array (1 x samples/2 + 1)
         spectral power of each event in the dataset
 
-    frequencies: ndarray
+    frequencies: nd array
         array of frequencies: 0 - nyquist
     """
 
@@ -69,11 +69,11 @@ def wavelet(data, subject=0, channel='POz', w=4.):
 
     Returns
     -------
-    cwtm : list of ndarray (frequencies x time)
+    cwtm : list of nd array (frequencies x time)
         real continuous wavelet transform values
-    t : ndarray
+    t : nd array
         time vector (length of an epoch)
-    frequencies : ndarray
+    frequencies : nd array
         frequencies in signal from 1 to nyquist
     """
     samples, channels, trials = data.epochs[subject].shape
@@ -115,7 +115,7 @@ def snr(power, freqs, fs):
     power : list of 1d array
         spectral power
     freqs : list
-        ssvep stimuli
+        SSVEP stimuli
     fs : int
         sampling rate
 

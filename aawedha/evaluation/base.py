@@ -5,6 +5,7 @@ from aawedha.utils.evaluation_utils import class_weights
 from aawedha.evaluation.checkpoint import CheckPoint
 from tensorflow.keras.models import load_model
 import tensorflow as tf
+import pandas as pd
 import numpy as np
 import datetime
 import pickle
@@ -57,7 +58,7 @@ class Evaluation(object):
         logger : logger
             used to log evaluation results
 
-        predictions : ndarray of predictions
+        predictions : nd array of predictions
             models output for each example on the dataset :
                 - SingleSubject evaluation : subjects x folds x Trials x dim
                 - CrossSubject evaluation : folds x Trials x dim
@@ -190,7 +191,6 @@ class Evaluation(object):
         Returns
         -------
         instance of evaluation
-
         """
         chk = self.reset(chkpoint=True)
         if run:
@@ -212,7 +212,7 @@ class Evaluation(object):
         self.dataset = dt
 
     def measure_performance(self, Y_test, probs, perf):
-        """Measure model performance on dataset
+        """Measure model performance on a dataset
 
         Calculates model performance on metrics and sets Confusion Matrix for
         each fold
@@ -227,14 +227,7 @@ class Evaluation(object):
 
         Returns
         -------
-            acc : float
-                accuracy value of model per fold
-            auc_score : float
-                AUC value of model per fold (only for Binary class tasks)
-            fp_rate : 1d array
-                increasing false positive rate
-            tp_rate : 1d array
-                increasing true positive rate
+            dict of performance metrics : {metric : value}
         """
         self.predictions.append(probs)  # ()
         results = dict()
@@ -613,7 +606,7 @@ class Evaluation(object):
 
         Returns
         -------
-        no value
+        None
         """
         device = self._get_device()
         # if not self.model_config:
@@ -662,7 +655,9 @@ class Evaluation(object):
         probs : 2d array (n_examples x n_classes)
             model's output on test data as probabilities of belonging to
             each class
-        perf :
+
+        perf : array
+            model's performance on test data: accuracy and loss
         """
         batch, ep, clbs = self._get_fit_configs()
 
@@ -696,15 +691,16 @@ class Evaluation(object):
         return history, probs, perf
 
     def _eval_split(self, split={}):
-        """
+        """Evaluate the performance of the model on a give split
 
         Parameters
         ----------
-        split
+        split : dict
+            ndarrays to evaluate: train/val/test data and labels
 
         Returns
         -------
-
+        rets: dict of performance metrics
         """
         X_train, Y_train = split['X_train'], split['Y_train']
         X_test, Y_test = split['X_test'], split['Y_test']
@@ -854,11 +850,13 @@ class Evaluation(object):
         """
         file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
         if os.path.exists(file_name):
-            f = open(file_name, 'rb')
-            chkpoint = pickle.load(f)
+            with open(file_name, 'rb') as f:
+                chkpoint = pickle.load(f)
+            # f = open(file_name, 'rb')
+            # chkpoint = pickle.load(f)
         else:
             raise FileNotFoundError
-        f.close()
+        # f.close()
         return chkpoint
 
     def _has_val(self):
@@ -927,3 +925,42 @@ class Evaluation(object):
         """Log metrics means after the end of an evaluation to logger"""
         means = [f'{metric}: {v}' for metric, v in self.results.items() if 'mean' in metric]
         self.logger.debug(' / '.join(means))
+
+    def _savecsv(self, folder=None):
+        """Save evaluation results in a CSV file as Pandas DataFrame
+
+        Parameters
+        ----------
+        folder : str
+            results files will be stored inside folder, if None, a default folder inside aawedha is used.
+
+        Returns
+        -------
+        None
+        """
+        if not folder:
+            folder = 'aawedha/results'
+            if not os.path.isdir(folder):
+                os.mkdir(folder)
+
+        metrics = {'accuracy', 'auc'}
+        results_keys = set(self.results)
+        metrics = metrics.intersection(results_keys)
+        subjects = range(self._get_n_subjects())
+        rows = [f'S{s}' for s in subjects]
+        rows.append('Avg')
+        columns = [f'Fold{fld}' for fld,_ in enumerate(self.folds)]
+        columns.extend(['Avg', 'Std', 'Sem'])
+        dataset = self.dataset.title
+        evl = self.__class__.__name__
+        date = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+        for metric in metrics:
+            acc = np.array(self.results[metric]).round(3) * 100
+            acc_mean = np.array(self.results[metric]).mean().round(3) * 100
+            std = np.array(self.results[metric]).std().round(3) * 100
+            sem = np.round(std / np.sqrt(len(self.results[metric])), 3)
+            values = np.column_stack((acc, acc_mean, std, sem))
+            values = np.vstack((values, values.mean(axis=0).round(3)))
+            df = pd.DataFrame(data=values,index=rows, columns=columns)
+            fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
+            df.to_csv(fname, encoding='utf-8')

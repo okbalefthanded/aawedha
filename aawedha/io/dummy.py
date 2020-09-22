@@ -34,7 +34,8 @@ class Dummy(DataSet):
         NotImplementedError
 
     def generate_set(self):
-        """
+        """Generate train/val/test partition
+        train data constitutes 80% of epochs, the rest 20% will be for validation
         """
         val_trials = round(self.epochs.shape[3]*0.8)
         self.x_train = self.epochs[:, :, :, :val_trials]

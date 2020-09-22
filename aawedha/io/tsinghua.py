@@ -30,11 +30,94 @@ class Tsinghua(DataSet):
                          doi='http://dx.doi.org/10.1073/pnas.1508080112'
                          )
 
+    def generate_set(self, load_path=None, ch=None, epoch=1, band=[5.0, 45.0],
+                     order=6, save_folder=None, augment=False,
+                     method='divide', slide=0.1):
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        ch : list, optional
+            default : None, keep all channels
+        epoch : int
+            epoch duration in seconds relative to trials' onset
+            default : 1 sec
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [5., 45.]
+        order : int
+            band-pass filter order
+            default: 6
+        save_folder : str
+            DataSet object saving folder path
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+
+        Returns
+        -------
+        """
+        self.epochs, self.y = self.load_raw(load_path,ch,
+                                            epoch, band, order,
+                                            augment, method, slide)
+        self.subjects = self._get_subjects(path=load_path)
+        self.paradigm = self._get_paradigm()
+        self.events = self._get_events()
+        self.save_set(save_folder)
+
     def load_raw(self, path=None, ch=None, epoch_duration=1,
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
-        '''
-        '''
+        """Read and process raw data into structured arrays
+
+        Parameters
+        ----------
+        path : str
+            raw data folder path
+        ch : list, optional
+            subset of channels to keep in DataSet from the total montage.
+            default: None, keep all channels
+        epoch_duration : int
+            epoch duration in seconds relative to trials' onset
+            default : 1 sec
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [5., 45.]
+        order : int
+            band-pass filter order
+            default: 6
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+
+        Returns
+        -------
+        x : nd array (subjects x samples x channels x trials)
+            epoched EEG data for the entire set or train/test phase
+        y : nd array (subjects x n_classes)
+            class labels for the entire set or train/test phase
+        """
         if ch:
             chans = self.select_channels(ch)
         else:
@@ -54,14 +137,7 @@ class Tsinghua(DataSet):
             del data
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
-                # stimulation = 5 * self.fs
-                # augmented = 4
                 tg = eeg.shape[2]
-                # stimulation = 5
-                # augmented = np.floor(stimulation * self.fs / epoch_duration).astype(int)
-                # strides = list(np.arange(0, stimulation, ep))
-                # v=[eeg[onset + int(s * self.fs):onset + int(s * self.fs) + epoch_duration, :, :, :] for s in strides]
-                # v = self._get_augmented(eeg, ep, method, slide)
                 v = self._get_augmented_epoched(eeg, ep, stimulation, onset, slide, method)
                 eeg = np.concatenate(v, axis=2)
                 samples, channels, targets, blocks = eeg.shape
@@ -84,22 +160,15 @@ class Tsinghua(DataSet):
         Y = np.array(Y).squeeze()
         return X, Y
 
-    def generate_set(self, load_path=None, ch=None, epoch=1, band=[5.0, 45.0],
-                     order=6, save_folder=None, augment=False,
-                     method='divide', slide=0.1):
-        '''
-        '''
-        self.epochs, self.y = self.load_raw(load_path,ch,
-                                            epoch, band, order,
-                                            augment, method, slide)
-        self.subjects = self._get_subjects(path=load_path)
-        self.paradigm = self._get_paradigm()
-        self.events = self._get_events()
-        self.save_set(save_folder)
-
     def _get_events(self):
-        '''
-        '''
+        """Attaches the experiments paradigm frequencies to
+        class labels
+
+        Returns
+        -------
+        events: nd array (subjects x trials)
+
+        """
         events = np.empty(self.y.shape, dtype=object)
         rows, cols = events.shape
         for i in range(rows):
@@ -111,8 +180,19 @@ class Tsinghua(DataSet):
 
     @staticmethod
     def _get_subjects(n_subject=0, path=None):
-        '''
-        '''
+        """Read dataset subject info file and retrieve information
+
+        Parameters
+        ----------
+        n_subject : int
+            number of subjects in dataset
+        path : str
+          raw data folder path
+
+        Returns
+        -------
+        list of Subject instance
+        """
         sub_file = path + '/Sub_info.txt'
         with open(sub_file, 'r') as f:
             info = f.read().split('\n')[2:]
@@ -121,8 +201,6 @@ class Tsinghua(DataSet):
                 for s in info if len(s) > 0]
 
     def _get_paradigm(self):
-        '''
-        '''
         return SSVEP(title='SSVEP_JFPM', stimulation=5000, break_duration=500,
                      repetition=6, stimuli=40, phrase='',
                      stim_type='Sinusoidal',

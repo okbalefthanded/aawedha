@@ -70,7 +70,7 @@ class SingleSubject(Evaluation):
         self.folds = self.get_folds(nfolds, n_trials, train_phase,
                                     val_phase, test_phase, strategy)
 
-    def run_evaluation(self, subject=None, pointer=None, check=False):
+    def run_evaluation(self, subject=None, pointer=None, check=False, savecsv=False, csvfolder=None):
         """Perform evaluation on each subject
 
         Parameters
@@ -86,6 +86,13 @@ class SingleSubject(Evaluation):
         check : bool
             if True, sets evaluation checkpoint for future operation resume,
             False otherwise
+
+        savecsv: bool
+            if True, saves evaluation results in a csv file as a pandas DataFrame
+
+        csvfolder : str
+            if savecsv is True, the results files in csv will be saved inside this folder
+
 
         Returns
         -------
@@ -134,23 +141,28 @@ class SingleSubject(Evaluation):
                 if len(self.model_config['compile']['metrics']) > 1:
                     msg += f" AUC: {subj_results['auc']}"
                 self.logger.debug(msg)
-                self.logger.debug(
-                    f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+                self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
 
             res.append(subj_results)
 
             if check:
-                pointer.set_checkpoint(subj+1, self.model)
+                pointer.set_checkpoint(subj+1, self.model, rets)
         #
         if (not isinstance(self.dataset.epochs, list) and
                 self.dataset.epochs.ndim == 3):
             self.dataset.recover_dim()
 
         if len(operations) == self._get_n_subjects():
-            # self.results = self.results_reports(res, tfpr)
             self.results = self.results_reports(res)
-            if self.log:
-                self._log_results()
+        elif check:
+            self.results = self.results_reports(pointer.rets)
+
+        if self.log:
+            self._log_results()
+
+        if savecsv:
+            if self.results:
+                self._savecsv(csvfolder)
 
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
         """Generate folds following a KFold cross-validation strategy
@@ -275,8 +287,7 @@ class SingleSubject(Evaluation):
             # TODO
             pass
         else:
-            self.dataset.epochs = np.vstack(
-                (self.dataset.epochs, self.dataset.test_epochs))
+            self.dataset.epochs = np.vstack((self.dataset.epochs, self.dataset.test_epochs))
             self.dataset.y = np.vstack((self.dataset.y, self.dataset.test_y))
         return self.dataset.epochs.shape[0]  # n_subject
 
@@ -370,7 +381,7 @@ class SingleSubject(Evaluation):
 
     def _get_data_pair(self, subj=0):
         """Get data pair for a subject from the dataset.
-        Transform X,Y to Keras model input format.
+        Transform x,y to Keras model input format.
 
         Parameters
         ----------
@@ -379,13 +390,10 @@ class SingleSubject(Evaluation):
 
         Returns
         -------
-        # TODO
-        X : ndarray
-            Subject data for evaluation (trials x kernels x channels x samples)
-            or (trials x kernels x samples)
-        Y : ndarray
-            class labels in categorical format
-            (trials x n_classes)
+        x : nd array
+            Subject data for evaluation (trials x channels x samples)
+        y : array
+            class labels
         """
         # prepare data
         x = self.dataset.epochs[subj]

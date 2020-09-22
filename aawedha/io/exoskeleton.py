@@ -13,21 +13,23 @@ class Exoskeleton(DataSet):
     shared control
 
     References :
+
     [1] Emmanuel K. Kalunga, Sylvain Chevallier, Olivier Rabreau, Eric
     Monacelli. Hybrid interface:
     Integrating BCI in Multimodal Human-Machine Interfaces. IEEE/ASME
     International Conference on Advanced Intelligent Mechatronics (AIM),
     2014, Besancon, France.
+
     [2] Emmanuel Kalunga, Sylvain Chevallier, Quentin Barthelemy. Data
     augmentation in Riemannian space for Brain-Computer Interfaces,
     STAMLINS (ICML workshop),
     2015, Lille, France.
+
     [3] Emmanuel K. Kalunga, Sylvain Chevallier, Quentin Barthelemy. Online
     SSVEP-based BCI using Riemannian Geometry. Neurocomputing, 2016.
     arXiv research report on arXiv:1501.03227.
 
     """
-
     def __init__(self):
         super().__init__(title='Exoskeleton_SSVEP',
                          ch_names=['Oz', 'O1', 'O2', 'PO3',
@@ -38,32 +40,6 @@ class Exoskeleton(DataSet):
         self.test_y = []
         self.test_events = []
 
-    def load_raw(self, path=None, mode='', epoch_duration=[2, 5],
-                 band=[5.0, 45.0], order=6, augment=False,
-                 method='divide', slide=0.1):
-        '''
-        '''
-        files_list = sorted(glob.glob(path + '/s*'))
-        n_subjects = 12
-        X, Y = [], []
-        for subj in range(n_subjects):
-            session = glob.glob(files_list[subj] + '/*.pz')
-            if mode == 'train':
-                records = np.arange(0, len(session) - 1).tolist()
-            elif mode == 'test':
-                records = [len(session) - 1]
-            x, y = self._get_epoched(session, records,
-                                     epoch_duration, band,
-                                     order, augment, method, slide)
-            X.append(x)
-            Y.append(y)
-
-        # X = self.flatten(X)
-        # Y = self.flatten(Y)
-        # X = np.array(X)
-        # Y = np.array(Y)
-        return X, Y
-
     def generate_set(self, load_path=None,
                      epoch=[2, 5],
                      band=[5., 45.],
@@ -72,8 +48,41 @@ class Exoskeleton(DataSet):
                      augment=False,
                      method='divide',
                      slide=0.1):
-        '''
-        '''
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        epoch : int
+            epoch duration window start and end in seconds relative to trials' onset
+            default : [2, 5]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [5., 45.]
+        order : int
+            band-pass filter order
+            default: 6
+        save_folder : str
+            DataSet object saving folder path
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+
+        Returns
+        -------
+        """
         self.epochs, self.y = self.load_raw(load_path, 'train',
                                             epoch, band,
                                             order, augment,
@@ -94,10 +103,103 @@ class Exoskeleton(DataSet):
         self.test_events = self._get_events(self.test_y)
         self.save_set(save_folder)
 
+    def load_raw(self, path=None, mode='', epoch_duration=[2, 5],
+                 band=[5.0, 45.0], order=6, augment=False,
+                 method='divide', slide=0.1):
+        """Read and process raw data into structured arrays
+
+        Parameters
+        ----------
+        path : str
+            raw data folder path
+        mode : str
+            data acquisition session mode: 'train' or 'test'
+        epoch_duration : int
+            epoch duration window start and end in seconds relative to trials' onset
+            default : [2, 5]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [5., 45.]
+        order : int
+            band-pass filter order
+            default: 6
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+        Returns
+        -------
+        x : list of nd array (subjects x samples x channels x trials)
+            epoched EEG data for the entire set or train/test phase
+            trials is not a fixed number, it varies according to subjects sessions
+        y : list nd array (subjects x trials)
+            class labels for the entire set or train/test phase
+            trials is not a fixed number, it varies according to subjects sessions
+        """
+        files_list = sorted(glob.glob(path + '/s*'))
+        n_subjects = 12
+        X, Y = [], []
+        for subj in range(n_subjects):
+            session = glob.glob(files_list[subj] + '/*.pz')
+            if mode == 'train':
+                records = np.arange(0, len(session) - 1).tolist()
+            elif mode == 'test':
+                records = [len(session) - 1]
+            x, y = self._get_epoched(session, records,
+                                     epoch_duration, band,
+                                     order, augment, method, slide)
+            X.append(x)
+            Y.append(y)
+
+        return X, Y
+
+
     def _get_epoched(self, files=[], records=[],
                      epoch=[2, 5], band=[5., 45.],
-                     order=6, augment=False, method='divide', slide=0.1):
-        """
+                     order=6, augment=False,
+                     method='divide', slide=0.1):
+        """Extract epochs from raw continuous EEG file
+
+        Parameters
+        ----------
+        files : list
+            sessions raw data files of a single subject
+        records : list
+            indices of files to include
+        epoch : list
+            epoch duration window start and end in seconds relative to trials' onset
+            default : [2, 5]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [5., 45.]
+        order : int
+            band-pass filter order
+            default: 6
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+
+        Returns
+        -------
+        x : nd array (samples x channels x trials)
+            epoched EEG data for a single subject in a session mode (train or test)
+        y : nd array (subjects x trials)
+            class labels for a single subject in a session mode (train or test)
         """
         OVTK_StimulationId_VisualStimulationStart = 32779
         labels = [33024, 33025, 33026, 33027]
@@ -144,7 +246,15 @@ class Exoskeleton(DataSet):
         return x, y  # epochs and labels
 
     def _get_events(self, y):
-        """
+        """Attaches the experiments paradigm frequencies to
+        class labels
+        y : nd array (subjects x trials)
+            class labels
+        Returns
+        -------
+        events: list of nd array (subjects x trials)
+            stimulation frequencies (or idle) of classes
+            trials varies according to subjects sessions
         """
         ev = []
         for i in range(len(y)):
@@ -165,6 +275,16 @@ class Exoskeleton(DataSet):
 
     @staticmethod
     def flatten(list_of_lists=[]):
+        """Transforms a list of a list into a single one
+
+        Parameters
+        ----------
+        list_of_lists : list of lists
+
+        Returns
+        -------
+        list of items
+        """
         return [item for sublist in list_of_lists for item in sublist]
 
     def get_path(self):

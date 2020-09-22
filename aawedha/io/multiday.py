@@ -29,11 +29,107 @@ class MultiDay(DataSet):
         self.test_y = []
         self.test_events = []
 
+    def generate_set(self, load_path=None, ch=None,
+                     epoch=[0, 6], band=[3.0, 50.0],
+                     order=6, save_folder=None,
+                     augment=False,
+                     method='divide', slide=0.1):
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        ch : list, optional
+            default : None, keep all channels
+        epoch : list
+            epoch window start and end in seconds relative to trials' onst
+            default : [0, 6]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [3., 50.]
+        order : int
+            band-pass filter order
+            default: 6
+        save_folder : str
+            DataSet object saving folder path
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+
+        Returns
+        -------
+        """
+        self.epochs, self.y = self.load_raw(load_path, ch,
+                                            'train',
+                                            epoch, band,
+                                            order, augment,
+                                            method, slide
+                                            )
+
+        self.test_epochs, self.test_y = self.load_raw(load_path, ch,
+                                                      'test', epoch,
+                                                      band, order, augment,
+                                                      method, slide
+                                                      )
+        # self.subjects = self._get_subjects(n_subjects=29)
+        self.subjects = self._get_subjects(n_subjects=30)
+        self.paradigm = self._get_paradigm()
+        self.events = self._get_events(self.y)
+        self.test_events = self._get_events(self.test_y)
+        self.save_set(save_folder)
+
     def load_raw(self, path=None, ch=None, mode='', epoch_duration=[0, 6],
                  band=[3.0, 50.0], order=6, augment=False,
                  method='divide', slide=0.1):
-        '''
-        '''
+        """Read and process raw data into structured arrays
+
+        Parameters
+        ----------
+        path : str
+            raw data folder path
+        ch : list, optional
+            default : None, keep all channels
+        mode : str
+            data acquisition session mode: 'train' or 'test'
+        epoch_duration : list
+            epoch window start and end in seconds relative to trials' onset
+            default : [0, 6]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [3., 50.]
+        order : int
+            band-pass filter order
+            default: 6
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+        Returns
+        -------
+        x : nd array (subjects x samples x channels x trials)
+            epoched EEG data for the entire set or train/test phase
+        y : nd array (subjects x trials)
+            class labels for the entire set or train/test phase
+        """
         if ch:
             channels = self.select_channels(ch)
         else:
@@ -50,7 +146,6 @@ class MultiDay(DataSet):
             session = '/Day2'
 
         subjects_list = glob.glob(path+'/S*')
-        # subjects_list.pop(23)  # exclude S24 because of a faulty file
         X, Y = [], []
         records = 6
         stimulation = 6 * self.fs
@@ -107,39 +202,22 @@ class MultiDay(DataSet):
         Y = np.array(Y).squeeze()
         return X, Y
 
-    def generate_set(self, load_path=None, ch=None,
-                     epoch=[0, 6],
-                     band=[3.0, 50.0],
-                     order=6, save_folder=None,
-                     augment=False,
-                     method='divide', slide=0.1):
-        '''
-        '''
-        self.epochs, self.y = self.load_raw(load_path, ch,
-                                            'train',
-                                            epoch, band,
-                                            order, augment,
-                                            method, slide
-                                            )
-
-        self.test_epochs, self.test_y = self.load_raw(load_path, ch,
-                                                      'test', epoch,
-                                                      band, order, augment,
-                                                      method, slide
-                                                      )
-        # self.subjects = self._get_subjects(n_subjects=29)
-        self.subjects = self._get_subjects(n_subjects=30)
-        self.paradigm = self._get_paradigm()
-        self.events = self._get_events(self.y)
-        self.test_events = self._get_events(self.test_y)
-        self.save_set(save_folder)
-
     def get_path(self):
         NotImplementedError
 
     def _get_events(self, y):
-        '''
-        '''
+        """Attaches the experiments paradigm frequencies to
+        class labels
+
+        Parameters
+        ----------
+        y : nd array (subjects x trials)
+            class labels
+
+        Returns
+        -------
+        ev : nd array (subjects x trials)
+        """
         ev = []
         for i, _ in enumerate(y):
             events = np.empty(y[i].shape, dtype=object)

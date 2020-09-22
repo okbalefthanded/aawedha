@@ -34,10 +34,8 @@ class LaresiHybrid:
                          'Cz', 'P3', 'P4', 'FCz']
         self.fs = 512
         self.doi = ''
-        self.erp_set = LaresiERP(
-            title='Hybrid_ERP', ch_names=self.ch_names, fs=self.fs)
-        self.ssvep_set = LaresiSSVEP(
-            title='Hybrid_SSVEP', ch_names=self.ch_names, fs=self.fs)
+        self.erp_set = LaresiERP(title='Hybrid_ERP', ch_names=self.ch_names, fs=self.fs)
+        self.ssvep_set = LaresiSSVEP(title='Hybrid_SSVEP', ch_names=self.ch_names, fs=self.fs)
         self.paradigm = HybridLARESI()
 
     def load_raw(self, path=None):
@@ -90,19 +88,25 @@ class LaresiHybrid:
 
         fname = save_folder + '/' + self.title + '.pkl'
         print(f'Saving dataset {self.title} to destination: {fname}')
+        with open(fname, 'wb') as f:
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        '''
         f = open(fname, 'wb')
         pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         f.close()
+        '''
 
     def load_set(self, file_name=None):
         '''
         '''
         if os.path.exists(file_name):
-            f = open(file_name, 'rb')
-            data = pickle.load(f)
+            with open(file_name, 'rb') as f:
+                data = pickle.load(f)
+            # f = open(file_name, 'rb')
+            # data = pickle.load(f)
         else:
             raise FileNotFoundError
-        f.close()
+        # f.close()
         return data
 
     def _read_raw(self, path=None):

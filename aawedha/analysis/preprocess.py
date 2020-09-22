@@ -7,7 +7,7 @@ def bandpass(eeg, band, fs, order=2):
 
     Parameters
     ----------
-    eeg: ndarray (samples, channels)
+    eeg: nd array (samples, channels)
         continuous/epoched EEG data
 
     band: list
@@ -34,18 +34,18 @@ def eeg_epoch(eeg, epoch_length, markers):
 
     Parameters
     ----------
-    eeg : ndarray (samples, channels)
+    eeg : nd array (samples, channels)
         continuous EEG data
 
-    epoch_length : ndarray (2,)
+    epoch_length : nd array (2,)
         epoch start and stop in samples
 
-    markers : ndarray (n_markers,)
+    markers : nd array (n_markers,)
         event markers onset in samples
 
     Returns
     -------
-    eeg_epochs : ndarray (samples, channels, trials)
+    eeg_epochs : nd array (samples, channels, trials)
             epoched EEG (Fortran ordering aka MATLAB format)
     """
 

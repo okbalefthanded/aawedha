@@ -3,7 +3,7 @@ import os
 
 
 class CheckPoint(object):
-    '''Checkpoint class used to save evaluation state for future
+    """Checkpoint class used to save evaluation state for future
     resume after interruption
 
     this class is a reduced version of Evaluation in terms of attributes
@@ -16,26 +16,24 @@ class CheckPoint(object):
         default : 0
 
     partition : list of 2 or 3 integers
-        configuration for data partioning into train/validation/test subset
+        configuration for data partitioning into train/validation/test subset
         default a 3 integers list of:
-            In case of a single dataset without an independet
+            In case of a single dataset without an independent
             Test set
                 - (folds/L, folds/M, folds/N) L+M+N = total trials in dataset
                  for SingleSubject evaluation
                 - (L_subjects, M_subjects, N_subjects) L+M+N = total subjects
                 in dataset for CrossSubject evaluation
             a 2 integers list of:
-                In case of a dataset with an independet Test set
+                In case of a dataset with an independent Test set
                 - (folds/L, folds/M) L+M = T total trials in dataset for
                 SingleSubject evaluation
                 - (L_subjects, M_subjects) L+M = S total subjects in dataset
                  for CrossSubject evaluation
 
-
     folds : a list of 3 1d numpy array
         indices of trials(SingleSubject evaluation)/
         subjects(CrossSubjects evaluation) for each fold
-
 
     model :  Keras Model instance
         the model to train/test on the dataset
@@ -60,9 +58,9 @@ class CheckPoint(object):
             - callbacks : list : Keras model callbacks
                 - default : []
 
-    predictions : ndarray of predictions
+    predictions : nd array of predictions
         models output for each example on the dataset :
-            - SingleSubject evaluaion : subjects x folds x Trials x dim
+            - SingleSubject evaluation : subjects x folds x Trials x dim
             - CrossSubject evaluation : folds x Trials x dim
 
     cm : list
@@ -86,8 +84,8 @@ class CheckPoint(object):
         all subjects
         - 'auc_mean_per_subj' :  AUC mean per Subject over all folds
         [only for SingleSubject evaluation]
-        - 'tpr' : 1d array : True posititves rate
-        - 'fpr' : 1d array : False posititves rate
+        - 'tpr' : 1d array : True positives rate
+        - 'fpr' : 1d array : False positives rate
 
     log : bool
         if True uses logger to log experiment configurations and results,
@@ -100,11 +98,11 @@ class CheckPoint(object):
     -------
     set_checkpoint
 
-    '''
+    """
 
     def __init__(self, evl=None):
-        '''
-        '''
+        """Constructor
+        """
         self.current = None
         self.partition = evl.partition
         self.folds = evl.folds
@@ -119,9 +117,10 @@ class CheckPoint(object):
         self.log = evl.log
         self.logger = evl.logger.handlers[0].baseFilename
         self.verbose = evl.verbose
+        self.rets = []
 
-    def set_checkpoint(self, current=0, model=None):
-        '''Save evaluation state to resume operations later
+    def set_checkpoint(self, current=0, model=None, rets=None):
+        """Save evaluation state to resume operations later
 
         Evaluations instances will be save in a default location inside
         the packages folder as :
@@ -134,10 +133,21 @@ class CheckPoint(object):
             current evaluation subject (SingleSubject)/ fold (CrossSubject)
              index
 
+        model: Keras model
+            current trained model to save, using Keras' model.save() method which
+            saves a model in h5 format.
+
+        rets: list
+            current evaluation results: accuracy, auc, loss,...
+            added to keep a single list of all evaluation results for
+            further reports.
+
         Returns
         -------
         no value
-        '''
+        """
+        if rets:
+            self.rets.append(rets)
         self.current = current
         # save model using built-in save_model, to avoid pickle error
         self.model_name = 'aawedha/trained/current_model.h5'
@@ -149,6 +159,10 @@ class CheckPoint(object):
 
         fname = save_folder + '/' + 'current_' + self.__class__.__name__ + '.pkl'
         print(f'Saving Checkpoint to destination: {fname}')
+        with open(fname, 'wb') as f:
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        '''
         f = open(fname, 'wb')
         pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
         f.close()
+        '''

@@ -19,7 +19,7 @@ class DataSet(metaclass=ABCMeta):
     title : str
         dataset Id
 
-    epochs : ndarray
+    epochs : nd array
         epoched EEG data
 
     y : array
@@ -85,28 +85,79 @@ class DataSet(metaclass=ABCMeta):
 
     @abstractmethod
     def load_raw(self):
+        """Read and process raw data into structured arrays
+
+        Returns
+        -------
+        epochs: nd array (subjects x samples x channels x trials)
+            epoched EEG data of the whole dataset
+
+        y : nd array (subjects x n_classes)
+            datasets labels
+        """
         pass
 
     @abstractmethod
     def generate_set(self):
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Returns
+        -------
+        """
         pass
 
     @abstractmethod
     def get_path(self):
+        """Fetch raw dataset files URL
+
+        Returns
+        -------
+
+        """
         pass
 
     @abstractmethod
     def _get_paradigm(self):
+        """Get datasets experimental paradigm
+
+        Returns
+        -------
+        paradigm instance
+        """
         pass
 
     @staticmethod
     def _get_subjects(n_subjects=0):
+        """Returns subjects information's as a list of Subject instances
+
+        Parameters
+        ----------
+        n_subjects : int
+            count of subject in a dataset
+
+        Returns
+        -------
+            list of Subject instances
+        """
         return [Subject(id=f'S{s}', gender='M', age=0, handedness='')
                 for s in range(1, n_subjects + 1)]
 
     def save_set(self, save_folder=None):
-        '''
-        '''
+        """Save Dataset instance after creating epochs and attributes in disk
+        as a pkl file
+
+        Parameters
+        ----------
+        save_folder: str
+            folder path where to save the DataSet
+
+        Returns
+        -------
+        None
+        """
         # save dataset
         if not os.path.isdir(save_folder):
             os.makedirs(save_folder)
@@ -125,15 +176,32 @@ class DataSet(metaclass=ABCMeta):
         '''
         # log if verbose
 
-    def load_set(self, file_name=None, subjects=[], ch=[]):
-        '''
-        '''
+    def load_set(self, file_name=None, subjects=None, ch=None):
+        """Load saved DataSet as serialized object
+        if subjects are specified, it will return the selected subject(s) data only.
+        if ch is specified, a subset of selected channels will be returned
+
+        Parameters
+        ----------
+        file_name: str
+            saved DataSet file path
+        subjects: list
+            a list of indices, to select subject's Data
+        ch : list
+            list of channels in str, to select a subset of channels.
+
+        Returns
+        -------
+            DataSet instance
+        """
         if os.path.exists(file_name):
-            f = open(file_name, 'rb')
-            data = pickle.load(f)
+            with open(file_name, 'rb') as f:
+                data = pickle.load(f)
+            # f = open(file_name, 'rb')
+            # data = pickle.load(f)
         else:
             raise FileNotFoundError
-        f.close()
+        # f.close()
         if subjects:
             data.select_subjects(subjects)
         if ch:
@@ -141,13 +209,16 @@ class DataSet(metaclass=ABCMeta):
         return data
 
     def flatten(self):
-        '''
-        '''
+        """Transform multichannel EEG into single channel
+
+        Returns
+        -------
+        None
+        """
         if type(self.epochs) is list:
             self.epochs = [self._reshape(ep) for ep in self.epochs]
             if hasattr(self, 'test_epochs'):
-                self.test_epochs = [self._reshape(
-                    ep) for ep in self.test_epochs]
+                self.test_epochs = [self._reshape(ep) for ep in self.test_epochs]
         else:
             self.epochs = self._reshape(self.epochs)
             if hasattr(self, 'test_epochs'):
@@ -163,9 +234,18 @@ class DataSet(metaclass=ABCMeta):
             self.test_epochs = self.test_epochs[subjects]
             self.test_y = self.test_y[subjects]
 
-    def select_channels(self, ch=[]):
-        '''
-        '''
+    def select_channels(self, ch=None):
+        """Select a subset of channels from specified list of channels
+
+        Parameters
+        ----------
+        ch: list
+            channels names to keep in selection
+
+        Returns
+        -------
+            list of channels indices in original ch_names
+        """
         indexes = self._get_channels(ch)
 
         self.ch_names = [self.ch_names[ch] for ch in indexes]
@@ -285,15 +365,49 @@ class DataSet(metaclass=ABCMeta):
                     (subjects, samples / channels, channels, trials))
 
     def get_n_classes(self):
-        '''
-        '''
+        """Get count of classes in DataSet
+
+        Returns
+        -------
+            int : how many classes the Dataset contains
+        """
         if isinstance(self.y, list):
             return len(np.unique(self.y[0]))
         else:
             return len(np.unique(self.y))
 
     def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, slide=0.1, method='divide'):
+        """Segment continuous EEG data using an augmentation method
 
+        Parameters
+         ----------
+        raw_signal: 2d array (samples x channels)
+            continuous filtered EEG data
+
+        epoch: array
+            epoching window start and finish in samples e.g. [0 , 250]
+
+        pos: array
+            stimulation onset in samples
+
+        stimulation: int
+            stimulation duration in samples
+
+        slide: float
+            sliding window length for 'slide' augmentation method: 0.1 is 100 ms
+
+        method: str
+            data augmentation method: 'divide' | 'slide'
+            divide: divide the epoch into equal small epochs with no overlap
+            slide : divide the epoch into epochs with overlap = epoch-slide
+
+        Returns
+        -------
+        nd array : samples x channels x (epochs*augmented)
+                 augmented = stimulation / epoch if 'divide'
+                           = (stimulation - epoch) / slide if 'slide'
+                augmented epochs
+        """
         v = []
         # stimulation = 5 * self.fs
         if method == 'divide':
@@ -308,7 +422,38 @@ class DataSet(metaclass=ABCMeta):
         return v
 
     def _get_augmented_epoched(self, eeg, epoch, stimulation, onset=0, slide=0.1, method='divide'):
+        """Segment epoched EEG data using an augmentation method
 
+        Parameters
+        ----------
+        eeg: nd array (samples x channels x epochs) | (samples x channels x trials x blocks)
+            epoched EEG data
+
+        epoch: int
+            epoch duration in seconds e.g. 3 for 3 seconds
+
+        stimulation: int
+            stimulation duration in seconds e.g 5 for 5 seconds
+
+        onset: int
+            stimulation onset relative to epoch start in seconds e.g. 0.5 is
+            500 ms after epoch start
+
+        slide: float
+            sliding window length for 'slide' augmentation method: 0.1 is 100 ms
+
+        method: str
+            data augmentation method: 'divide' | 'slide'
+            divide: divide the epoch into equal small epochs with no overlap
+            slide : divide the epoch into epochs with overlap = epoch-slide
+
+        Returns
+        -------
+            nd array : samples x channels x (epochs*augmented)
+                        augmented = stimulation / epoch if 'divide'
+                                  = (stimulation - epoch) / slide if 'slide'
+            augmented epochs
+        """
         # onset = int(0.5 * self.fs)
         epoch_duration = np.round(np.array(epoch) * self.fs).astype(int)
         # stimulation = 5
@@ -324,7 +469,7 @@ class DataSet(metaclass=ABCMeta):
 
         return v
 
-    def _get_channels(self, ch=[]):
+    def _get_channels(self, ch=None):
         """returns indices of specific channels from channels in dataset
 
         Parameters
@@ -340,6 +485,17 @@ class DataSet(metaclass=ABCMeta):
         return [i for i, x in enumerate(self.ch_names) if x in ch]
 
     def _set_channels(self, channels):
+        """Set DataSet channels
+
+        Parameters
+        ----------
+        channels : list
+            new channels
+
+        Returns
+        -------
+
+        """
         self.ch_names = channels
 
     @staticmethod
@@ -356,8 +512,19 @@ class DataSet(metaclass=ABCMeta):
 
     @staticmethod
     def _reshape(tensor=None):
-        '''
-        '''
+        """Transform multi channels Tensor to a single channel
+
+        Parameters
+        ----------
+        tensor: nd array (subjects x samples x channels x trials)
+                        or (samples x channels x trials)
+            multi channels EEG
+
+        Returns
+        -------
+        nd array : 3D if input is 4D, 2D otherwise
+        """
+
         if tensor.ndim == 4:
             subjects, samples, channels, trials = tensor.shape
             return tensor.reshape((subjects, samples * channels, trials))

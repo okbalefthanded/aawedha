@@ -67,17 +67,27 @@ class CrossSubject(Evaluation):
             nfolds, self.n_subjects, train_phase, val_phase,
             test_phase, exclude_subj=excl)
 
-    def run_evaluation(self, folds=None, pointer=None, check=False):
+    def run_evaluation(self, folds=None, pointer=None, check=False, savecsv=False, csvfolder=None):
         """Perform evaluation on subsets of subjects
 
         Parameters
         ----------
+        folds : list
+            list of indices of folds to evaluate, if None we'll evaluate
+            the entire list of folds generated.
+
         pointer : CheckPoint instance
             save state of evaluation
 
         check : bool
             if True, sets evaluation checkpoint for future operation resume,
             False otherwise
+
+        savecsv: bool
+            if True, saves evaluation results in a csv file as a pandas DataFrame
+
+        csvfolder : str
+            if savecsv is True, the results files in csv will be saved inside this folder
 
         Returns
         -------
@@ -106,6 +116,7 @@ class CrossSubject(Evaluation):
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
             rets = self._cross_subject(fold)
+
             if self.log:
                 msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
                 # if len(self.model.metrics) > 1:
@@ -117,7 +128,8 @@ class CrossSubject(Evaluation):
             res.append(rets)
 
             if check:
-                pointer.set_checkpoint(fold+1, self.model)
+                # pointer.set_checkpoint(fold+1, self.model)
+                pointer.set_checkpoint(fold + 1, self.model, rets)
         #
         if (isinstance(self.dataset.epochs, np.ndarray) and
                 self.dataset.epochs.ndim == 3):
@@ -125,10 +137,16 @@ class CrossSubject(Evaluation):
             self.dataset.recover_dim()
 
         if len(self.folds) == len(self.predictions):
-            # self.results = self.results_reports(res, tfpr)
             self.results = self.results_reports(res)
-            if self.log:
-                self._log_results()
+        elif check:
+            self.results = self.results_reports(pointer.rets)
+
+        if self.log:
+            self._log_results()
+
+        if savecsv:
+            if self.results:
+                self._savecsv(csvfolder)
 
     def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy

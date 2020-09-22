@@ -38,12 +38,129 @@ class OpenBMISSVEP(DataSet):
         self.test_events = []
         self.sessions = 100  # index of last trial in a session
 
+    def generate_set(self, load_path=None,
+                     epoch=[0, 4],
+                     band=[4.0, 45.0],
+                     order=6, save_folder=None,
+                     augment=False,
+                     channels=None,
+                     downsample=None,
+                     method='divide',
+                     slide=0.1):
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        epoch : list
+            epoch window start and end in seconds relative to trials' onst
+            default : [0, 4]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [4., 45.]
+        order : int
+            band-pass filter order
+            default: 6
+        save_folder : str
+            DataSet object saving folder path
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        channels : list, optional
+            default : None, keep all channels
+        downsample: int, optional
+            down-sampling factor
+            default : None
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+
+        Returns
+        -------
+        """
+        if downsample:
+            self.fs = self.fs // int(downsample)
+
+        epochs, y, events = self.load_raw(load_path, 'train', epoch,
+                                          band, order, channels,
+                                          augment, downsample,
+                                          method, slide
+                                          )
+        self.epochs = epochs
+        self.y = y
+        self.events = events
+
+        epochs, y, events = self.load_raw(load_path, 'test', epoch,
+                                          band, order, channels,
+                                          augment, downsample,
+                                          method, slide
+                                          )
+        self.test_epochs = epochs
+        self.test_y = y
+        self.events = events
+
+        if channels:
+            self.ch_names = [self.ch_names[ch] for ch in self._get_channels(channels)]
+
+        self.subjects = self._get_subjects(n_subjects=54)
+        self.paradigm = self._get_paradigm()
+        self.save_set(save_folder)
+
     def load_raw(self, path=None, mode='', epoch_duration=[0, 4],
                  band=[4.0, 45.0], order=6, ch=None,
                  augment=False, downsample=None,
                  method='divide', slide=0.1):
-        '''
-        '''
+        """Read and process raw data into structured arrays
+
+        Parameters
+        ----------
+        path : str
+            raw data folder path
+        mode : str
+            data acquisition session mode: 'train' or 'test'
+        epoch_duration : list
+            epoch duration window start and end in seconds relative to trials' onset
+            default : [0, 4]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [5., 45.]
+        ch : list, optional
+            default : None, keep all channels
+        order : int
+            band-pass filter order
+            default: 6
+        augment : bool, optional
+            if True, EEG data will be epoched following one of
+            the data augmentation methods specified by 'method'
+            default: False
+        downsample: int, optional
+            down-sampling factor
+            default : 4
+        method: str, optional
+            data augmentation method
+            default: 'divide'
+        slide : float, optional
+            used with 'slide' augmentation method, specifies sliding window
+            length.
+            default : 0.1
+        Returns
+        -------
+        x : nd array (subjects x samples x channels x trials)
+            epoched EEG data for the entire set or train/test phase
+        y : nd array (subjects x n_classes)
+            class labels for the entire set or train/test phase
+        events : nd array (subjects x n_classes)
+            frequency stimulation of each class
+        """
         ch_index = self._get_channels(self.ch_names)
         if ch:
             ch_index = self._get_channels(ch)
@@ -72,10 +189,6 @@ class OpenBMISSVEP(DataSet):
                 y = data[0][0][4].squeeze()
                 ev = [elm.item() for elm in data[0][0][6].squeeze().tolist()]
                 if augment:
-                    # stimulation = 4 * self.fs
-                    # augmented = np.floor(stimulation / np.diff(epoch_duration))[0].astype(int)
-                    # v = [eeg_epoch(cnt, epoch_duration + np.diff(epoch_duration) * i, mrk) for i in range(augmented)]
-                    # v = self._get_augmented(cnt, epoch_duration, mrk, slide, method)
                     v = self._get_augmented_cnt(cnt, epoch_duration, mrk, stimulation, slide, method)
                     augmented = len(v)
                     eeg = np.concatenate(v, axis=2)
@@ -103,52 +216,7 @@ class OpenBMISSVEP(DataSet):
         events = np.array(events).squeeze()
         return X, Y, events
 
-    def generate_set(self, load_path=None,
-                     epoch=[0, 4],
-                     band=[4.0, 45.0],
-                     order=6, save_folder=None,
-                     augment=False,
-                     channels=None,
-                     downsample=None,
-                     method='divide',
-                     slide=0.1):
-        '''
-        '''
-        if downsample:
-            self.fs = self.fs // int(downsample)
 
-        self.epochs, self.y, self.events = self.load_raw(
-            load_path,
-            'train',
-            epoch,
-            band,
-            order,
-            channels,
-            augment,
-            downsample,
-            method,
-            slide
-        )
-
-        self.test_epochs, self.test_y, self.test_events = self.load_raw(
-            load_path,
-            'test',
-            epoch,
-            band,
-            order,
-            channels,
-            augment,
-            downsample,
-            method,
-            slide
-        )
-
-        if channels:
-            self.ch_names = [self.ch_names[ch] for ch in self._get_channels(channels)]
-
-        self.subjects = self._get_subjects(n_subjects=54)
-        self.paradigm = self._get_paradigm()
-        self.save_set(save_folder)
 
     def get_path(self):
         NotImplementedError
