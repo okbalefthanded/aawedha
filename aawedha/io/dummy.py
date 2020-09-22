@@ -33,6 +33,9 @@ class Dummy(DataSet):
     def load_raw(self):
         NotImplementedError
 
+    def _get_paradigm(self):
+        NotImplementedError
+
     def generate_set(self):
         """Generate train/val/test partition
         train data constitutes 80% of epochs, the rest 20% will be for validation
