@@ -38,7 +38,10 @@ def make_model(channels, samples, n_classes):
 
 
 def process_evaluation(evl, nfolds=4, strategy='Kfold', model=None):
-    evl.generate_split(nfolds=nfolds, strategy=strategy)
+    if strategy:
+        evl.generate_split(nfolds=nfolds, strategy=strategy)
+    else:
+        evl.generate_split(nfolds=nfolds)
     evl.set_model(model=model)
     evl.run_evaluation()
     return evl.results
@@ -69,7 +72,7 @@ def test_cross_subject():
     evl = CrossSubject(dataset=data, partition=[4, 1], verbose=0)
     # set model
     model = make_model(channels, samples, n_classes)
-    results = process_evaluation(evl, nfolds=1, strategy='Kfold', model=model)
+    results = process_evaluation(evl, nfolds=1, strategy=None, model=model)
     # test value
     assert np.testing.assert_allclose(results['accuracy_mean'], 0.2, rtol=0.2)
 
