@@ -29,11 +29,10 @@ class MultiDay(DataSet):
         self.test_y = []
         self.test_events = []
 
-    def generate_set(self, load_path=None, ch=None,
-                     epoch=[0, 6], band=[3.0, 90.0],
-                     order=6, save_folder=None,
-                     augment=False,
-                     method='divide', slide=0.1):
+    def generate_set(self, load_path=None, ch=None, epoch=[0, 6],
+                     band=[[38., 44.], [3., 9.], [18., 24.]], order=6,
+                     save_folder=None, augment=False, method='divide',
+                     slide=0.1):
         """Main method for creating and saving DataSet objects and files:
             - sets train and test (if present) epochs and labels
             - sets dataset information : subjects, paradigm
@@ -46,11 +45,13 @@ class MultiDay(DataSet):
         ch : list, optional
             default : None, keep all channels
         epoch : list
-            epoch window start and end in seconds relative to trials' onst
+            epoch window start and end in seconds relative to trials' onset
             default : [0, 6]
-        band : list
-            band-pass filter frequencies, low-freq and high-freq
-            default : [3., 50.]
+        band : list of lists
+            band-pass filter frequencies for each frequency range, low-freq and high-freq
+            default : [38., 44.] High
+                      [3.0, 9.0] Low
+                      [18., 24.] Mid
         order : int
             band-pass filter order
             default: 6
@@ -71,32 +72,51 @@ class MultiDay(DataSet):
         Returns
         -------
         """
-        self.epochs, self.y = self.load_raw(load_path, ch,
-                                            'train',
-                                            epoch, band,
-                                            order, augment,
-                                            method, slide
-                                            )
+        franges = ['HIGH', 'LOW', 'MID']
+        for i, rng in enumerate(franges):
+            epochs, y = self.load_raw(load_path, ch,
+                                      'train', rng,
+                                      epoch, band[i],
+                                      order, augment,
+                                      method, slide
+                                      )
 
-        self.test_epochs, self.test_y = self.load_raw(load_path, ch,
-                                                      'test', epoch,
-                                                      band, order, augment,
-                                                      method, slide
-                                                      )
-        # self.subjects = self._get_subjects(n_subjects=29)
-        self.subjects = self._get_subjects(n_subjects=30)
-        self.paradigm = self._get_paradigm()
-        self.events = self._get_events(self.y)
-        self.test_events = self._get_events(self.test_y)
-        if ch:
-            # _ = self.select_channels(ch)
-            indexes = self._get_channels(ch)
-            self.ch_names = [self.ch_names[ch] for ch in indexes]
-        self.save_set(save_folder)
+            test_epochs, test_y = self.load_raw(load_path, ch,
+                                                'test', rng,
+                                                epoch, band[i],
+                                                order, augment,
+                                                method, slide
+                                                )
+            # self.subjects = self._get_subjects(n_subjects=29)
+            subjects = self._get_subjects(n_subjects=30)
+            self.paradigm = self._get_paradigm(frange=rng)
+            events = self._get_events(y)
+            test_events = self._get_events(test_y)
+            if ch:
+                # _ = self.select_channels(ch)
+                indexes = self._get_channels(ch)
+                ch_names = [self.ch_names[cc] for cc in indexes]
+            else:
+                ch_names = self.ch_names
+            fname = f'{save_folder}/{self.title}_{rng}_.pkl'
+            #
+            dataset = MultiDay()
+            dataset.title = f'{self.title}_{rng}'
+            dataset.ch_names = ch_names
+            dataset.epochs = epochs
+            dataset.y = y
+            dataset.test_epochs = test_epochs
+            dataset.test_y = test_y
+            dataset.subjects = subjects
+            dataset.paradigm = self.paradigm
+            dataset.events = events
+            dataset.test_events = test_events
+            dataset.save_set(save_folder, fname=fname)
+            #
 
-    def load_raw(self, path=None, ch=None, mode='', epoch_duration=[0, 6],
-                 band=[3.0, 50.0], order=6, augment=False,
-                 method='divide', slide=0.1):
+    def load_raw(self, path=None, ch=None, mode='', frange='',
+                 epoch_duration=[0, 6], band=[3., 9.], order=6,
+                 augment=False, method='divide', slide=0.1):
         """Read and process raw data into structured arrays
 
         Parameters
@@ -107,12 +127,17 @@ class MultiDay(DataSet):
             default : None, keep all channels
         mode : str
             data acquisition session mode: 'train' or 'test'
+        frange: str
+            frequency range to select from the three available:
+                - Low : 5.0, 5.5, 6.0, 6.5
+                - Mid : 21.0, 21.5, 22.0, 22.5
+                - High : 40.0, 40.5, 41.0, 41.5
         epoch_duration : list
             epoch window start and end in seconds relative to trials' onset
             default : [0, 6]
         band : list
             band-pass filter frequencies, low-freq and high-freq
-            default : [3., 50.]
+            default : [3., 9.]
         order : int
             band-pass filter order
             default: 6
@@ -150,15 +175,18 @@ class MultiDay(DataSet):
         else:
             session = '/Day2'
 
-        subjects_list = sorted(glob.glob(path+'/S*'))
+        subjects_list = sorted(glob.glob(path + '/S*'))
         X, Y = [], []
-        records = 6
+        # records = 6
+        records = 2
         stimulation = 6 * self.fs
         for subj in subjects_list:
             k = 0
             x_subj, y_subj = [], []
-            cnt_list = sorted(glob.glob(subj+session+'/cnt*'))
-            mrk_list = sorted(glob.glob(subj+session+'/mrk*'))
+            # cnt_list = sorted(glob.glob(subj+session+'/cnt*'))
+            # mrk_list = sorted(glob.glob(subj+session+'/mrk*'))
+            cnt_list = sorted(glob.glob(f'{subj}{session}/cnt_{frange}*'))
+            mrk_list = sorted(glob.glob(f'{subj}{session}/mrk_{frange}*'))
             for i in range(records):
                 cnt = h5py.File(cnt_list[i], 'r')
                 mrk = h5py.File(mrk_list[i], 'r')
@@ -166,16 +194,18 @@ class MultiDay(DataSet):
                 x = cnt['cnt/x'][()].T
                 y_orig = mrk['mrk/event/desc'][()].astype(int).squeeze()
                 markers_orig = np.around(mrk['mrk/time'][()]).astype(int).squeeze()
-                #
                 # x = x[:, :33]  # keeps only EEG channels
                 x = x[:, channels]
                 x = bandpass(x, band, self.fs, order)
                 only_stimulations = y_orig != 5
+                '''
                 if 2 <= i < 4:
                     k = 4
                 elif i >= 4:
                     k = 8
-                y = y_orig[only_stimulations] + k
+                '''
+                # y = y_orig[only_stimulations] + k
+                y = y_orig[only_stimulations]
                 markers = markers_orig[only_stimulations]
                 if augment:
                     v = self._get_augmented_cnt(x, epoch_duration, markers, stimulation, slide, method)
@@ -220,7 +250,7 @@ class MultiDay(DataSet):
         #
         idx = np.logical_or.reduce([self.y == f for f in freqs])
         self.y = self.y[idx].reshape((subjects, np.sum(idx[0]))) - offset
-        self.events = [ self.events[i][idx[i]] for i in range(subjects)]
+        self.events = [self.events[i][idx[i]] for i in range(subjects)]
         self.epochs = np.stack([self.epochs[i, :, :, idx[i]].transpose((1, 2, 0)) for i in range(subjects)])
         #
         idx = np.logical_or.reduce([self.test_y == f for f in freqs])
@@ -252,21 +282,40 @@ class MultiDay(DataSet):
         for i, _ in enumerate(y):
             events = np.empty(y[i].shape, dtype=object)
             for l, _ in enumerate(self.paradigm.frequencies):
-                ind = np.where(y[i] == l+1)
+                ind = np.where(y[i] == l + 1)
                 events[ind[0]] = self.paradigm.frequencies[l]
             ev.append(events)
         return ev
 
-    def _get_paradigm(self):
+    def _get_paradigm(self, frange=''):
+        """Get experimental paradigm
+
+        Parameters
+        ----------
+        frange : str
+            frequency range to select from the three available:
+                - Low : 5.0, 5.5, 6.0, 6.5
+                - Mid : 21.0, 21.5, 22.0, 22.5
+                - High : 40.0, 40.5, 41.0, 41.5
+
+
+        Returns
+        -------
+        Paradigm instance
+        """
+        ranges = {'high': 0, 'low': 1, 'mid': 2}
+        frequencies = ['40.0', '40.5', '41.0', '41.5',
+                       '5.0', '5.5', '6.0', '6.5',
+                       '21.0', '21.5', '22.0', '22.5',
+                       ]
+        freqs = np.arange(0, 4) + 4 * ranges[frange.lower()]
+        fq = [frequencies[i] for i in freqs.tolist()]
         return SSVEP(title='SSVEP_ON_OFF', control='Sync',
                      stimulation=6000,
                      break_duration=6000, repetition=20,
-                     stimuli=12, phrase='',
+                     stimuli=4, phrase='',
                      stim_type='LED',
-                     frequencies=['40.0', '40.5', '41.0', '41.5',
-                                  '5.0', '5.5', '6.0', '6.5',
-                                  '21.0', '21.5', '22.0', '22.5',
-                                  ]
+                     frequencies=fq
                      )
 
     @staticmethod

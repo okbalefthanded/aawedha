@@ -146,7 +146,7 @@ class DataSet(metaclass=ABCMeta):
         return [Subject(id=f'S{s}', gender='M', age=0, handedness='')
                 for s in range(1, n_subjects + 1)]
 
-    def save_set(self, save_folder=None):
+    def save_set(self, save_folder=None, fname=None):
         """Save Dataset instance after creating epochs and attributes in disk
         as a pkl file
 
@@ -154,6 +154,10 @@ class DataSet(metaclass=ABCMeta):
         ----------
         save_folder: str
             folder path where to save the DataSet
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
 
         Returns
         -------
@@ -165,16 +169,11 @@ class DataSet(metaclass=ABCMeta):
 
         if not self.title:
             self.title = 'unnamed_set'
-
-        fname = save_folder + '/' + self.title + '.pkl'
+        if not fname:
+            fname = save_folder + '/' + self.title + '.pkl'
         print(f'Saving dataset {self.title} to destination: {fname}')
         with open(fname, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        '''    
-        f = open(fname, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        f.close()
-        '''
         # log if verbose
 
     def load_set(self, file_name=None, subjects=None, ch=None):
@@ -198,8 +197,6 @@ class DataSet(metaclass=ABCMeta):
         if os.path.exists(file_name):
             with open(file_name, 'rb') as f:
                 data = pickle.load(f)
-            # f = open(file_name, 'rb')
-            # data = pickle.load(f)
         else:
             raise FileNotFoundError
         # f.close()
