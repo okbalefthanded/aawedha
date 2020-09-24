@@ -30,7 +30,7 @@ class MultiDay(DataSet):
         self.test_events = []
 
     def generate_set(self, load_path=None, ch=None,
-                     epoch=[0, 6], band=[3.0, 50.0],
+                     epoch=[0, 6], band=[3.0, 90.0],
                      order=6, save_folder=None,
                      augment=False,
                      method='divide', slide=0.1):
@@ -88,6 +88,10 @@ class MultiDay(DataSet):
         self.paradigm = self._get_paradigm()
         self.events = self._get_events(self.y)
         self.test_events = self._get_events(self.test_y)
+        if ch:
+            # _ = self.select_channels(ch)
+            indexes = self._get_channels(ch)
+            self.ch_names = [self.ch_names[ch] for ch in indexes]
         self.save_set(save_folder)
 
     def load_raw(self, path=None, ch=None, mode='', epoch_duration=[0, 6],
@@ -131,7 +135,8 @@ class MultiDay(DataSet):
             class labels for the entire set or train/test phase
         """
         if ch:
-            channels = self.select_channels(ch)
+            # channels = self.select_channels(ch)
+            channels = self._get_channels(ch)
         else:
             channels = range(33)
 
@@ -145,25 +150,22 @@ class MultiDay(DataSet):
         else:
             session = '/Day2'
 
-        subjects_list = glob.glob(path+'/S*')
+        subjects_list = sorted(glob.glob(path+'/S*'))
         X, Y = [], []
         records = 6
         stimulation = 6 * self.fs
         for subj in subjects_list:
             k = 0
             x_subj, y_subj = [], []
-            cnt_list = glob.glob(subj+session+'/cnt*')
-            mrk_list = glob.glob(subj+session+'/mrk*')
+            cnt_list = sorted(glob.glob(subj+session+'/cnt*'))
+            mrk_list = sorted(glob.glob(subj+session+'/mrk*'))
             for i in range(records):
                 cnt = h5py.File(cnt_list[i], 'r')
                 mrk = h5py.File(mrk_list[i], 'r')
                 # raw continuous EEG (samples x channels)
-                x = cnt['cnt/x'].value.T
-                y_orig = mrk['mrk/event/desc'].value.astype(int).squeeze()
-                # FIXME : this was a temporary hack before contacting the authors to
-                # FIXME : fix the markers downsampling
-                # markers_orig = np.around(mrk['mrk/time'].value / 5).astype(int).squeeze()
-                markers_orig = np.around(mrk['mrk/time'].value).astype(int).squeeze()
+                x = cnt['cnt/x'][()].T
+                y_orig = mrk['mrk/event/desc'][()].astype(int).squeeze()
+                markers_orig = np.around(mrk['mrk/time'][()]).astype(int).squeeze()
                 #
                 # x = x[:, :33]  # keeps only EEG channels
                 x = x[:, channels]
@@ -176,14 +178,8 @@ class MultiDay(DataSet):
                 y = y_orig[only_stimulations] + k
                 markers = markers_orig[only_stimulations]
                 if augment:
-                    # stimulation = 6 * self.fs
-                    # augmented = np.floor(stimulation / np.diff(epoch_duration))[0].astype(int)
-                    # v=[eeg_epoch(x, epoch_duration + np.diff(epoch_duration) * i, markers) for i in range(augmented)]
-                    # v = self._get_augmented(x, epoch_duration, markers, slide, method)
                     v = self._get_augmented_cnt(x, epoch_duration, markers, stimulation, slide, method)
-
                     eeg = np.concatenate(v, axis=2)
-                    # y = np.tile(y, augmented)
                     y = np.tile(y, len(v))
                     del v
                 else:
@@ -201,6 +197,40 @@ class MultiDay(DataSet):
         X = np.array(X)
         Y = np.array(Y).squeeze()
         return X, Y
+
+    def get_subset(self, frange='Low'):
+        """Select a subset from dataset by range of frequencies
+
+        Parameters
+        ----------
+        frange: str
+            frequency range to select from the three available:
+                - Low : 5.0, 5.5, 6.0, 6.5
+                - Mid : 21.0, 21.5, 22.0, 22.5
+                - High : 40.0, 40.5, 41.0, 41.5
+
+        Returns
+        -------
+        reduced DataSet instance
+        """
+        subjects = self.epochs.shape[0]
+        ranges = {'high': 0, 'low': 1, 'mid': 2}
+        offset = 4 * ranges[frange.lower()]
+        freqs = np.arange(1, 5) + offset
+        #
+        idx = np.logical_or.reduce([self.y == f for f in freqs])
+        self.y = self.y[idx].reshape((subjects, np.sum(idx[0]))) - offset
+        self.events = [ self.events[i][idx[i]] for i in range(subjects)]
+        self.epochs = np.stack([self.epochs[i, :, :, idx[i]].transpose((1, 2, 0)) for i in range(subjects)])
+        #
+        idx = np.logical_or.reduce([self.test_y == f for f in freqs])
+        self.test_y = self.test_y[idx].reshape((subjects, np.sum(idx[0]))) - offset
+        self.test_events = [self.test_events[i][idx[i]] for i in range(subjects)]
+        self.test_epochs = np.stack([self.test_epochs[i, :, :, idx[i]].transpose((1, 2, 0)) for i in range(subjects)])
+        #
+        ids = freqs - 1
+        self.paradigm.frequencies = [self.paradigm.frequencies[i] for i in ids.tolist()]
+        return self
 
     def get_path(self):
         NotImplementedError

@@ -64,6 +64,7 @@ class DataSet(metaclass=ABCMeta):
         self.ch_names = ch_names
         self.fs = fs
         self.doi = doi
+        self.path = '' # keep the path were the final object is saved as pkl
 
     def __str__(self):
         if type(self.epochs) is np.ndarray:

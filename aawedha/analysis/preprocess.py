@@ -21,7 +21,7 @@ def bandpass(eeg, band, fs, order=2):
 
     Returns
     -------
-    ndarray
+    nd array
         filtered EEG data
     """
     B, A = sig.butter(order, np.array(band) / (fs / 2), btype='bandpass')
@@ -48,7 +48,6 @@ def eeg_epoch(eeg, epoch_length, markers):
     eeg_epochs : nd array (samples, channels, trials)
             epoched EEG (Fortran ordering aka MATLAB format)
     """
-
     channels = int(eeg.shape[1])
     epoch_length = np.around(epoch_length)
     dur = np.arange(epoch_length[0], epoch_length[1]).reshape(
