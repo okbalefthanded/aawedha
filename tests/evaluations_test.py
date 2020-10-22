@@ -16,15 +16,18 @@ def seed():
 
 
 def make_data():
-    data = Dummy(train_shape=(5, 500, 10, 100), test_shape=(5, 500, 10, 50), nb_classes=5)
+    data = Dummy(train_shape=(5, 500, 10, 50), test_shape=(5, 500, 10, 50), nb_classes=5)
     subjects, samples, channels, _ = data.epochs.shape
     n_classes = np.unique(data.y[0]).size
     return data, (subjects, samples, channels, n_classes)
 
 
 def make_model(channels, samples, n_classes):
+
     return keras.models.Sequential([
-        keras.Input(shape=(channels, samples, 1)),
+        # keras.Input(shape=(channels, samples, 1)),
+        keras.Input(shape=(channels, samples)),
+        keras.layers.Reshape((channels, samples, 1)),
         keras.layers.Conv2D(40, (1, 31)),
         keras.layers.Conv2D(40, (10, 1)),
         keras.layers.BatchNormalization(),
@@ -42,7 +45,21 @@ def process_evaluation(evl, nfolds=4, strategy='Kfold', model=None):
         evl.generate_split(nfolds=nfolds, strategy=strategy)
     else:
         evl.generate_split(nfolds=nfolds)
-    evl.set_model(model=model)
+    config = {}
+    compile = {'loss': 'sparse_categorical_crossentropy',
+               'optimizer': 'adam',
+               'metrics': ['accuracy']
+               }
+    fit = {'batch': 32,
+           'epochs': 20,
+           'callbacks': []
+           }
+    config['compile'] = compile
+    config['fit'] = fit
+
+    config['device'] = 'GPU'
+
+    evl.set_model(model=model, model_config=config)
     evl.run_evaluation()
     return evl.results
 

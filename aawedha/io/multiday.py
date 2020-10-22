@@ -31,7 +31,8 @@ class MultiDay(DataSet):
 
     def generate_set(self, load_path=None, ch=None, epoch=[0, 6],
                      band=[[38., 44.], [3., 9.], [18., 24.]], order=6,
-                     save_folder=None, augment=False, method='divide',
+                     save_folder=None, fname=None,
+                     augment=False, method='divide',
                      slide=0.1):
         """Main method for creating and saving DataSet objects and files:
             - sets train and test (if present) epochs and labels
@@ -57,6 +58,10 @@ class MultiDay(DataSet):
             default: 6
         save_folder : str
             DataSet object saving folder path
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
         augment : bool, optional
             if True, EEG data will be epoched following one of
             the data augmentation methods specified by 'method'
@@ -98,7 +103,10 @@ class MultiDay(DataSet):
                 ch_names = [self.ch_names[cc] for cc in indexes]
             else:
                 ch_names = self.ch_names
-            fname = f'{save_folder}/{self.title}_{rng}_.pkl'
+            if fname:
+                fname = f'{fname}_{rng}_'
+            else:
+                fname = f'{self.title}_{rng}_'
             #
             dataset = MultiDay()
             dataset.title = f'{self.title}_{rng}'
@@ -227,40 +235,6 @@ class MultiDay(DataSet):
         X = np.array(X)
         Y = np.array(Y).squeeze()
         return X, Y
-
-    def get_subset(self, frange='Low'):
-        """Select a subset from dataset by range of frequencies
-
-        Parameters
-        ----------
-        frange: str
-            frequency range to select from the three available:
-                - Low : 5.0, 5.5, 6.0, 6.5
-                - Mid : 21.0, 21.5, 22.0, 22.5
-                - High : 40.0, 40.5, 41.0, 41.5
-
-        Returns
-        -------
-        reduced DataSet instance
-        """
-        subjects = self.epochs.shape[0]
-        ranges = {'high': 0, 'low': 1, 'mid': 2}
-        offset = 4 * ranges[frange.lower()]
-        freqs = np.arange(1, 5) + offset
-        #
-        idx = np.logical_or.reduce([self.y == f for f in freqs])
-        self.y = self.y[idx].reshape((subjects, np.sum(idx[0]))) - offset
-        self.events = [self.events[i][idx[i]] for i in range(subjects)]
-        self.epochs = np.stack([self.epochs[i, :, :, idx[i]].transpose((1, 2, 0)) for i in range(subjects)])
-        #
-        idx = np.logical_or.reduce([self.test_y == f for f in freqs])
-        self.test_y = self.test_y[idx].reshape((subjects, np.sum(idx[0]))) - offset
-        self.test_events = [self.test_events[i][idx[i]] for i in range(subjects)]
-        self.test_epochs = np.stack([self.test_epochs[i, :, :, idx[i]].transpose((1, 2, 0)) for i in range(subjects)])
-        #
-        ids = freqs - 1
-        self.paradigm.frequencies = [self.paradigm.frequencies[i] for i in ids.tolist()]
-        return self
 
     def get_path(self):
         NotImplementedError

@@ -42,6 +42,7 @@ class OpenBMISSVEP(DataSet):
                      epoch=[0, 4],
                      band=[4.0, 45.0],
                      order=6, save_folder=None,
+                     fname=None,
                      augment=False,
                      channels=None,
                      downsample=None,
@@ -67,6 +68,10 @@ class OpenBMISSVEP(DataSet):
             default: 6
         save_folder : str
             DataSet object saving folder path
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
         augment : bool, optional
             if True, EEG data will be epoched following one of
             the data augmentation methods specified by 'method'
@@ -113,7 +118,7 @@ class OpenBMISSVEP(DataSet):
 
         self.subjects = self._get_subjects(n_subjects=54)
         self.paradigm = self._get_paradigm()
-        self.save_set(save_folder)
+        self.save_set(save_folder,fname)
 
     def load_raw(self, path=None, mode='', epoch_duration=[0, 4],
                  band=[4.0, 45.0], order=6, ch=None,

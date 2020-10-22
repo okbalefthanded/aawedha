@@ -36,6 +36,7 @@ class Perturbations(DataSet):
                      epoch=1,
                      band=[5.0, 45.0],
                      order=6, save_folder=None,
+                     fname=None,
                      augment=False,
                      method='divide',
                      slide=0.1):
@@ -64,6 +65,10 @@ class Perturbations(DataSet):
             default: 6
         save_folder : str
             DataSet object saving folder path
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
         augment : bool, optional
             if True, EEG data will be epoched following one of
             the data augmentation methods specified by 'method'
@@ -103,7 +108,7 @@ class Perturbations(DataSet):
         if not ch:
             eeg_channels = self._get_eeg_channels()
             self.ch_names = [self.ch_names[i] for i in eeg_channels]
-        self.save_set(save_folder)
+        self.save_set(save_folder, fname)
 
     def load_raw(self, path=None, ch=None, downsample=4, mode='', epoch_duration=3,
                  band=[5.0, 45.0], order=6, augment=False,
@@ -149,6 +154,7 @@ class Perturbations(DataSet):
             class labels for the entire set or train/test phase
         """
         ep = epoch_duration
+        epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
         X, Y = [], []
         # augmented = 0
         factor = 1
@@ -191,7 +197,7 @@ class Perturbations(DataSet):
                 y = np.tile(y, len(v))
                 del v
             else:
-                epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
+                # epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
                 x = x[:epoch_duration, :, :]
 
             X.append(x)

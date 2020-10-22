@@ -45,6 +45,7 @@ class Exoskeleton(DataSet):
                      band=[5., 45.],
                      order=6,
                      save_folder=None,
+                     fname=None,
                      augment=False,
                      method='divide',
                      slide=0.1):
@@ -68,6 +69,10 @@ class Exoskeleton(DataSet):
             default: 6
         save_folder : str
             DataSet object saving folder path
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
         augment : bool, optional
             if True, EEG data will be epoched following one of
             the data augmentation methods specified by 'method'
@@ -101,7 +106,7 @@ class Exoskeleton(DataSet):
         self.paradigm = self._get_paradigm()
         self.events = self._get_events(self.y)
         self.test_events = self._get_events(self.test_y)
-        self.save_set(save_folder)
+        self.save_set(save_folder, fname)
 
     def load_raw(self, path=None, mode='', epoch_duration=[2, 5],
                  band=[5.0, 45.0], order=6, augment=False,
@@ -159,7 +164,6 @@ class Exoskeleton(DataSet):
             Y.append(y)
 
         return X, Y
-
 
     def _get_epoched(self, files=[], records=[],
                      epoch=[2, 5], band=[5., 45.],

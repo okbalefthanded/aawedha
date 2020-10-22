@@ -26,6 +26,7 @@ class SanDiego(DataSet):
     def generate_set(self, load_path=None,
                      epoch=1, band=[5.0, 45.0],
                      order=6, save_folder=None,
+                     fname=None,
                      augment=False, method='divide',
                      slide=0.1):
         """Main method for creating and saving DataSet objects and files:
@@ -48,6 +49,10 @@ class SanDiego(DataSet):
             default: 6
         save_folder : str
             DataSet object saving folder path
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
         augment : bool, optional
             if True, EEG data will be epoched following one of
             the data augmentation methods specified by 'method'
@@ -67,7 +72,7 @@ class SanDiego(DataSet):
         self.subjects = self._get_subjects(n_subjects=10)
         self.paradigm = self._get_paradigm()
         self.events = self._get_events()
-        self.save_set(save_folder)
+        self.save_set(save_folder, fname)
 
     def load_raw(self, path=None, epoch_duration=1,
                  band=[5.0, 45.0], order=6, augment=False,
@@ -107,6 +112,7 @@ class SanDiego(DataSet):
         """
         list_of_files = sorted(glob.glob(path + 's*.mat'))
         ep = epoch_duration
+        epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
         n_subjects = 10
         X, Y = [], []
         stimulation = 4
@@ -124,7 +130,8 @@ class SanDiego(DataSet):
                 y = y.reshape((1, blocks*targets), order='F')
                 del v
             else:
-                epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
+                # epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
+                # epoch_duration = np.round(np.array(ep) * self.fs).astype(int)
                 eeg = eeg[onset:onset + epoch_duration, :, :, :]
                 samples, channels, blocks, targets = eeg.shape
                 y = np.tile(np.arange(1, targets + 1), (blocks, 1))

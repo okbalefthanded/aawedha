@@ -93,7 +93,6 @@ class SingleSubject(Evaluation):
         csvfolder : str
             if savecsv is True, the results files in csv will be saved inside this folder
 
-
         Returns
         -------
         no value, sets results attribute

@@ -169,8 +169,11 @@ class DataSet(metaclass=ABCMeta):
 
         if not self.title:
             self.title = 'unnamed_set'
-        if not fname:
-            fname = save_folder + '/' + self.title + '.pkl'
+        if fname:
+            fname = f'{save_folder}/{fname}.pkl'
+        else:
+            fname = f'{save_folder}/{self.title}.pkl'
+
         print(f'Saving dataset {self.title} to destination: {fname}')
         with open(fname, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -199,7 +202,6 @@ class DataSet(metaclass=ABCMeta):
                 data = pickle.load(f)
         else:
             raise FileNotFoundError
-        # f.close()
         if subjects:
             data.select_subjects(subjects)
         if ch:
