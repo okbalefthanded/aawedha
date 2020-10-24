@@ -949,7 +949,10 @@ class Evaluation(object):
         subjects = range(self._get_n_subjects())
         rows = [f'S{s}' for s in subjects]
         rows.append('Avg')
-        columns = [f'Fold{fld}' for fld,_ in enumerate(self.folds)]
+        if self.__class__.__name__ == 'CrossSubject':
+            columns = ['Fold 1']
+        elif self.__class__.__name__ == 'SingleSubject':
+            columns = [f'Fold {fld+1}' for fld,_ in enumerate(self.folds)]
         columns.extend(['Avg', 'Std', 'Sem'])
         dataset = self.dataset.title
         evl = self.__class__.__name__
