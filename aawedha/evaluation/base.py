@@ -947,23 +947,32 @@ class Evaluation(object):
         results_keys = set(self.results)
         metrics = metrics.intersection(results_keys)
         subjects = range(self._get_n_subjects())
-        rows = [f'S{s}' for s in subjects]
+        rows = [f'S{s+1}' for s in subjects]
         rows.append('Avg')
-        if self.__class__.__name__ == 'CrossSubject':
-            columns = ['Fold 1']
-        elif self.__class__.__name__ == 'SingleSubject':
-            columns = [f'Fold {fld+1}' for fld,_ in enumerate(self.folds)]
-        columns.extend(['Avg', 'Std', 'Sem'])
         dataset = self.dataset.title
         evl = self.__class__.__name__
+        if evl == 'CrossSubject':
+            columns = ['Fold 1']
+        elif evl == 'SingleSubject':
+            columns = [f'Fold {fld+1}' for fld,_ in enumerate(self.folds)]
+        columns.extend(['Avg', 'Std', 'Sem'])
         date = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
         for metric in metrics:
             acc = np.array(self.results[metric]).round(3) * 100
-            acc_mean = np.array(self.results[metric]).mean().round(3) * 100
-            std = np.array(self.results[metric]).std().round(3) * 100
+            if acc.ndim == 1:
+                acc_mean = acc
+                std = np.array(self.results[metric]).std().round(3) * 100
+                std = np.tile(std, len(rows) - 1)
+            else:
+                acc_mean = np.array(self.results[metric]).mean(axis=1).round(3) * 100
+                std = np.array(self.results[metric]).std(axis=1).round(3) * 100
+
             sem = np.round(std / np.sqrt(len(self.results[metric])), 3)
             values = np.column_stack((acc, acc_mean, std, sem))
             values = np.vstack((values, values.mean(axis=0).round(3)))
             df = pd.DataFrame(data=values,index=rows, columns=columns)
             fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
             df.to_csv(fname, encoding='utf-8')
+
+
+
