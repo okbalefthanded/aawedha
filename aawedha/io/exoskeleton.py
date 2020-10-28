@@ -220,7 +220,7 @@ class Exoskeleton(DataSet):
             event_pos = df['event_pos'].reshape((df['event_pos'].shape[0]))
             event_type = df['event_type'].reshape((df['event_type'].shape[0]))
             desc_idx = np.logical_or.reduce([event_type == lb for lb in labels])
-            desc = event_type[desc_idx]
+            desc = event_type[desc_idx].astype(int)
             # y.append(desc - 33023)
             pos = event_pos[event_type == OVTK_StimulationId_VisualStimulationStart]
             raw_signal = bandpass(raw_signal, band, self.fs, order)
