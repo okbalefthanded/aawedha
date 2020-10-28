@@ -966,7 +966,6 @@ class Evaluation(object):
             else:
                 acc_mean = np.array(self.results[metric]).mean(axis=1).round(3) * 100
                 std = np.array(self.results[metric]).std(axis=1).round(3) * 100
-
             sem = np.round(std / np.sqrt(len(self.results[metric])), 3)
             values = np.column_stack((acc, acc_mean, std, sem))
             values = np.vstack((values, values.mean(axis=0).round(3)))

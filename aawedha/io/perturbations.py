@@ -177,7 +177,7 @@ class Perturbations(DataSet):
         for f in files_list:
             data = loadmat(f)
             x = data['data_matrix'][eeg_channels, ::factor, :].transpose((1, 0, 2))
-            y = data[mode_key].squeeze()
+            y = data[mode_key].squeeze().astype(int)
             '''
             if mode == 'train':
                 y = data['circle_order'].squeeze()
