@@ -29,6 +29,11 @@ def log(fname='logger.log', logger_name='eval_log'):
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     f_handler.setFormatter(f_format)
     # Add handlers to the logger
+    
+    if len(logger.handlers) > 0:
+        for hdl in logger.handlers:
+            logger.removeHandler(hdl)
+
     logger.addHandler(f_handler)
     # c_handler = logging.StreamHandler()
     # c_handler.setLevel(logging.WARNING)

@@ -180,7 +180,7 @@ class Evaluation(object):
     def get_folds(self):
         pass
 
-    def resume(self, run=False):
+    def resume(self, run=False, savecsv=False):
         """Resume evaluation from where it was interrupted
 
         Parameters
@@ -194,7 +194,7 @@ class Evaluation(object):
         """
         chk = self.reset(chkpoint=True)
         if run:
-            self.run_evaluation(pointer=chk, check=True)
+            self.run_evaluation(pointer=chk, check=True, savecsv=savecsv)
         return self
 
     def set_dataset(self, dt=None):
