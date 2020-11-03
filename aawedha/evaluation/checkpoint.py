@@ -161,8 +161,4 @@ class CheckPoint(object):
         print(f'Saving Checkpoint to destination: {fname}')
         with open(fname, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        '''
-        f = open(fname, 'wb')
-        pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        f.close()
-        '''
+

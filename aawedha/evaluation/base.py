@@ -193,6 +193,9 @@ class Evaluation(object):
         instance of evaluation
         """
         chk = self.reset(chkpoint=True)
+        device = self._get_device()
+        if device == 'TPU':
+            self._compile_model()
         if run:
             self.run_evaluation(pointer=chk, check=True, savecsv=savecsv)
         return self
@@ -852,11 +855,8 @@ class Evaluation(object):
         if os.path.exists(file_name):
             with open(file_name, 'rb') as f:
                 chkpoint = pickle.load(f)
-            # f = open(file_name, 'rb')
-            # chkpoint = pickle.load(f)
         else:
             raise FileNotFoundError
-        # f.close()
         return chkpoint
 
     def _has_val(self):
