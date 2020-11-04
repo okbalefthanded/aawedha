@@ -8,16 +8,15 @@ import re
 import glob
 
 
-class Tsinghua(DataSet):
+class Beta(DataSet):
     """
-    Tsinghua SSVEP sampled sinusoidal joint frequency-phase modulation (JFPM)
-    [1} X. Chen, Y. Wang, M. Nakanishi, X. Gao, T. -P. Jung, S. Gao,
-       "High-speed spelling with a noninvasive brain-computer interface",
-       Proc. Int. Natl. Acad. Sci. U. S. A, 112(44): E6058-6067, 2015.
+    Beta Large SSVEP Benchmark
+    [1]Liu B, Huang X, Wang Y, Chen X and Gao X (2020) BETA: 
+    A Large Benchmark Database Toward SSVEP-BCI Application. 
+    Front. Neurosci. 14:627. doi: 10.3389/fnins.2020.00627
     """
-
     def __init__(self):
-        super().__init__(title='Tsinghua',
+        super().__init__(title='Beta_SSVEP',
                          ch_names=['FP1', 'FPZ', 'FP2', 'AF3', 'AF4', 'F7', 'F5', 'F3',
                                    'F1', 'FZ', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5',
                                    'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'T7',
@@ -26,9 +25,12 @@ class Tsinghua(DataSet):
                                    'TP8', 'M2', 'P7', 'P5', 'P3', 'P1', 'PZ', 'P2',
                                    'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
                                    'PO6', 'PO8', 'CB1', 'O1', 'Oz', 'O2', 'CB2'],
+
                          fs=250,
-                         doi='http://dx.doi.org/10.1073/pnas.1508080112'
+                         doi='http://dx.doi.org/10.3389/fnins.2020.00627'
                          )
+
+
 
     def generate_set(self, load_path=None, ch=None, epoch=1, band=[5.0, 45.0],
                      order=6, save_folder=None, fname=None,
@@ -74,10 +76,10 @@ class Tsinghua(DataSet):
         Returns
         -------
         """
-        self.epochs, self.y = self.load_raw(load_path,ch,
+        self.epochs, self.y, subj_info = self.load_raw(load_path,ch,
                                             epoch, band, order,
                                             augment, method, slide)
-        self.subjects = self._get_subjects(path=load_path)
+        self.subjects = subj_info
         self.paradigm = self._get_paradigm()
         self.events = self._get_events()
         self.save_set(save_folder, fname)
@@ -130,15 +132,20 @@ class Tsinghua(DataSet):
         indices = np.array([int(re.findall(r'\d+', n)[0]) for n in list_of_files]) - 1
         ep = epoch_duration
         epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
-        n_subjects = 35
+        n_subjects = 70
         X, Y = [], []
-        # augmented = 0
+        subj_info = []
+
         onset = int(0.5 * self.fs)
-        stimulation = 5
+        # fixed for all subjects, as S16-S70 have
+        # 3s stimulation we select the lowest.
+        # 2s from S1-S15
+        stimulation = 2
         for subj in range(n_subjects):
             data = loadmat(list_of_files[indices == subj][0])
-            eeg = data['data'].transpose((1, 0, 2, 3))
+            eeg = data['data']['EEG'][0][0].transpose((1, 0, 3, 2))
             eeg = eeg[:, chans, :, :]
+            subj_info.append(self._get_subject(data))
             del data
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
@@ -146,24 +153,24 @@ class Tsinghua(DataSet):
                 v = self._get_augmented_epoched(eeg, ep, stimulation, onset, slide, method)
                 eeg = np.concatenate(v, axis=2)
                 samples, channels, targets, blocks = eeg.shape
-                # y = np.tile(np.arange(1, tg + 1), (1, augmented))
                 y = np.tile(np.arange(1, tg + 1), (1, len(v)))
                 y = np.tile(y, (1, blocks))
                 del v  # saving some RAM
             else:
-                # epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
                 eeg = eeg[onset:epoch_duration+onset, :, :, :]
                 samples, channels, targets, blocks = eeg.shape
                 y = np.tile(np.arange(1, targets + 1), (1, blocks))
 
-            X.append(eeg.reshape((samples, channels,blocks * targets), order='F'))
+            X.append(eeg.reshape((samples, channels, blocks * targets), order='F'))
             Y.append(y)
             del eeg
             del y
 
         X = np.array(X)
         Y = np.array(Y).squeeze()
-        return X, Y
+        return X, Y, subj_info
+        
+
 
     def _get_events(self):
         """Attaches the experiments paradigm frequencies to
@@ -182,46 +189,41 @@ class Tsinghua(DataSet):
                 events[i, ind[0]] = self.paradigm.frequencies[l]
 
         return events
-
+    
     @staticmethod
-    def _get_subjects(n_subject=0, path=None):
-        """Read dataset subject info file and retrieve information
-
-        Parameters
-        ----------
-        n_subject : int
-            number of subjects in dataset
-        path : str
-          raw data folder path
-
-        Returns
-        -------
-        list of Subject instance
-        """
-        sub_file = path + '/Sub_info.txt'
-        with open(sub_file, 'r') as f:
-            info = f.read().split('\n')[2:]
-        return [Subject(id=s.split()[0], gender=s.split()[1],
-                        age=s.split()[2], handedness=s.split()[3])
-                for s in info if len(s) > 0]
+    def _get_subject(data):
+        suppl_info = data['data'][0][0][1]
+        subj_id = suppl_info['sub'][0][0][0]
+        gender = suppl_info['gender'][0][0][0][0]
+        age = suppl_info['age'][0][0][0][0]        
+        handedness = ''
+        condition = 'Healty'
+        narrow_snr =  suppl_info['narrow_snr'][0][0][0][0]
+        wide_snr = suppl_info['wide_snr'][0][0][0][0]
+        bci_quotient = suppl_info['bci_quotient'][0][0][0][0]
+         
+        return Subject(subj_id, gender, age, handedness,
+                       condition, narrow_snr, wide_snr, bci_quotient)
 
     def _get_paradigm(self):
-        return SSVEP(title='SSVEP_JFPM', stimulation=5000, break_duration=500,
+        return SSVEP(title='SSVEP_JFPM', stimulation=2000, break_duration=500,
                      repetition=6, stimuli=40, phrase='',
                      stim_type='Sinusoidal',
-                     frequencies=['8.', '9.', '10.', '11.', '12.', '13.', '14.', '15.', '8.2', '9.2',
-                                  '10.2', '11.2', '12.2', '13.2', '14.2', '15.2', '8.4', '9.4', '10.4', '11.4',
-                                  '12.4', '13.4', '14.4', '15.4', '8.6', '9.6', '10.6', '11.6', '12.6', '13.6',
-                                  '14.6', '15.6', '8.8', '9.8', '10.8', '11.8', '12.8', '13.8', '14.8', '15.8'],
+                     frequencies=['8.6',  '8.8',  '9.' ,  '9.2',  '9.4',  '9.6',  '9.8', '10.' , '10.2', 
+                                  '10.4', '10.6', '10.8', '11.' , '11.2', '11.4', '11.6', '11.8', '12.' , 
+                                   '12.2', '12.4',  '12.6', '12.8', '13.' , '13.2', '13.4', '13.6', '13.8', 
+                                   '14.' , '14.2', '14.4', '14.6',  '14.8', '15.' , '15.2', '15.4', '15.6', 
+                                   '15.8',  '8.' ,  '8.2',  '8.4'],
 
-                     phase=[0., 1.57079633, 3.14159265, 4.71238898, 0.,
-                            1.57079633, 3.14159265, 4.71238898, 1.57079633, 3.14159265,
-                            4.71238898, 0., 1.57079633, 3.14159265, 4.71238898,
-                            0., 3.14159265, 4.71238898, 0., 1.57079633,
-                            3.14159265, 4.71238898, 0., 1.57079633, 4.71238898,
-                            0., 1.57079633, 3.14159265, 4.71238898, 0.,
-                            1.57079633, 3.14159265, 0., 1.57079633, 3.14159265,
-                            4.71238898, 0., 1.57079633, 3.14159265, 4.71238898]
+                     phase=[4.71238898, 0., 1.57079633,  3.14159265, 4.71238898,
+                            0, 1.57079633, 3.14159265, 4.71238898, 0., 1.57079633,
+                            3.14159265,  4.71238898, 0., 1.57079633, 3.14159265,
+                            4.71238898, 0, 1.57079633, 3.14159265, 4.71238898,
+                            0, 1.57079633, 3.14159265, 4.71238898, 0,
+                            1.57079633, 3.14159265, 4.71238898, 0, 1.57079633,
+                            3.14159265, 4.71238898, 0, 1.57079633, 3.14159265,
+                            4.71238898, 0, 1.57079633, 3.14159265
+                            ]
                      )
 
     def get_path(self):

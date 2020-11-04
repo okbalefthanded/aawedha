@@ -191,7 +191,7 @@ class OpenBMISSVEP(DataSet):
                 data = data['EEG_SSVEP_'+mode]
                 cnt = bandpass(data[0][0][1][::stride, ch_index], band, self.fs, order)
                 mrk = data[0][0][2].squeeze() // stride
-                y = data[0][0][4].squeeze()
+                y = data[0][0][4].squeeze().astype(int)
                 ev = [elm.item() for elm in data[0][0][6].squeeze().tolist()]
                 if augment:
                     v = self._get_augmented_cnt(cnt, epoch_duration, mrk, stimulation, slide, method)

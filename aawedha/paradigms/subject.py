@@ -27,9 +27,14 @@ class Subject(object):
     """
 
     def __init__(self, id='S', gender='M', age=18,
-                 handedness='R', condition='healthy'):
+                 handedness='R', condition='healthy',
+                 narrow_snr=0, wide_snr=0, bci_quotient=0):
         self.id = id
         self.gender = gender
         self.age = age
         self.handedness = handedness
         self.condition = condition
+        self.narrow_snr = narrow_snr
+        self.wide_snr = wide_snr
+        self.bci_quotient = bci_quotient
+
