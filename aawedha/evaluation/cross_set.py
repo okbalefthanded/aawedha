@@ -58,12 +58,12 @@ class CrossSet(Evaluation):
     def __str__(self):
         name = self.__class__.__name__
         model = self.model.name if self.model else 'NotSet'
-        source_info = '\n'.join([str(src) for src in self.soure])
+        source_info = '\n'.join([str(src) for src in self.source])
         info = (f'Type: {name}',
                 f'Target Set: {self.target.info}'
                 f'Source: {source_info}',
                 f'Model: {model}')
-        return '\n'.joint(info)
+        return '\n'.join(info)
 
     def select_channels(self, ds=[], chs=[], replacement={}):
         '''Select a subset of channels available among all datasets
@@ -431,7 +431,9 @@ class CrossSet(Evaluation):
             indices of samples to keep
         '''
         y_target = np.unique(self.target.y[0])
-        return np.logical_and.reduce(np.unique(source.y[0]) == y_target)
+        labels = np.logical_and.reduce(np.unique(source.y[0]) == y_target)
+        # return np.logical_and.reduce(np.unique(source.y[0]) == y_target)
+        pass
 
     def _cross_set(self, fold):
         '''Evaluate model on data split according to fold
@@ -612,7 +614,7 @@ class CrossSet(Evaluation):
             dimension
         """
         return np.concatenate([ndarray[idx] for idx in
-                               range(len(ndarray))], axis=-1)
+                               range(len(ndarray))], axis=-1)                                                                                                                                                                                   
 
     def _get_min_channels(self):
         """find minimum channels shared between all datasets

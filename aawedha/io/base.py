@@ -265,7 +265,7 @@ class DataSet(metaclass=ABCMeta):
         return indexes
 
     def rearrange(self, target_events=[], v=0):
-        '''Rearragne dataset by selecting a subset of epochs and their
+        '''Rearrange dataset by selecting a subset of epochs and their
         labels and events, according to the target events passed.
         Used in CrossSet evaluation
 
@@ -289,11 +289,9 @@ class DataSet(metaclass=ABCMeta):
             ind = np.empty(0)
             tmp = np.empty(0)
             for i in range(target_events.size):
-                tmp = np.concatenate(
-                    (tmp, np.where(self.events[sbj] == target_events[i])[0]))
+                tmp = np.concatenate((tmp, np.where(self.events[sbj] == target_events[i])[0]))
                 if tmp.size == 0:
-                    ind = np.concatenate(
-                        (ind, self._get_ind(target_events[i], sbj, v)))
+                    ind = np.concatenate((ind, self._get_ind(target_events[i], sbj, v)))
                 else:
                     ind = tmp
             ind_all.append(ind)
