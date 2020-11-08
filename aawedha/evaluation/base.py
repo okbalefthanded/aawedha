@@ -556,7 +556,7 @@ class Evaluation(object):
         # layer 2 : Model
         # self.model.layers[2].set_weights(self.initial_weights)
 
-    def _equale_subjects(self):
+    def _equal_subjects(self):
         """Test whether dataset's train_epochs and test_epochs has same number
         of subjects
 
@@ -590,7 +590,7 @@ class Evaluation(object):
         if self.dataset:
             test_epochs = len(self.dataset.test_epochs) if hasattr(
                 self.dataset, 'test_epochs') else 0
-            if self._equale_subjects():
+            if self._equal_subjects():
                 return len(self.dataset.epochs)
             else:
                 return len(self.dataset.epochs) + test_epochs

@@ -109,7 +109,7 @@ class SingleSubject(Evaluation):
         independent_test = False
 
         if hasattr(self.dataset, 'test_epochs'):
-            if self._equale_subjects():
+            if self._equal_subjects():
                 independent_test = True
             else:
                 # concatenate train & test data

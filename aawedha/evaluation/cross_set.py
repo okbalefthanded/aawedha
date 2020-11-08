@@ -50,11 +50,12 @@ class CrossSet(Evaluation):
                  verbose=2, lg=False):
         '''
         '''
-        super().__init__(partition=partition,
-                         verbose=verbose, lg=lg)
         self.source = source
         self.target = target
         self.mode = mode
+        super().__init__(partition=partition,
+                         verbose=verbose, lg=lg)
+
 
     def __str__(self):
         name = self.__class__.__name__
@@ -298,7 +299,7 @@ class CrossSet(Evaluation):
             #     self.logger.debug(msg)
             #     self.logger.debug(
             #         f' Training stopped at epoch: {self.model_history.epoch[-1]}')            
-            
+
             if self.log:
                 msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
                 # if len(self.model.metrics) > 1:
@@ -327,7 +328,7 @@ class CrossSet(Evaluation):
         if savecsv:
             if self.results:
                 self._savecsv(csvfolder)
-        
+
         # Aggregate results
         # tfpr = {}
         # if res_auc:
@@ -491,10 +492,9 @@ class CrossSet(Evaluation):
              subjects
             - 'tpr' : 1d array : True posititves rate
             - 'fpr' : 1d array : False posititves rate
-
         '''
         split = self._split_set(fold)
-        
+
         # normalize data
         # X_train, mu, sigma = fit_scale(split['X_train'])
 
@@ -565,13 +565,12 @@ class CrossSet(Evaluation):
             - Y_val   : validation labels
             - classes : target class labels in numbers
         """
-
         # kernels = 1
         split = {}
         X_src = []
         Y_src = []
 
-        classes = np.unique(self.target.y)
+        # classes = np.unique(self.target.y)
 
         if hasattr(self.target, 'test_epochs'):
             if len(self.folds) == 1:
@@ -589,12 +588,17 @@ class CrossSet(Evaluation):
 
         else:
             X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
-            X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
+            # X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
             X_ts = self._flatten(self.target.epochs[self.folds[fold][2]])
-
             Y_t = self._flatten(self.target.y[self.folds[fold][0]])
-            Y_v = self._flatten(self.target.y[self.folds[fold][1]])
+            # Y_v = self._flatten(self.target.y[self.folds[fold][1]])
             Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
+            if self._has_val():
+                # X_val, Y_val = self._cat_lists(fold, 1)
+                X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
+                X_v = X_v.transpose((2, 1, 0))
+            else:
+                X_v, Y_v = None, None
         #
         for src in self.source:
             X_src.append(self._flatten(src.epochs))
@@ -618,25 +622,26 @@ class CrossSet(Evaluation):
         X_t = X_t.transpose((2, 1, 0))
         X_ts = X_ts.transpose((2, 1, 0))
 
-        if isinstance(X_v, np.ndarray):
-            tr_v = X_v.shape[-1]
+        # if isinstance(X_v, np.ndarray):
+            # tr_v = X_v.shape[-1]
             # X_v = X_v.transpose((2, 0, 1)).reshape((tr_v, kernels, channels, samples))
-            X_v = X_v.transpose((2, 1, 0))            
+            # X_v = X_v.transpose((2, 1, 0))
             # Y_v = labels_to_categorical(Y_v)
 
         split['X_train'] = X_t
         split['X_test'] = X_ts
-        split['X_val'] = X_v        
+        split['X_val'] = X_v
         split['Y_train'] = Y_t
         split['Y_val'] = Y_v
-        split['Y_test'] = Y_test
+        split['Y_test'] = Y_ts
         # split['Y_train'] = labels_to_categorical(Y_t)        
         # split['Y_test'] = labels_to_categorical(Y_ts)
         # split['classes'] = classes
 
         return split
 
-    def _flatten(self, ndarray):
+    @staticmethod
+    def _flatten(ndarray):
         """concatenate list of ndarrays with inconsistent number of elements in last dimension
         in a single ndarray
 
@@ -652,7 +657,7 @@ class CrossSet(Evaluation):
             dimension
         """
         return np.concatenate([ndarray[idx] for idx in
-                               range(len(ndarray))], axis=-1)                                                                                                                                                                                   
+                               range(len(ndarray))], axis=-1)
 
     def _get_min_channels(self):
         """find minimum channels shared between all datasets
@@ -684,6 +689,47 @@ class CrossSet(Evaluation):
 
         return intersection[idx]
 
+    def _equal_subjects(self):
+        """Test whether dataset's train_epochs and test_epochs has same number
+        of subjects
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        bool : True if number of subjects in training data equals the number of
+        subjects in test data False otherwise
+        """
+        test_epochs = 0
+        train_epochs = len(self.target.epochs)
+        if hasattr(self.target, 'test_epochs'):
+            test_epochs = len(self.target.test_epochs)
+        return train_epochs == test_epochs
+
+    def _get_n_subjects(self):
+        """Return number of subjects in dataset
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        int : number of subjects if train/test subjects is the same
+                their sum otherwise
+        """
+        if self.target:
+            test_epochs = len(self.target.test_epochs) if hasattr(
+                self.target, 'test_epochs') else 0
+            if self._equal_subjects():
+                return len(self.target.epochs)
+            else:
+                return len(self.target.epochs) + test_epochs
+        else:
+            return 0
+
     def _assert_partition(self, subjects=0, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
         in dataset
@@ -705,4 +751,4 @@ class CrossSet(Evaluation):
         prt = np.sum(self.partition)
         return self.n_subjects < prt
 
-    
+
