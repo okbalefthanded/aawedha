@@ -299,7 +299,7 @@ class Evaluation(object):
             examples = len(self.predictions[0])
             dim = len(self.predictions[0][0])
 
-            if self.__class__.__name__ == 'CrossSubject':
+            if self.__class__.__name__ == 'CrossSubject' or self.__class__.__name__ == 'CrossSet':
                 self.predictions = np.array(self.predictions).reshape(
                     (folds, examples, dim))
             elif self.__class__.__name__ == 'SingleSubject':

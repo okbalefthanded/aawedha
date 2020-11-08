@@ -46,7 +46,7 @@ class CrossSet(Evaluation):
     _get_min_channels()
     """
 
-    def __init__(self, source=[], target=[], partition=[],
+    def __init__(self, source=[], target=[], mode='', partition=[],
                  verbose=2, lg=False):
         '''
         '''
@@ -54,6 +54,7 @@ class CrossSet(Evaluation):
                          verbose=verbose, lg=lg)
         self.source = source
         self.target = target
+        self.mode = mode
 
     def __str__(self):
         name = self.__class__.__name__
@@ -121,10 +122,11 @@ class CrossSet(Evaluation):
         # new_labels = {str(events[i]): labels[i] for i in range(events.size)}
         # new_labels = {events[i]: labels[i] for i in range(events.size)}
 
-        keys = self.target.events.flatten().tolist()
-        values = self.target.y.flatten().tolist()
-        new_labels = dict(zip(keys, values))
+        # keys = self.target.events.flatten().tolist()
+        # values = self.target.y.flatten().tolist()
+        # new_labels = dict(zip(keys, values))
 
+        new_labels = self.target.labels_to_dict()
         source.rearrange(ev, v)
         source.update_labels(new_labels, v)
 
@@ -234,7 +236,7 @@ class CrossSet(Evaluation):
                     nfolds, self.n_subjects, train_phase, val_phase,
                     test_phase, exclude_subj=excl)
 
-    def run_evaluation(self, pointer=None, check=False):
+    def run_evaluation(self, pointer=None, check=False, savecsv=False, csvfolder=None):
         '''Perform evaluation on subsets of subjects.
         sets results
 
@@ -258,8 +260,9 @@ class CrossSet(Evaluation):
         if not pointer and check:
             pointer = CheckPoint(self)
 
-        res_acc, res_auc = [], []
-        res_tp, res_fp = [], []
+        # res_acc, res_auc = [], []
+        # res_tp, res_fp = [], []
+        res = []
 
         if not self.model_compiled:
             self._compile_model()
@@ -280,40 +283,66 @@ class CrossSet(Evaluation):
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
             rets = self._cross_set(fold)
-            if isinstance(rets, tuple):
-                res_acc.append(rets[0])
-                res_auc.append(rets[1])
-                res_fp.append(rets[2])
-                res_tp.append(rets[3])
-            else:
-                res_acc.append(rets)
+            # if isinstance(rets, tuple):
+            #     res_acc.append(rets[0])
+            #     res_auc.append(rets[1])
+            #     res_fp.append(rets[2])
+            #     res_tp.append(rets[3])
+            # else:
+            #     res_acc.append(rets)
 
+            # if self.log:
+            #     msg = f' Fold : {fold+1} ACC: {res_acc[-1]}'
+            #     if len(self.model.metrics) > 1:
+            #         msg += f' AUC: {res_auc[-1]}'
+            #     self.logger.debug(msg)
+            #     self.logger.debug(
+            #         f' Training stopped at epoch: {self.model_history.epoch[-1]}')            
+            
             if self.log:
-                msg = f' Fold : {fold+1} ACC: {res_acc[-1]}'
-                if len(self.model.metrics) > 1:
-                    msg += f' AUC: {res_auc[-1]}'
+                msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
+                # if len(self.model.metrics) > 1:
+                if len(self.model_config['compile']['metrics']) > 1:
+                    msg += f" AUC: {rets['auc']}"
                 self.logger.debug(msg)
-                self.logger.debug(
-                    f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+                self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+
+            res.append(rets)
+
+            # if check:
+            #     pointer.set_checkpoint(fold+1, self.model)
 
             if check:
-                pointer.set_checkpoint(fold+1, self.model)
+                # pointer.set_checkpoint(fold+1, self.model)
+                pointer.set_checkpoint(fold + 1, self.model, rets)
 
+        if len(self.folds) == len(self.predictions):
+            self.results = self.results_reports(res)
+        elif check:
+            self.results = self.results_reports(pointer.rets)
+
+        if self.log:
+            self._log_results()
+
+        if savecsv:
+            if self.results:
+                self._savecsv(csvfolder)
+        
         # Aggregate results
-        tfpr = {}
-        if res_auc:
+        # tfpr = {}
+        # if res_auc:
             # res = np.array([res_acc, res_auc])
-            res = {}
-            res['acc'] = res_acc
-            res['auc'] = res_auc
+        #    res = {}
+        #    res['acc'] = res_acc
+        #    res['auc'] = res_auc
             # tfpr = np.array([res_fp, res_tp])
-            tfpr['fp'] = res_fp
-            tfpr['tp'] = res_tp
-        else:
-            res = np.array(res_acc)
-            tfpr = []
+        #    tfpr['fp'] = res_fp
+        #    tfpr['tp'] = res_tp
+        # else:
+        #    res = np.array(res_acc)
+        #    tfpr = []
 
-        self.results = self.results_reports(res, tfpr)
+        # self.results = self.results_reports(res, tfpr)
 
     def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy
@@ -356,7 +385,7 @@ class CrossSet(Evaluation):
         #
         return folds
 
-    def results_reports(self, res, tfpr={}):
+    def results_reports_old(self, res, tfpr={}):
         '''Collects evaluation results on a single dict
 
         Parameters
@@ -430,10 +459,12 @@ class CrossSet(Evaluation):
         ndarray of bool
             indices of samples to keep
         '''
-        y_target = np.unique(self.target.y[0])
-        labels = np.logical_and.reduce(np.unique(source.y[0]) == y_target)
+        # y_target = np.unique(self.target.y[0])
+        # labels = np.logical_and.reduce(np.unique(source.y[0]) == y_target)
+        target_labels = self.target.labels_to_dict()
+        source_labels = source.labels_to_dict()
         # return np.logical_and.reduce(np.unique(source.y[0]) == y_target)
-        pass
+        return target_labels == source
 
     def _cross_set(self, fold):
         '''Evaluate model on data split according to fold
@@ -463,27 +494,29 @@ class CrossSet(Evaluation):
 
         '''
         split = self._split_set(fold)
+        
         # normalize data
-        X_train, mu, sigma = fit_scale(split['X_train'])
+        # X_train, mu, sigma = fit_scale(split['X_train'])
 
-        if isinstance(split['X_val'], np.ndarray):
-            X_val = transform_scale(split['X_val'], mu, sigma)
-        else:
-            X_val = split['X_val']
+        #if isinstance(split['X_val'], np.ndarray):
+        #    X_val = transform_scale(split['X_val'], mu, sigma)
+        # else:
+        #    X_val = split['X_val']
 
-        X_test = transform_scale(split['X_test'], mu, sigma)
-        Y_train = split['Y_train']
-        Y_val = split['Y_val']
-        Y_test = split['Y_test']
+        # X_test = transform_scale(split['X_test'], mu, sigma)
+        # Y_train = split['Y_train']
+        # Y_val = split['Y_val']
+        # Y_test = split['Y_test']
         #
-        cws = class_weights(np.argmax(Y_train, axis=1))
+        # cws = class_weights(np.argmax(Y_train, axis=1))
         # evaluate model on subj on all folds
-        self.model_history, probs = self._eval_model(X_train, Y_train,
-                                                     X_val, Y_val, X_test,
-                                                     cws)
+        # self.model_history, probs = self._eval_model(X_train, Y_train,
+        #                                             X_val, Y_val, X_test,
+        #                                             cws)
         # probs = self.model.predict(X_test)
-        rets = self.measure_performance(Y_test, probs)
+        # rets = self.measure_performance(Y_test, probs)
 
+        rets = self._eval_split(split)
         return rets
 
     def _diff(self, events):
@@ -506,7 +539,7 @@ class CrossSet(Evaluation):
         ev = np.array([float(ev[i]) for i in range(ev.size) if isfloat(ev[i])])
         d = np.unique(np.diff(sorted(ev)))
         if d.size > 1:
-            return np.max(d)  # float conversion results in inconsisten values
+            return np.max(d)  # float conversion results in inconsistent values
         else:
             return d.item()
 
@@ -533,7 +566,7 @@ class CrossSet(Evaluation):
             - classes : target class labels in numbers
         """
 
-        kernels = 1
+        # kernels = 1
         split = {}
         X_src = []
         Y_src = []
@@ -562,7 +595,7 @@ class CrossSet(Evaluation):
             Y_t = self._flatten(self.target.y[self.folds[fold][0]])
             Y_v = self._flatten(self.target.y[self.folds[fold][1]])
             Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
-
+        #
         for src in self.source:
             X_src.append(self._flatten(src.epochs))
             Y_src.append(self._flatten(src.y))
@@ -578,23 +611,28 @@ class CrossSet(Evaluation):
 
         samples, channels, trials = X_t.shape
 
-        tr_s = X_ts.shape[-1]
+        # tr_s = X_ts.shape[-1]
 
-        X_t = X_t.transpose((2, 0, 1)).reshape((trials, kernels, channels, samples))
-        X_ts = X_ts.transpose((2, 0, 1)).reshape((tr_s, kernels, channels, samples))
+        # X_t = X_t.transpose((2, 0, 1)).reshape((trials, kernels, channels, samples))
+        # X_ts = X_ts.transpose((2, 0, 1)).reshape((tr_s, kernels, channels, samples))
+        X_t = X_t.transpose((2, 1, 0))
+        X_ts = X_ts.transpose((2, 1, 0))
 
         if isinstance(X_v, np.ndarray):
             tr_v = X_v.shape[-1]
-            X_v = X_v.transpose((2, 0, 1)).reshape((tr_v, kernels, channels, samples))            
-            Y_v = labels_to_categorical(Y_v)
+            # X_v = X_v.transpose((2, 0, 1)).reshape((tr_v, kernels, channels, samples))
+            X_v = X_v.transpose((2, 1, 0))            
+            # Y_v = labels_to_categorical(Y_v)
 
         split['X_train'] = X_t
         split['X_test'] = X_ts
-        split['X_val'] = X_v
+        split['X_val'] = X_v        
+        split['Y_train'] = Y_train
         split['Y_val'] = Y_v
-        split['Y_train'] = labels_to_categorical(Y_t)        
-        split['Y_test'] = labels_to_categorical(Y_ts)
-        split['classes'] = classes
+        split['Y_test'] = Y_test
+        # split['Y_train'] = labels_to_categorical(Y_t)        
+        # split['Y_test'] = labels_to_categorical(Y_ts)
+        # split['classes'] = classes
 
         return split
 
@@ -666,3 +704,5 @@ class CrossSet(Evaluation):
         """
         prt = np.sum(self.partition)
         return self.n_subjects < prt
+
+    

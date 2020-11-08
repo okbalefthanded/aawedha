@@ -298,6 +298,22 @@ class DataSet(metaclass=ABCMeta):
 
         self._rearrange(ind_all)
 
+    
+    def labels_to_dict(self):
+        """Attach events to their corresponding labels in a dict
+        Parameters
+        ----------
+
+        Return
+        ------
+        dict : keys: events str
+               values : labels int
+        """
+        keys = self.events.flatten().tolist()
+        values = self.y.flatten().tolist()
+        return dict(zip(keys, values))
+        
+    
     def update_labels(self, d, v):
         '''
         '''
@@ -312,7 +328,8 @@ class DataSet(metaclass=ABCMeta):
                 if k[i] == 'idle':
                     idx = np.where(self.events[sbj] == 'idle')[0]
                 else:
-                    idx = np.logical_and(e > float(k[i]) - v, e < float(k[i]) + v)
+                    # idx = np.logical_and(e > float(k[i]) - v, e < float(k[i]) + v)
+                    idx = e == float(k[i])
                 if isinstance(self.y, list):
                     self.y[sbj][idx] = d[k[i]]
                 else:
