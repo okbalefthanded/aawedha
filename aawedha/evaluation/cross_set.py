@@ -627,7 +627,7 @@ class CrossSet(Evaluation):
         split['X_train'] = X_t
         split['X_test'] = X_ts
         split['X_val'] = X_v        
-        split['Y_train'] = Y_train
+        split['Y_train'] = Y_t
         split['Y_val'] = Y_v
         split['Y_test'] = Y_test
         # split['Y_train'] = labels_to_categorical(Y_t)        
