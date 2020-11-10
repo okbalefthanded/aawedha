@@ -237,7 +237,7 @@ class CrossSet(Evaluation):
                     nfolds, self.n_subjects, train_phase, val_phase,
                     test_phase, exclude_subj=excl)
 
-    def run_evaluation(self, pointer=None, check=False, savecsv=False, csvfolder=None):
+    def run_evaluation(self, folds=None, pointer=None, check=False, savecsv=False, csvfolder=None):
         '''Perform evaluation on subsets of subjects.
         sets results
 
@@ -272,11 +272,13 @@ class CrossSet(Evaluation):
             print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
             self.log_experiment()
 
-        if self.current:
-            operations = range(self.current, len(self.folds))
-        else:
-            operations = range(len(self.folds))
+        # if self.current:
+        #     operations = range(self.current, len(self.folds))
+        # else:
+        #     operations = range(len(self.folds))
 
+        operations = self.get_operations(folds)
+        
         # for fold in range(len(self.folds)):
         for fold in operations:
             #
@@ -385,6 +387,34 @@ class CrossSet(Evaluation):
                               ])
         #
         return folds
+
+    def get_operations(self, folds=None):
+        """get an iterable object for evaluation, it can be
+        all folds or a defined subset of folds.
+        In case of long evaluation, the iterable starts from the current
+        index
+
+        Parameters
+        ----------
+        folds : list | int, optional
+            defined list of folds or a just a single one, by default None
+
+        Returns
+        -------
+        range | list
+            selection of folds to evaluate, from all folds available to a
+            defined subset
+        """
+        if self.current and not folds:
+            operations = range(self.current, len(self.folds))
+        elif type(folds) is list:
+            operations = folds
+        elif type(folds) is int:
+            operations = [folds]
+        else:
+            operations = range(len(self.folds))
+
+        return operations
 
     def results_reports_old(self, res, tfpr={}):
         '''Collects evaluation results on a single dict
