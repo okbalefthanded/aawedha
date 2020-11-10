@@ -298,7 +298,6 @@ class DataSet(metaclass=ABCMeta):
 
         self._rearrange(ind_all)
 
-    
     def labels_to_dict(self):
         """Attach events to their corresponding labels in a dict
         Parameters
@@ -313,16 +312,15 @@ class DataSet(metaclass=ABCMeta):
         values = self.y.flatten().tolist()
         return dict(zip(keys, values))
         
-    
-    def update_labels(self, d, v):
+    def update_labels(self, new_labels, v):
         '''
+        new_labels, v
         '''
-        k = list(d)
+        k = list(new_labels)
         for sbj in range(len(self.events)):
             r = len(self.events[sbj])
 
-            e = np.array([float(self.events[sbj][i])
-                          for i in range(r) if isfloat(self.events[sbj][i])])
+            e = np.array([float(self.events[sbj][i]) for i in range(r) if isfloat(self.events[sbj][i])])
 
             for i in range(len(k)):
                 if k[i] == 'idle':
@@ -331,9 +329,9 @@ class DataSet(metaclass=ABCMeta):
                     # idx = np.logical_and(e > float(k[i]) - v, e < float(k[i]) + v)
                     idx = e == float(k[i])
                 if isinstance(self.y, list):
-                    self.y[sbj][idx] = d[k[i]]
+                    self.y[sbj][idx] = new_labels[k[i]]
                 else:
-                    self.y[sbj, idx] = d[k[i]]
+                    self.y[sbj, idx] = new_labels[k[i]]
 
     def resample(self, min_rate):
         '''
@@ -576,6 +574,8 @@ class DataSet(metaclass=ABCMeta):
             tmp = []
             array = getattr(self, k)
             for sbj in range(len(self.epochs)):
+                # culprit: it orders the trials increasingly following their events
+                # e.g. stimulation frequencies for SSVEP data
                 tmp.append(np.take(array[sbj], ind[sbj].astype(int), axis=-1))
             if isinstance(array, list):
                 setattr(self, k, tmp)

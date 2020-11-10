@@ -56,7 +56,6 @@ class CrossSet(Evaluation):
         super().__init__(partition=partition,
                          verbose=verbose, lg=lg)
 
-
     def __str__(self):
         name = self.__class__.__name__
         model = self.model.name if self.model else 'NotSet'
@@ -111,10 +110,10 @@ class CrossSet(Evaluation):
         -------
         no value
         """
-        ev = np.unique(self.target.events)
+        target_events = np.unique(self.target.events)
 
         d_source = self._diff(source.events)
-        d_target = self._diff(ev)
+        d_target = self._diff(target_events)
         v = np.min([d_source, d_target])
 
         # events = np.unique(ev.astype(float))
@@ -128,8 +127,9 @@ class CrossSet(Evaluation):
         # new_labels = dict(zip(keys, values))
 
         new_labels = self.target.labels_to_dict()
-        source.rearrange(ev, v)
+        source.rearrange(target_events, v)
         source.update_labels(new_labels, v)
+        # need to recover original indices of trials
 
     def resample(self):
         '''Resample all datasets (target and sources alike) used in evaluation
@@ -658,6 +658,9 @@ class CrossSet(Evaluation):
             # X_v = X_v.transpose((2, 1, 0))
             # Y_v = labels_to_categorical(Y_v)
 
+        # FIXME : Training/Val/Test data has to be shuffled
+        # np.random.shuffle (in-place shuffle)
+
         split['X_train'] = X_t
         split['X_test'] = X_ts
         split['X_val'] = X_v
@@ -667,7 +670,6 @@ class CrossSet(Evaluation):
         # split['Y_train'] = labels_to_categorical(Y_t)        
         # split['Y_test'] = labels_to_categorical(Y_ts)
         # split['classes'] = classes
-
         return split
 
     @staticmethod
