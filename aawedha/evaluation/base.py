@@ -877,6 +877,28 @@ class Evaluation(object):
         return self._get_n_subjects() - train - test
 
     @staticmethod
+    def _transpose_split(arrays):             
+        """Transpose input Data to be prepared for NCHW format
+        N : batch (assigned at fit), C: channels here refers to trials,
+        H : height here refers to EEG channes, W : width here refers to samples
+
+        Parameters
+        ----------
+        arrays: tuple of data arrays
+            - Training data in 1st position
+            - Test data in 2nd position
+            - if not none, Validation data
+        Returns
+        ------- 
+        tuple of arrays same order as input 
+        """
+        for i, array in enumerate(arrays):
+            if isinstance(arrays, np.ndarray):
+                arrays[i] = array.transpose((2, 1, 0))
+                # trials , channels, samples
+        return arrays
+    
+    @staticmethod
     def _aggregate_results(res):
         """Aggregate subject's results from folds into a single list
 

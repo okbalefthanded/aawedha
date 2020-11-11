@@ -626,7 +626,10 @@ class CrossSet(Evaluation):
             if self._has_val():
                 # X_val, Y_val = self._cat_lists(fold, 1)
                 X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
-                X_v = X_v.transpose((2, 1, 0))
+                Y_v = self._flatten(self.target.y[self.folds[fold][1]])
+                # X_v = X_v.transpose((2, 1, 0))
+                # X_v, Y_v = self._permute_arrays((X_v, Y_v))
+
             else:
                 X_v, Y_v = None, None
         #
@@ -645,12 +648,19 @@ class CrossSet(Evaluation):
 
         samples, channels, trials = X_t.shape
 
+        device = self._get_device()
+
         # tr_s = X_ts.shape[-1]
 
         # X_t = X_t.transpose((2, 0, 1)).reshape((trials, kernels, channels, samples))
         # X_ts = X_ts.transpose((2, 0, 1)).reshape((tr_s, kernels, channels, samples))
-        X_t = X_t.transpose((2, 1, 0))
-        X_ts = X_ts.transpose((2, 1, 0))
+        axe = 0
+        if device == 'CPU':
+            axe = 2            
+        else: 
+            X_t, X_ts, X_v = self._transpose_split((X_t, X_ts, X_v))           
+            # X_t = X_t.transpose((2, 1, 0))
+            # X_ts = X_ts.transpose((2, 1, 0))
 
         # if isinstance(X_v, np.ndarray):
             # tr_v = X_v.shape[-1]
@@ -660,13 +670,17 @@ class CrossSet(Evaluation):
 
         # FIXME : Training/Val/Test data has to be shuffled
         # np.random.shuffle (in-place shuffle)
+        split['X_train'], split['Y_train'] = self._permute_arrays((X_t, Y_t), axe)
+        split['X_test'], split['Y_test'] = self._permute_arrays((X_ts, Y_ts), axe)
+        split['X_val'], split['Y_val'] = self._permute_arrays((X_ts, Y_ts), axe) # X_v, Y_v
 
-        split['X_train'] = X_t
-        split['X_test'] = X_ts
-        split['X_val'] = X_v
-        split['Y_train'] = Y_t
-        split['Y_val'] = Y_v
-        split['Y_test'] = Y_ts
+        #split['X_train'] = X_t
+        #split['Y_train'] = Y_t
+        #split['X_test'] = X_ts
+        #split['Y_test'] = Y_ts
+        #split['X_val'] = X_v        
+        #split['Y_val'] = Y_v
+        
         # split['Y_train'] = labels_to_categorical(Y_t)        
         # split['Y_test'] = labels_to_categorical(Y_ts)
         # split['classes'] = classes
@@ -691,6 +705,30 @@ class CrossSet(Evaluation):
         return np.concatenate([ndarray[idx] for idx in
                                range(len(ndarray))], axis=-1)
 
+    
+    @staticmethod
+    def _permute_arrays(arrays, axe):
+        """Shuffle arrays randomly
+        Parameters
+        ----------
+        arrays : tuple of nd arrays
+            training data in first position, labels on the second
+        axe : int
+            dimension along to permute
+        Returns 
+        -------
+        tuple of arrays
+            training data in first position, labels on the second
+        """
+        lengths = len(arrays[0])
+        indices = np.random.choice(lengths, lengths, replace=False)
+        for i, array in enumarate(arrays):
+            if array.ndim == 1:
+                arrays[i] = array[indices]
+            else:
+                arrays[i] = np.take(array, indices, axis=axe)        
+        return arrays
+    
     def _get_min_channels(self):
         """find minimum channels shared between all datasets
 
