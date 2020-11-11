@@ -664,6 +664,10 @@ class Evaluation(object):
         """
         batch, ep, clbs = self._get_fit_configs()
 
+        device = self._get_device()
+        if device != 'CPU':
+            X_train, X_test, X_val = self._transpose_split([X_train, X_test, X_val])
+
         if X_val is None:
             val = None
         else:
@@ -673,8 +677,7 @@ class Evaluation(object):
         self._normalize(X_train)
         # if self.normalizer:
         #     self.normalizer.adapt(X_train)
-        #
-        device = self._get_device()
+
         history = {}
         spe = None
         if device == 'TPU':
@@ -880,21 +883,21 @@ class Evaluation(object):
     def _transpose_split(arrays):             
         """Transpose input Data to be prepared for NCHW format
         N : batch (assigned at fit), C: channels here refers to trials,
-        H : height here refers to EEG channes, W : width here refers to samples
+        H : height here refers to EEG channels, W : width here refers to samples
 
         Parameters
         ----------
-        arrays: tuple of data arrays
+        arrays: list of data arrays
             - Training data in 1st position
             - Test data in 2nd position
             - if not none, Validation data
         Returns
         ------- 
-        tuple of arrays same order as input 
+        list of arrays same order as input
         """
-        for i, array in enumerate(arrays):
-            if isinstance(arrays, np.ndarray):
-                arrays[i] = array.transpose((2, 1, 0))
+        for i, arr in enumerate(arrays):
+            if isinstance(arr, np.ndarray):
+                arrays[i] = arr.transpose((2, 1, 0))
                 # trials , channels, samples
         return arrays
     
