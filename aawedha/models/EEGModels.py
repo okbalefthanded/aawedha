@@ -127,12 +127,15 @@ def EEGNet(nb_classes, Chans=64, Samples=128,
         raise ValueError('dropoutType must be one of SpatialDropout2D '
                          'or Dropout, passed as a string.')
 
-    input1 = Input(shape=(1, Chans, Samples))
-
+    # input1 = Input(shape=(1, Chans, Samples))
+    input1 = Input(shape=(Chans, Samples))
+    ##################################################################
+    norm = Normalization(axis=(1, 2))(input1)
+    reshape = Reshape((1, Chans, Samples))(norm)
     ##################################################################
     block1 = Conv2D(F1, (1, kernLength), padding='same',
                     input_shape=(1, Chans, Samples),
-                    use_bias=False)(input1)
+                    use_bias=False)(reshape)
     block1 = BatchNormalization(axis=1)(block1)
     block1 = DepthwiseConv2D((Chans, 1), use_bias=False,
                              depth_multiplier=D,
@@ -310,10 +313,16 @@ def DeepConvNet(nb_classes, Chans=64, Samples=256,
     """
 
     # start the model
-    input_main = Input((1, Chans, Samples))
+    # input_main = Input((1, Chans, Samples))
+    
+    input_main = Input(shape=(Chans, Samples))
+    ##################################################################
+    norm = Normalization(axis=(1, 2))(input_main)
+    reshape = Reshape((1, Chans, Samples))(norm)
+    #
     block1 = Conv2D(25, (1, 5),
                     input_shape=(1, Chans, Samples),
-                    kernel_constraint=max_norm(2., axis=(0, 1, 2)))(input_main)
+                    kernel_constraint=max_norm(2., axis=(0, 1, 2)))(reshape)
     block1 = Conv2D(25, (Chans, 1),
                     kernel_constraint=max_norm(2., axis=(0, 1, 2)))(block1)
     block1 = BatchNormalization(axis=1, epsilon=1e-05, momentum=0.1)(block1)
@@ -385,10 +394,14 @@ def ShallowConvNet(nb_classes, Chans=64, Samples=128, dropoutRate=0.5):
     """
 
     # start the model
-    input_main = Input((1, Chans, Samples))
+    # input_main = Input((1, Chans, Samples))
+    input_main = Input(shape=(Chans, Samples))
+    ##################################################################
+    norm = Normalization(axis=(1, 2))(input_main)
+    reshape = Reshape((1, Chans, Samples))(norm)
     block1 = Conv2D(40, (1, 13),
                     input_shape=(1, Chans, Samples),
-                    kernel_constraint=max_norm(2., axis=(0, 1, 2)))(input_main)
+                    kernel_constraint=max_norm(2., axis=(0, 1, 2)))(reshape)
     block1 = Conv2D(40, (Chans, 1), use_bias=False,
                     kernel_constraint=max_norm(2., axis=(0, 1, 2)))(block1)
     block1 = BatchNormalization(axis=1, epsilon=1e-05, momentum=0.1)(block1)

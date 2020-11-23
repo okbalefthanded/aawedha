@@ -316,7 +316,8 @@ class Evaluation(object):
             res[metric + '_mean'] = np.array(res[metric]).mean()
             res[metric + '_mean_per_fold'] = np.array(res[metric]).mean(axis=0)
             if np.array(res[metric]).ndim == 2:
-                res[metric + '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
+                res[metric +
+                    '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
 
         return res
 
@@ -343,7 +344,7 @@ class Evaluation(object):
         prdg = self.dataset.paradigm.title
         dt = self.dataset.title
         filepath = folderpath + '/' + \
-                   '_'.join([self.model.name, prdg, dt, '.h5'])
+            '_'.join([self.model.name, prdg, dt, '.h5'])
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
@@ -624,6 +625,7 @@ class Evaluation(object):
             strategy = init_TPU()
             with strategy.scope():
                 self.model = tf.keras.models.clone_model(self.model)
+                metrics = self._get_metrics()
                 self.model.compile(loss=khsara,
                                    optimizer=optimizer,
                                    metrics=metrics
@@ -665,9 +667,11 @@ class Evaluation(object):
         batch, ep, clbs = self._get_fit_configs()
 
         device = self._get_device()
+        '''
         if device != 'CPU':
-            X_train, X_test, X_val = self._transpose_split([X_train, X_test, X_val])
-
+            X_train, X_test, X_val = self._transpose_split(
+                [X_train, X_test, X_val])
+        '''
         if X_val is None:
             val = None
         else:
@@ -734,33 +738,19 @@ class Evaluation(object):
             loss function optimized during training
         opt : str
             optimizer
-        mets : list : str| keras metrics
+        mets : list : str | keras metrics
             metrics
-        """
-        if self.dataset:
-            classes = self.dataset.get_n_classes()
-        else:
-            classes = 0
-
+        """   
         if 'compile' in self.model_config:
             metrics = self.model_config['compile']['metrics']
             khsara = self.model_config['compile']['loss']
             optimizer = self.model_config['compile']['optimizer']
         else:
-            metrics = ['accuracy']
-            if classes == 2:
-                # khsara = 'binary_crossentropy'
-                khsara = 'sparse_categorical_crossentropy'
-                metrics.extend([tf.keras.metrics.AUC(name='auc'),
-                                tf.keras.metrics.TruePositives(name='tp'),
-                                tf.keras.metrics.FalsePositives(name='fp'),
-                                tf.keras.metrics.TrueNegatives(name='tn'),
-                                tf.keras.metrics.FalseNegatives(name='fn'),
-                                tf.keras.metrics.Precision(name='precision'),
-                                tf.keras.metrics.Recall(name='recall')]
-                               )
+            khsara = self._get_loss()
+            if self._get_device() != 'TPU':
+                metrics = self._get_metrics()
             else:
-                khsara = 'sparse_categorical_crossentropy'
+                metrics = []            
             optimizer = 'adam'
         return khsara, optimizer, metrics
 
@@ -823,6 +813,43 @@ class Evaluation(object):
                             callbacks: {clbs}'
         return model_config
 
+    def _get_metrics(self):
+        """
+        """
+        classes = self._get_classes()
+        
+        if classes == 2:
+            metrics = ['accuracy',
+                        tf.keras.metrics.AUC(name='auc'),
+                        tf.keras.metrics.TruePositives(name='tp'),
+                        tf.keras.metrics.FalsePositives(name='fp'),
+                        tf.keras.metrics.TrueNegatives(name='tn'),
+                        tf.keras.metrics.FalseNegatives(name='fn'),
+                        tf.keras.metrics.Precision(name='precision'),
+                        tf.keras.metrics.Recall(name='recall')
+                        ]
+        else:
+            metrics = ['accuracy']
+
+        return metrics
+
+    def _get_loss(self):
+        """
+        """
+        classes = self._get_classes()
+        if classes == 2:
+            return 'binary_crossentropy'
+        else:
+            return 'sparse_categorical_crossentropy' 
+
+    def _get_classes(self):
+        """
+        """
+        if self.dataset:
+            return self.dataset.get_n_classes()
+        else:
+            return 0        
+
     def _assert_partition(self, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
         in dataset
@@ -880,7 +907,7 @@ class Evaluation(object):
         return self._get_n_subjects() - train - test
 
     @staticmethod
-    def _transpose_split(arrays):             
+    def _transpose_split(arrays):
         """Transpose input Data to be prepared for NCHW format
         N : batch (assigned at fit), C: channels here refers to trials,
         H : height here refers to EEG channels, W : width here refers to samples
@@ -900,7 +927,7 @@ class Evaluation(object):
                 arrays[i] = arr.transpose((2, 1, 0))
                 # trials , channels, samples
         return arrays
-    
+
     @staticmethod
     def _aggregate_results(res):
         """Aggregate subject's results from folds into a single list
@@ -941,14 +968,16 @@ class Evaluation(object):
         if 'device' in self.model_config:
             return self.model_config['device']
         else:
-            devices = [dev.device_type for dev in tf.config.get_visible_devices()]
+            devices = [
+                dev.device_type for dev in tf.config.get_visible_devices()]
             if 'GPU' not in devices:
                 device = 'CPU'
             return device
 
     def _log_results(self):
         """Log metrics means after the end of an evaluation to logger"""
-        means = [f'{metric}: {v}' for metric, v in self.results.items() if 'mean' in metric]
+        means = [f'{metric}: {v}' for metric,
+                 v in self.results.items() if 'mean' in metric]
         self.logger.debug(' / '.join(means))
 
     def _savecsv(self, folder=None):
@@ -979,7 +1008,7 @@ class Evaluation(object):
         if evl == 'CrossSubject':
             columns = ['Fold 1']
         elif evl == 'SingleSubject':
-            columns = [f'Fold {fld+1}' for fld,_ in enumerate(self.folds)]
+            columns = [f'Fold {fld+1}' for fld, _ in enumerate(self.folds)]
         columns.extend(['Avg', 'Std', 'Sem'])
         date = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
         for metric in metrics:
@@ -989,14 +1018,12 @@ class Evaluation(object):
                 std = np.array(self.results[metric]).std().round(3) * 100
                 std = np.tile(std, len(rows) - 1)
             else:
-                acc_mean = np.array(self.results[metric]).mean(axis=1).round(3) * 100
+                acc_mean = np.array(self.results[metric]).mean(
+                    axis=1).round(3) * 100
                 std = np.array(self.results[metric]).std(axis=1).round(3) * 100
             sem = np.round(std / np.sqrt(len(self.results[metric])), 3)
             values = np.column_stack((acc, acc_mean, std, sem))
             values = np.vstack((values, values.mean(axis=0).round(3)))
-            df = pd.DataFrame(data=values,index=rows, columns=columns)
+            df = pd.DataFrame(data=values, index=rows, columns=columns)
             fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
             df.to_csv(fname, encoding='utf-8')
-
-
-
