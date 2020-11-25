@@ -11,9 +11,10 @@ import glob
 class Tsinghua(DataSet):
     """
     Tsinghua SSVEP sampled sinusoidal joint frequency-phase modulation (JFPM)
-    [1} X. Chen, Y. Wang, M. Nakanishi, X. Gao, T. -P. Jung, S. Gao,
+    [1] X. Chen, Y. Wang, M. Nakanishi, X. Gao, T. -P. Jung, S. Gao,
        "High-speed spelling with a noninvasive brain-computer interface",
        Proc. Int. Natl. Acad. Sci. U. S. A, 112(44): E6058-6067, 2015.
+	[] A Benchmark Dataset for SSVEP-Based Brain–Computer Interfaces 
     """
 
     def __init__(self):

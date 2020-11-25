@@ -137,7 +137,8 @@ class SingleSubject(Evaluation):
             if self.log:
                 msg = f" Subj : {subj+1} ACC: {subj_results['accuracy']}"
                 # if len(self.model.metrics) > 1:
-                if len(self.model_config['compile']['metrics']) > 1:
+                # if len(self.model_config['compile']['metrics']) > 1:
+                if 'auc' in subj_results:
                     msg += f" AUC: {subj_results['auc']}"
                 self.logger.debug(msg)
                 self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')

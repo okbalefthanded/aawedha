@@ -120,7 +120,8 @@ class CrossSubject(Evaluation):
             if self.log:
                 msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
                 # if len(self.model.metrics) > 1:
-                if len(self.model_config['compile']['metrics']) > 1:
+                # if len(self.model_config['compile']['metrics']) > 1:
+                if 'auc' in rets:
                     msg += f" AUC: {rets['auc']}"
                 self.logger.debug(msg)
                 self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')

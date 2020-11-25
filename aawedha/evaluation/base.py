@@ -752,6 +752,9 @@ class Evaluation(object):
             else:
                 metrics = []            
             optimizer = 'adam'
+            # set config for checkpoint use
+            
+
         return khsara, optimizer, metrics
 
     def _normalize(self, X_train):
@@ -1005,6 +1008,7 @@ class Evaluation(object):
         rows.append('Avg')
         dataset = self.dataset.title
         evl = self.__class__.__name__
+        columns = []
         if evl == 'CrossSubject':
             columns = ['Fold 1']
         elif evl == 'SingleSubject':
