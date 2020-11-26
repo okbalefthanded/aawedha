@@ -155,7 +155,8 @@ class SingleSubject(Evaluation):
         if len(operations) == self._get_n_subjects():
             self.results = self.results_reports(res)
         elif check:
-            self.results = self.results_reports(pointer.rets)
+            res = [perf for subj in pointer.rets for perf in subj]
+            self.results = self.results_reports(res)
 
         if self.log:
             self._log_results()
@@ -434,6 +435,7 @@ class SingleSubject(Evaluation):
             this will have only 2 array instead of 3
         """
         folds = []
+
         if stg == 'Kfold':
             cv = KFold(n_splits=nfolds).split(t)
         elif stg == 'Stratified':
@@ -443,6 +445,7 @@ class SingleSubject(Evaluation):
                 y = self.dataset.y[0]
             # trs = np.arange(0, t)
             cv = StratifiedKFold(n_splits=nfolds).split(t, y)
+        
         # for train, test in cv.split(t):
         for train, test in cv:
             if len(self.partition) == 2:
@@ -450,10 +453,11 @@ class SingleSubject(Evaluation):
                 folds.append([train, test])
             elif len(self.partition) == 3:
                 # generate test set from the entire set
-                if np.sum(np.diff(y) == 0) > np.sum(np.diff(y) == 1):
-                    tmp = np.random.choice(train, tr, replace=False)
-                    idx = ~np.isin(train, tmp, assume_unique=True)
-                    folds.append([tmp, train[idx], test])
+                if stg == 'Stratified':
+                    if np.sum(np.diff(y) == 0) > np.sum(np.diff(y) == 1):
+                        tmp = np.random.choice(train, tr, replace=False)
+                        idx = ~np.isin(train, tmp, assume_unique=True)
+                        folds.append([tmp, train[idx], test])
                 else:
                     folds.append([train[:tr], train[tr:tr + vl], test])
         return folds

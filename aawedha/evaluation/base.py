@@ -1029,5 +1029,6 @@ class Evaluation(object):
             values = np.column_stack((acc, acc_mean, std, sem))
             values = np.vstack((values, values.mean(axis=0).round(3)))
             df = pd.DataFrame(data=values, index=rows, columns=columns)
+            df.index.name = f"{self.model.name} / {metric}"
             fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
             df.to_csv(fname, encoding='utf-8')
