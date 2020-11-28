@@ -233,19 +233,25 @@ class Evaluation(object):
             dict of performance metrics : {metric : value}
         """
         self.predictions.append(probs)  # ()
-        results = dict()
-        preds = probs.argmax(axis=-1)
-        classes = Y_test.max()
+        results = dict()        
+        # classes = Y_test.max()
+        classes = np.unique(Y_test).size       
 
-        self.cm.append(confusion_matrix(Y_test, preds))
+        # self.cm.append(confusion_matrix(Y_test, preds))
 
         for metric, value in zip(self.model.metrics_names, perf):
             results[metric] = value
 
         if classes == 2:
-            fp_rate, tp_rate, thresholds = roc_curve(Y_test, probs[:, 1])
+            fp_rate, tp_rate, thresholds = roc_curve(Y_test, probs)
             viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
             results['viz'] = viz
+            preds = np.zeros(len(probs))
+            preds[probs.squeeze() > .5] = 1.
+        else:
+            preds = probs.argmax(axis=-1)     
+        
+        self.cm.append(confusion_matrix(Y_test, preds))
 
         return results
 
