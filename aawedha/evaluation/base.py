@@ -1015,10 +1015,14 @@ class Evaluation(object):
         dataset = self.dataset.title
         evl = self.__class__.__name__
         columns = []
+        
         if evl == 'CrossSubject':
             columns = ['Fold 1']
         elif evl == 'SingleSubject':
-            columns = [f'Fold {fld+1}' for fld, _ in enumerate(self.folds)]
+            nfolds = len(results['accuracy'][0])
+            # columns = [f'Fold {fld+1}' for fld, _ in enumerate(evl.folds)]
+            columns = [f'Fold {fld+1}' for fld in range(nfolds)]
+
         columns.extend(['Avg', 'Std', 'Sem'])
         date = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
         for metric in metrics:

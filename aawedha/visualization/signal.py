@@ -4,7 +4,7 @@ import numpy as np
 from typing import Iterable
 
 
-def plot_grand_average(data=None, subject=None, channel='Cz'):
+def plot_grand_average(data=None, subject=None, channel=['Cz']):
     """Plot grande average ERPs.
 
     Parameters
@@ -22,11 +22,16 @@ def plot_grand_average(data=None, subject=None, channel='Cz'):
     samples = data.epochs[0].shape[0]
     time = np.linspace(0., samples/data.fs, samples) * 1000
 
+    n_rows = 1
+    n_cols = 1
+
     if len(channel) > 1:
         ch = [i for i, x in enumerate(data.ch_names) if x in channel]
         ch_names = [data.ch_names[c] for c in ch]
+        n_rows = len(ch_names) // 2
+        n_cols = len(ch_names) // n_rows
     else:
-        ch = data.ch_names.index(channel)
+        ch = data.ch_names.index(channel.pop())
         ch_names = [data.ch_names[ch]]
 
     if subject:
@@ -39,31 +44,39 @@ def plot_grand_average(data=None, subject=None, channel='Cz'):
         trials = np.concatenate(data.epochs, axis=-1)
 
     trials = trials[:, ch, :]
-    target = trials[:, :, y == 1].mean(axis=-1)
-    non_target = trials[:, :, y == 0].mean(axis=-1)
-    n_rows = len(ch_names) // 2
-    n_cols = len(ch_names) // n_rows
+    if trials.ndim == 2:
+        target = trials[:, y == 1].mean(axis=-1)
+        non_target = trials[:, y == 0].mean(axis=-1)
+    else:
+        target = trials[:, :, y == 1].mean(axis=-1)
+        non_target = trials[:, :, y == 0].mean(axis=-1)
 
-    if len(ch_names) % 2 != 0:
+    if len(ch_names) % 2 != 0 and len(ch_names) > 1:
         n_cols += 1
         n_rows += 1
 
-    fig, ax = plt.subplots(nrows=n_rows, ncols=n_cols)
-    k = 0
-    for row in ax:
-        if isinstance(row, Iterable):
-            rows = row
-        else:
-            rows = [row]
-        for col in rows:
-            if k < len(ch_names):
-                col.plot(time, target[:, k])
-                col.plot(time, non_target[:, k])
-                col.set_title(f'Grand Average ERP at {ch_names[k]}')
-                col.legend(['Target', 'Non Target'])
-                k += 1
+    if len(ch_names) == 1:
+        plt.plot(time, target)
+        plt.plot(time, non_target)
+        plt.legend(['Target', 'Non Target'])
+        plt.title(f'Grand Average ERP at {ch_names.pop()}')
+    else:
+        fig, ax = plt.subplots(nrows=n_rows, ncols=n_cols)
+        k = 0
+        for row in ax:
+            if isinstance(row, Iterable):
+                rows = row
+            else:
+                rows = [row]
+            for col in rows:
+                if k < len(ch_names):
+                    col.plot(time, target[:, k])
+                    col.plot(time, non_target[:, k])
+                    col.set_title(f'Grand Average ERP at {ch_names[k]}')
+                    col.legend(['Target', 'Non Target'])
+                    k += 1
+        fig.tight_layout()
 
-    fig.tight_layout()
     plt.xlabel('Time (ms)')
     plt.ylabel('µV')
     plt.show()
@@ -98,7 +111,8 @@ def plot_spectral_power(data, subject=0, channel='Poz'):
         else:
             event = float(event)
             ff = np.array([event, 2*event, 3*event])
-        f_idx = np.logical_or(frequencies == ff[0], frequencies == ff[1], frequencies == ff[2])
+        f_idx = np.logical_or(
+            frequencies == ff[0], frequencies == ff[1], frequencies == ff[2])
 
         plt.figure()
         plt.plot(frequencies, pwr[fr])
@@ -106,7 +120,8 @@ def plot_spectral_power(data, subject=0, channel='Poz'):
         plt.xlim(0, 50)
         plt.xlabel('Frequnecy [HZ]')
         plt.ylabel('Power Spectrum')
-        plt.title(f'Subject: {subject + 1} Frequency: {stimuli[fr]}, at {channel}')
+        plt.title(
+            f'Subject: {subject + 1} Frequency: {stimuli[fr]}, at {channel}')
 
 
 def plot_time_frequency(data, subject=0, channel='POz', w=4.):
@@ -138,7 +153,8 @@ def plot_time_frequency(data, subject=0, channel='POz', w=4.):
         ax.set_ylim(0, 50)
         ax.set_xlabel('Time ms')
         ax.set_ylabel('Frequency (Hz)')
-        ax.set_title(f'Subject: {subject + 1} Frequency: {stimuli[ev]}, at {channel}')
+        ax.set_title(
+            f'Subject: {subject + 1} Frequency: {stimuli[ev]}, at {channel}')
         fig.colorbar(im, ax=ax)
 
         plt.show()
