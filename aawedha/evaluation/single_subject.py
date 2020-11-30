@@ -201,8 +201,7 @@ class SingleSubject(Evaluation):
         """
         if isinstance(n_trials, np.ndarray):
             t = [np.arange(n) for n in n_trials]
-            folds = [self._get_split(nfolds, n, tr, vl, stg, i)
-                     for i, n in enumerate(t)]
+            folds = [self._get_split(nfolds, n, tr, vl, stg, i) for i, n in enumerate(t)]
         else:
             t = np.arange(n_trials)
             folds = self._get_split(nfolds, t, tr, vl, stg)
@@ -459,5 +458,7 @@ class SingleSubject(Evaluation):
                         idx = ~np.isin(train, tmp, assume_unique=True)
                         folds.append([tmp, train[idx], test])
                 else:
+                    if (type(tr) is np.ndarray) and (type(vl) is np.ndarray):
+                        tr, vl = tr[subj], vl[subj]
                     folds.append([train[:tr], train[tr:tr + vl], test])
         return folds
