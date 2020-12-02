@@ -1,5 +1,6 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.erp import ERP
+from aawedha.paradigms.subject import Subject
 from mne import Epochs, pick_types, events_from_annotations
 from mne import set_log_level
 from mne.io import concatenate_raws, read_raw_edf
@@ -33,7 +34,7 @@ class Essex(DataSet):
                          )
 
     def generate_set(self, load_path=None, channels=None, epoch=[0., .7], 
-                     band=[1.0, 11.0], order=2,  downsample=None, 
+                     band=[1.0, 10.0], order=2,  downsample=None, 
                      save_folder=None, fname=None,
                      ):
         """
@@ -67,22 +68,20 @@ class Essex(DataSet):
                  }
         
         for subj in subjects:
-            # print(f"Subject: {subj}")
             if subj < 10:
                 subj = '0'+str(subj)
             raw_names = sorted(glob.glob(f"{path}/s{subj}/*.edf"))
             raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_names])
-            s = pd.Series(raw.annotations.description)
-            s = pd.Series(raw.annotations.description)
+            s = pd.Series(raw.annotations.description)            
             targets = s[s.str.startswith("#Tgt")]           
             targets = [tar[4] for tar in targets]            
-            starts = s[s.str.startswith("#start")]            
+            #starts = s[s.str.startswith("#start")]            
             # targets = s[s.str.startswith("#Tgt")].str.split("_")
             # targets = [tar[0][-1] for tar in targets]            
             # starts = s[s.str.startswith("#start")]
-            if starts.size == 0:
-                starts = s[s.str.startswith("#Tgt")]
-            ends = s[s.str.startswith("#end")]          
+            #if starts.size == 0:
+            starts = s[s.str.startswith("#Tgt")]
+            ends = s[s.str.startswith("#end")]           
             desc = list(np.unique(raw.annotations.description))
             desc = [dc for dc in desc if len(dc)==6 and dc != '#start']
             event_keys = list(ev_id.keys())
@@ -96,9 +95,8 @@ class Essex(DataSet):
             else:
                 events, _ = events_from_annotations(raw, event_id=ev_id)            
             r = [ev_id[key] if key in ev_id else key for key in raw.annotations.description]
-            ss = ss = pd.Series(r)
+            ss = pd.Series(r)
             y = self._get_labels(targets, ss, starts, ends, ev_id)
-            
             if channels:
                 eeg_channels = channels
             else:
@@ -116,6 +114,7 @@ class Essex(DataSet):
             X.append(epos)
             Y.append(y)
             ev.append(events[:, -1])
+            del raw, epos, y, events
         
         #X = np.array(X)
         #Y = np.array(Y).squeeze()
@@ -128,11 +127,17 @@ class Essex(DataSet):
         """
         """
         y = []
-        for idx, tr in enumerate(targets):
-            if type(events[ends.index[0]-1]) is np.str:
+        for idx, tr in enumerate(targets):                    
+            '''
+            if events[ends.index[idx]-1] != '#end':
                 trial_events = events[starts.index[idx]+2:ends.index[idx]-1]
             else:
                 trial_events = events[starts.index[idx]+2:ends.index[idx]]
+            '''
+            if type(events[ends.index[idx]-1]) is int:
+                trial_events = events[starts.index[idx]+2:ends.index[idx]]
+            else:
+                trial_events = events[starts.index[idx]+2:ends.index[idx]-1]
             trial_target = [ev_id[key]for key in ev_id if tr in key]
             y_trial = np.zeros(len(trial_events))
             target_indices = np.logical_or(trial_events==trial_target[0], trial_events==trial_target[1])
