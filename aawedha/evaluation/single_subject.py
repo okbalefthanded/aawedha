@@ -457,8 +457,11 @@ class SingleSubject(Evaluation):
                         tmp = np.random.choice(train, tr, replace=False)
                         idx = ~np.isin(train, tmp, assume_unique=True)
                         folds.append([tmp, train[idx], test])
+                    else:
+                        folds.append([train[:tr], train[tr:tr + vl], test])
                 else:
                     if (type(tr) is np.ndarray) and (type(vl) is np.ndarray):
                         tr, vl = tr[subj], vl[subj]
                     folds.append([train[:tr], train[tr:tr + vl], test])
+                
         return folds

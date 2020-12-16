@@ -619,9 +619,9 @@ class CrossSet(Evaluation):
         else:
             X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
             # X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
-            X_ts = self._flatten(self.target.epochs[self.folds[fold][2]])
-            Y_t = self._flatten(self.target.y[self.folds[fold][0]])
             # Y_v = self._flatten(self.target.y[self.folds[fold][1]])
+            X_ts = self._flatten(self.target.epochs[self.folds[fold][2]])
+            Y_t = self._flatten(self.target.y[self.folds[fold][0]])            
             Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
             if self._has_val():
                 # X_val, Y_val = self._cat_lists(fold, 1)
@@ -646,7 +646,7 @@ class CrossSet(Evaluation):
         X_t = np.concatenate((X_t, X_src), axis=-1)
         Y_t = np.concatenate((Y_t, Y_src), axis=-1)
 
-        samples, channels, trials = X_t.shape
+        samples, channels, trials = X_t.shape        
 
         # tr_s = X_ts.shape[-1]
 
@@ -665,6 +665,8 @@ class CrossSet(Evaluation):
         # FIXME : Training/Val/Test data has to be shuffled
         # np.random.shuffle (in-place shuffle)
         split['X_train'], split['Y_train'] = self._permute_arrays([X_t, Y_t], axe)
+        split['X_train'] = split['X_train'].transpose((2,1,0)) 
+        X_ts = X_ts.transpose((2,1,0))
         # split['X_test'], split['Y_test'] = self._permute_arrays([X_ts, Y_ts], axe)
         # split['X_val'], split['Y_val'] = self._permute_arrays([X_ts, Y_ts], axe) # X_v, Y_v
 

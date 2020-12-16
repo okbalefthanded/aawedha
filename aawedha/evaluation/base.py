@@ -119,7 +119,7 @@ class Evaluation(object):
     """
 
     def __init__(self, dataset=None, model=None, partition=None, folds=None,
-                 verbose=2, lg=False):
+                 verbose=2, lg=False, debug=False):
         """
         """
         self.dataset = dataset
@@ -149,6 +149,7 @@ class Evaluation(object):
         self.initial_weights = []
         #  self.normalizer = None # preprocessing.Normalization(axis=(1, 2))
         self.current = None
+        self.debug = debug
 
     def __str__(self):
         name = self.__class__.__name__
@@ -798,6 +799,12 @@ class Evaluation(object):
             batch = 64
             ep = 300
             clbks = []
+        
+        if self.debug:
+            logdir = os.path.join("aawedha/debug", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+            if not os.path.isdir(logdir):
+                os.mkdir(logdir)
+            clbks.append(tf.keras.callbacks.TensorBoard(logdir))
         return batch, ep, clbks
 
     def _get_model_configs_info(self):
@@ -1019,7 +1026,7 @@ class Evaluation(object):
         if evl == 'CrossSubject':
             columns = ['Fold 1']
         elif evl == 'SingleSubject':
-            nfolds = len(results['accuracy'][0])
+            nfolds = len(self.results['accuracy'][0])
             # columns = [f'Fold {fld+1}' for fld, _ in enumerate(evl.folds)]
             columns = [f'Fold {fld+1}' for fld in range(nfolds)]
 
