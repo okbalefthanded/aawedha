@@ -47,14 +47,15 @@ class CrossSet(Evaluation):
     """
 
     def __init__(self, source=[], target=[], mode='', partition=[],
-                 verbose=2, lg=False):
+                 verbose=2, lg=False, debug=False):
         '''
         '''
         self.source = source
         self.target = target
         self.mode = mode
         super().__init__(partition=partition,
-                         verbose=verbose, lg=lg)
+                         verbose=verbose, lg=lg,
+                         debug=debug)
 
     def __str__(self):
         name = self.__class__.__name__

@@ -150,6 +150,7 @@ class Evaluation(object):
         #  self.normalizer = None # preprocessing.Normalization(axis=(1, 2))
         self.current = None
         self.debug = debug
+        self.log_dir = None
 
     def __str__(self):
         name = self.__class__.__name__
@@ -694,6 +695,13 @@ class Evaluation(object):
         if device == 'TPU':
             spe = X_train.shape[0] // batch
 
+        if self.debug and device != 'TPU':
+            dbg_dir = f"{self.log_dir}/tfdbg2_logdir"
+            tf.debugging.experimental.enable_dump_debug_info(dbg_dir, 
+                                tensor_debug_mode="FULL_HEALTH",
+                                circular_buffer_size=-1)
+
+
         history = self.model.fit(X_train, Y_train,
                                  batch_size=batch,
                                  epochs=ep,
@@ -801,10 +809,11 @@ class Evaluation(object):
             clbks = []
         
         if self.debug:
-            logdir = os.path.join("aawedha/debug", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-            if not os.path.isdir(logdir):
-                os.mkdir(logdir)
-            clbks.append(tf.keras.callbacks.TensorBoard(logdir))
+            # logdir = os.path.join("aawedha/debug", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+            self.log_dir = os.path.join("aawedha/debug", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+            if not os.path.isdir(self.log_dir):
+                os.mkdir(self.log_dir)
+            clbks.append(tf.keras.callbacks.TensorBoard(self.log_dir))
         return batch, ep, clbks
 
     def _get_model_configs_info(self):
