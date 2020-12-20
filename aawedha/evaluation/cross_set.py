@@ -628,6 +628,7 @@ class CrossSet(Evaluation):
                 # X_val, Y_val = self._cat_lists(fold, 1)
                 X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
                 Y_v = self._flatten(self.target.y[self.folds[fold][1]])
+                Y_v = labels_to_categorical(Y_v)
                 X_v = X_v.transpose((2, 1, 0))
                 # X_v, Y_v = self._permute_arrays((X_v, Y_v))
 
@@ -673,8 +674,11 @@ class CrossSet(Evaluation):
 
         # split['X_train'] = X_t
         # split['Y_train'] = Y_t
+        split['Y_train'] = labels_to_categorical(split['Y_train'])
         split['X_test'] = X_ts
-        split['Y_test'] = Y_ts
+        # split['Y_test'] = Y_ts
+        split['Y_test'] = labels_to_categorical(Y_ts)
+        
         split['X_val'] = X_v
         split['Y_val'] = Y_v
         

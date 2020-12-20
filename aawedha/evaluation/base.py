@@ -687,20 +687,17 @@ class Evaluation(object):
         #
         self.reset_weights()
         self._normalize(X_train)
-        # if self.normalizer:
-        #     self.normalizer.adapt(X_train)
 
         history = {}
         spe = None
         if device == 'TPU':
             spe = X_train.shape[0] // batch
 
-        if self.debug and device != 'TPU':
-            dbg_dir = f"{self.log_dir}/tfdbg2_logdir"
-            tf.debugging.experimental.enable_dump_debug_info(dbg_dir, 
-                                tensor_debug_mode="FULL_HEALTH",
-                                circular_buffer_size=-1)
-
+        # if self.debug and device != 'TPU':
+        #     dbg_dir = f"{self.log_dir}/tfdbg2_logdir"
+        #     tf.debugging.experimental.enable_dump_debug_info(dbg_dir, 
+        #                         tensor_debug_mode="FULL_HEALTH",
+        #                         circular_buffer_size=-1)
 
         history = self.model.fit(X_train, Y_train,
                                  batch_size=batch,
