@@ -17,6 +17,8 @@ def class_weights(y):
         class_weight : class, 1 for each class if data classes are balanced
 
     """
+    if y.ndim == 2: # categorical_labels
+        y = y.argmax(axis=1)
     if y.min() != 0:
         y = y - 1
     cl_weights = {}
