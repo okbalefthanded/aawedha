@@ -474,7 +474,9 @@ class DataSet(metaclass=ABCMeta):
 
         if method == 'divide':
             strides = range(np.floor(stimulation * self.fs / epoch_duration).astype(int))
-            v = [eeg[onset + int(s * self.fs):onset + int(s * self.fs) + epoch_duration] for s in strides]
+            # v = [eeg[onset + int(s * self.fs):onset + int(s * self.fs) + epoch_duration] for s in strides]
+            slide = epoch_duration
+            v = [eeg[onset + slide * s:onset + slide * s + epoch_duration] for s in strides]
         elif method == 'slide':
             augmented = range(int((stimulation - epoch) // slide) + 1)
             slide = int(slide * self.fs)

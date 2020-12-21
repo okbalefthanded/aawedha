@@ -237,6 +237,9 @@ class Evaluation(object):
         self.predictions.append(probs)  # ()
         results = dict()        
         # classes = Y_test.max()
+        if Y_test.ndim == 2:
+            Y_test = Y_test.argmax(axis=1)
+
         classes = np.unique(Y_test).size       
 
         # self.cm.append(confusion_matrix(Y_test, preds))
