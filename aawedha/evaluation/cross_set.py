@@ -1,7 +1,7 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
 from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
-from aawedha.utils.evaluation_utils import fit_scale, transform_scale
+# from aawedha.utils.evaluation_utils import fit_scale, transform_scale
 from aawedha.analysis.utils import isfloat
 import numpy as np
 
@@ -417,6 +417,22 @@ class CrossSet(Evaluation):
 
         return operations
 
+    def results_reports(self, res, tfpr={}):
+        """
+        """
+        
+        # subjects = self._get_n_subjects()
+        # subjects = len(self.predictions)
+        
+        folds = len(self.folds)
+        examples = len(self.predictions[0])
+        dim = len(self.predictions[0][0])
+        self.predictions = np.array(self.predictions).reshape((folds, examples, dim))
+
+        res = self._aggregate_results(res)
+        res = self._update_results(res)
+        return res
+    
     def results_reports_old(self, res, tfpr={}):
         '''Collects evaluation results on a single dict
 
@@ -525,28 +541,6 @@ class CrossSet(Evaluation):
             - 'fpr' : 1d array : False posititves rate
         '''
         split = self._split_set(fold)
-
-        # normalize data
-        # X_train, mu, sigma = fit_scale(split['X_train'])
-
-        #if isinstance(split['X_val'], np.ndarray):
-        #    X_val = transform_scale(split['X_val'], mu, sigma)
-        # else:
-        #    X_val = split['X_val']
-
-        # X_test = transform_scale(split['X_test'], mu, sigma)
-        # Y_train = split['Y_train']
-        # Y_val = split['Y_val']
-        # Y_test = split['Y_test']
-        #
-        # cws = class_weights(np.argmax(Y_train, axis=1))
-        # evaluate model on subj on all folds
-        # self.model_history, probs = self._eval_model(X_train, Y_train,
-        #                                             X_val, Y_val, X_test,
-        #                                             cws)
-        # probs = self.model.predict(X_test)
-        # rets = self.measure_performance(Y_test, probs)
-
         rets = self._eval_split(split)
         return rets
 
@@ -645,8 +639,14 @@ class CrossSet(Evaluation):
         X_src = np.array(X_src).squeeze()        
         Y_src = np.array(Y_src).squeeze()
         '''
-        X_t = np.concatenate((X_t, X_src), axis=-1)
-        Y_t = np.concatenate((Y_t, Y_src), axis=-1)
+        if self.mode == 'include':
+            X_t = np.concatenate((X_t, X_src), axis=-1)
+            Y_t = np.concatenate((Y_t, Y_src), axis=-1)
+        elif self.mode == 'exclude':
+            X_t = X_src
+            Y_t = Y_src
+            X_v = None
+            Y_v = None
 
         samples, channels, trials = X_t.shape        
 

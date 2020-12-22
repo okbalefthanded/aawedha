@@ -4,6 +4,7 @@ from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.utils.evaluation_utils import class_weights
 from aawedha.evaluation.checkpoint import CheckPoint
 from tensorflow.keras.models import load_model
+from aawedha.io.base import DataSet
 import tensorflow as tf
 import pandas as pd
 import numpy as np
@@ -318,7 +319,7 @@ class Evaluation(object):
                     (self.n_subjects, folds, examples, dim))
 
         res = self._aggregate_results(res)
-
+        """
         metrics = list(res.keys())
         if self.dataset.get_n_classes() == 2:
             metrics.remove('viz')
@@ -329,7 +330,8 @@ class Evaluation(object):
             if np.array(res[metric]).ndim == 2:
                 res[metric +
                     '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
-
+        """
+        res = self._update_results(res)
         return res
 
     def save_model(self, folderpath=None):
@@ -696,12 +698,6 @@ class Evaluation(object):
         if device == 'TPU':
             spe = X_train.shape[0] // batch
 
-        # if self.debug and device != 'TPU':
-        #     dbg_dir = f"{self.log_dir}/tfdbg2_logdir"
-        #     tf.debugging.experimental.enable_dump_debug_info(dbg_dir, 
-        #                         tensor_debug_mode="FULL_HEALTH",
-        #                         circular_buffer_size=-1)
-
         history = self.model.fit(X_train, Y_train,
                                  batch_size=batch,
                                  epochs=ep,
@@ -979,6 +975,27 @@ class Evaluation(object):
             results[metric] = tmp
 
         return results
+
+    def _update_results(self, res):
+        """
+        """
+        metrics = list(res.keys())
+        if isinstance(self.dataset, DataSet):
+            classes = self.dataset.get_n_classes()
+        else:
+            classes = self.target.get_n_classes()
+
+        if classes == 2:
+            metrics.remove('viz')
+
+        for metric in metrics:
+            res[metric + '_mean'] = np.array(res[metric]).mean()
+            res[metric + '_mean_per_fold'] = np.array(res[metric]).mean(axis=0)
+            if np.array(res[metric]).ndim == 2:
+                res[metric +
+                    '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
+        
+        return res
 
     def _get_device(self):
         """Returns compute engine : GPU / TPU
