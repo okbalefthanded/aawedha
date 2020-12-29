@@ -503,8 +503,13 @@ class Evaluation(object):
             compute_engine = get_gpu_name()
         else:
             compute_engine = 'TPU'
+        
+        mode = ''
+        if hasattr(self, 'mode'):
+            mode = f"Cross Set Mode: {self.mode}"
+
         exp_info = ' '.join([data, duration, data_shape, prt, model,
-                             model_config, compute_engine])
+                             model_config, compute_engine, mode])
         self.logger.debug(exp_info)
 
     def reset(self, chkpoint=False):
