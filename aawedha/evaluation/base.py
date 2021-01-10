@@ -1050,11 +1050,15 @@ class Evaluation(object):
         subjects = range(self._get_n_subjects())
         rows = [f'S{s+1}' for s in subjects]
         rows.append('Avg')
-        dataset = self.dataset.title
+        if isinstance(self.dataset, DataSet):
+            dataset = self.dataset.title
+        else:
+            dataset = self.target.title
+        
         evl = self.__class__.__name__
         columns = []
         
-        if evl == 'CrossSubject':
+        if evl == 'CrossSubject' or 'CrossSet':
             columns = ['Fold 1']
         elif evl == 'SingleSubject':
             nfolds = len(self.results['accuracy'][0])

@@ -262,8 +262,6 @@ class CrossSet(Evaluation):
         if not pointer and check:
             pointer = CheckPoint(self)
 
-        # res_acc, res_auc = [], []
-        # res_tp, res_fp = [], []
         res = []
 
         if not self.model_compiled:
@@ -273,35 +271,14 @@ class CrossSet(Evaluation):
             print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
             self.log_experiment()
 
-        # if self.current:
-        #     operations = range(self.current, len(self.folds))
-        # else:
-        #     operations = range(len(self.folds))
-
         operations = self.get_operations(folds)
         
-        # for fold in range(len(self.folds)):
         for fold in operations:
             #
             if self.verbose == 0:
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
-            rets = self._cross_set(fold)
-            # if isinstance(rets, tuple):
-            #     res_acc.append(rets[0])
-            #     res_auc.append(rets[1])
-            #     res_fp.append(rets[2])
-            #     res_tp.append(rets[3])
-            # else:
-            #     res_acc.append(rets)
-
-            # if self.log:
-            #     msg = f' Fold : {fold+1} ACC: {res_acc[-1]}'
-            #     if len(self.model.metrics) > 1:
-            #         msg += f' AUC: {res_auc[-1]}'
-            #     self.logger.debug(msg)
-            #     self.logger.debug(
-            #         f' Training stopped at epoch: {self.model_history.epoch[-1]}')            
+            rets = self._cross_set(fold)      
 
             if self.log:
                 msg = f" Subj : {fold+1} ACC: {rets['accuracy']}"
@@ -312,9 +289,6 @@ class CrossSet(Evaluation):
                 self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
 
             res.append(rets)
-
-            # if check:
-            #     pointer.set_checkpoint(fold+1, self.model)
 
             if check:
                 # pointer.set_checkpoint(fold+1, self.model)
@@ -331,22 +305,6 @@ class CrossSet(Evaluation):
         if savecsv:
             if self.results:
                 self._savecsv(csvfolder)
-
-        # Aggregate results
-        # tfpr = {}
-        # if res_auc:
-            # res = np.array([res_acc, res_auc])
-        #    res = {}
-        #    res['acc'] = res_acc
-        #    res['auc'] = res_auc
-            # tfpr = np.array([res_fp, res_tp])
-        #    tfpr['fp'] = res_fp
-        #    tfpr['tp'] = res_tp
-        # else:
-        #    res = np.array(res_acc)
-        #    tfpr = []
-
-        # self.results = self.results_reports(res, tfpr)
 
     def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy
@@ -432,6 +390,27 @@ class CrossSet(Evaluation):
         res = self._aggregate_results(res)
         res = self._update_results(res)
         return res
+    
+    def resume(self, run=False, savecsv=False):
+        """Resume evaluation from where it was interrupted
+
+        Parameters
+        ----------
+        run : bool
+            if true resume evaluation at checkpoint
+
+        Returns
+        -------
+        instance of evaluation
+        """
+        self.generate_set()
+        chk = self.reset(chkpoint=True)
+        device = self._get_device()
+        if device == 'TPU':
+            self._compile_model()
+        if run:
+            self.run_evaluation(pointer=chk, check=True, savecsv=savecsv)
+        return self
     
     def results_reports_old(self, res, tfpr={}):
         '''Collects evaluation results on a single dict
