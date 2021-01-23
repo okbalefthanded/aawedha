@@ -135,13 +135,14 @@ class SingleSubject(Evaluation):
             subj_results = self._aggregate_results(rets)
 
             if self.log:
-                msg = f" Subj : {subj+1} ACC: {subj_results['accuracy']}"
+                msg = f" Subj : {subj+1} ACC: {subj_results['accuracy']*100}"
                 # if len(self.model.metrics) > 1:
                 # if len(self.model_config['compile']['metrics']) > 1:
                 if 'auc' in subj_results:
-                    msg += f" AUC: {subj_results['auc']}"
+                    msg += f" AUC: {subj_results['auc']*100}"
+                msg += f' Training stopped at epoch: {self.model_history.epoch[-1]}'
                 self.logger.debug(msg)
-                self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+                # self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
 
             res.append(subj_results)
 
