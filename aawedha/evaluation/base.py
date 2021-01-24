@@ -153,6 +153,7 @@ class Evaluation(object):
         self.debug = debug
         self.log_dir = None
 
+
     def __str__(self):
         name = self.__class__.__name__
         model = self.model.name if self.model else 'NotSet'
@@ -552,6 +553,8 @@ class Evaluation(object):
             self.logger = log(fname=chk.logger, logger_name='eval_log')
             self.verbose = chk.verbose
             self.initial_weights = chk.initial_weights
+            if hasattr(self, 'mode'):
+                self.mode = chk.mode
             # self.normalizer = chk.normalizer
 
         else:

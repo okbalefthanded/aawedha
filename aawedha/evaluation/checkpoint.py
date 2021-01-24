@@ -118,6 +118,7 @@ class CheckPoint(object):
         self.logger = evl.logger.handlers[0].baseFilename
         self.verbose = evl.verbose
         self.rets = []
+        self.mode = ''
 
     def set_checkpoint(self, current=0, model=None, rets=None):
         """Save evaluation state to resume operations later
