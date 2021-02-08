@@ -1,5 +1,7 @@
 from pynvml import *
 import tensorflow as tf
+import numpy as np
+import pandas as pd
 import logging
 import os
 
@@ -86,3 +88,46 @@ def init_TPU():
 
     strategy = tf.distribute.TPUStrategy(resolver)
     return strategy
+
+
+def log_to_csv(filepath, folder):
+    """Convert log file into a csv file of results only
+
+    Parameters
+    ----------
+    filepath : str
+        log file file path
+    folder : str
+        where to store csv file
+    """
+    accs = []
+    subjects = 0
+
+    with open(filepath) as fp:
+        for cnt, line in enumerate(fp):
+            # print("Line {}: {}".format(cnt, line))
+            if cnt == 0:
+                header = line
+            if 'ACC' in line:
+                acc_line = line.split('ACC')[-1]
+                numbers_str = ''.join((ch if ch in '0123456789.-e' else ' ') for ch in acc_line)
+                numbers = [float(i)*100 for i in numbers_str.split()]
+                accs.append(numbers)
+                subjects += 1
+
+    nfolds = len(accs[0])
+    accs = np.array(accs)
+    parts = filepath.split("/")[-1].split('_')
+    evl = parts[0]
+    dataset = parts[1]
+    date = '_'.join(parts[2:-1])
+    model_name = header.split('Model')[1].split(' ')[1] 
+    metric = 'Accuracy'
+    rows = [f'S{s+1}' for s in range(subjects)] 
+    columns = [f'Fold {fld+1}' for fld in range(nfolds)]
+    df = pd.DataFrame(data=accs, index=rows, columns=columns)
+    df.index.name = f"{model_name} / {metric}"
+
+    fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
+    df.to_csv(fname, encoding='utf-8')
+    print(f"csv file saved to : {fname}")
