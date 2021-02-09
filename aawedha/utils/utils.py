@@ -105,17 +105,22 @@ def log_to_csv(filepath, folder):
 
     with open(filepath) as fp:
         for cnt, line in enumerate(fp):
-            # print("Line {}: {}".format(cnt, line))
             if cnt == 0:
                 header = line
             if 'ACC' in line:
-                acc_line = line.split('ACC')[-1]
-                numbers_str = ''.join((ch if ch in '0123456789.-e' else ' ') for ch in acc_line)
-                numbers = [float(i)*100 for i in numbers_str.split()]
+                if 'epoch' in line:
+                    acc_line = line.split('ACC: ')[-1].split(' ')
+                    numbers = float(acc_line[0])
+                else:
+                    acc_line = line.split('ACC: ')[-1]
+                    numbers_str = ''.join((ch if ch in '0123456789.-e' else ' ') for ch in acc_line)
+                    numbers = [float(i)*100 for i in numbers_str.split()]
                 accs.append(numbers)
                 subjects += 1
-
-    nfolds = len(accs[0])
+    if isinstance(accs[0], list):
+        nfolds = len(accs[0])
+    else:
+        nfolds = 1
     accs = np.array(accs)
     parts = filepath.split("/")[-1].split('_')
     evl = parts[0]
