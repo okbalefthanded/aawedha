@@ -226,7 +226,7 @@ class Perturbations(DataSet):
                 ind = np.where(y[i] == l+1)
                 events[ind[0]] = self.paradigm.frequencies[l]
             ev.append(events)
-        return ev
+        return np.array(ev)
 
     @staticmethod
     def _get_paradigm():
