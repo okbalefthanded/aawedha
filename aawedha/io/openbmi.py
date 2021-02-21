@@ -240,5 +240,5 @@ class OpenBMISSVEP(DataSet):
                      break_duration=6000, repetition=25,
                      stimuli=4, phrase='',
                      stim_type='ON_OFF',
-                     frequencies=['12', '8.57', '6.67', '5.45']
+                     frequencies=['12.', '8.57', '6.67', '5.45']
                      )
