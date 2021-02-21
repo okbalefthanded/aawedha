@@ -207,6 +207,7 @@ class OpenBMISSVEP(DataSet):
                 del cnt
                 x_subj.append(eeg)
                 y_subj.append(y)
+                ev = self._position_to_event(np.array(ev))
                 events_subj.append(ev)
 
             X.append(np.concatenate(x_subj, axis=-1))
@@ -221,7 +222,14 @@ class OpenBMISSVEP(DataSet):
         events = np.array(events).squeeze()
         return X, Y, events
 
-
+    @staticmethod
+    def _position_to_event(position):
+        """
+        """
+        position_dict = {'down':'5.45', 'right':'6.67', 'left':'8.57', 'up':'12'}
+        idx = np.nonzero(list(position_dict.keys()) == position[:, None])[1]
+        events = np.asarray(list(position_dict.values()))[idx]
+        return events
 
     def get_path(self):
         NotImplementedError

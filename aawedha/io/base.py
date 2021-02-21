@@ -259,7 +259,7 @@ class DataSet(metaclass=ABCMeta):
             else:
                 self.epochs = self.epochs[:, :, indexes, :]
                 if hasattr(self, 'test_epochs'):
-                    if self.test_epochs:
+                    if isinstance(self.test_epochs, np.ndarray):
                         self.test_epochs = self.test_epochs[:, :, indexes, :]
 
         return indexes
