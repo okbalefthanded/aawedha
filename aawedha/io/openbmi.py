@@ -226,7 +226,7 @@ class OpenBMISSVEP(DataSet):
     def _position_to_event(position):
         """
         """
-        position_dict = {'down':'5.45', 'right':'6.67', 'left':'8.57', 'up':'12'}
+        position_dict = {'down':'5.45', 'right':'6.67', 'left':'8.57', 'up':'12.'}
         idx = np.nonzero(list(position_dict.keys()) == position[:, None])[1]
         events = np.asarray(list(position_dict.values()))[idx]
         return events
