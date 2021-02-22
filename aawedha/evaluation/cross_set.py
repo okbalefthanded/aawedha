@@ -492,7 +492,7 @@ class CrossSet(Evaluation):
         target_labels = self.target.labels_to_dict()
         source_labels = source.labels_to_dict()
         # return np.logical_and.reduce(np.unique(source.y[0]) == y_target)
-        return target_labels == source
+        return target_labels == source_labels
 
     def _cross_set(self, fold):
         '''Evaluate model on data split according to fold
