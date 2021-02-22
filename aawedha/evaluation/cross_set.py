@@ -114,7 +114,7 @@ class CrossSet(Evaluation):
         target_events = np.unique(self.target.events) 
         source_events = np.unique(source.events)
         intersection = list(np.intersect1d(target_events, source_events))
-        idx = np.logical_or.reduce([self.source.events==intrs for intrs in intersection])
+        idx = np.logical_or.reduce([source.events==intrs for intrs in intersection])
         
         # d_source = self._diff(source.events)
         # d_target = self._diff(target_events)
