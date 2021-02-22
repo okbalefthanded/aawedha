@@ -111,26 +111,33 @@ class CrossSet(Evaluation):
         -------
         no value
         """
-        target_events = np.unique(self.target.events)
+        target_events = np.unique(self.target.events) 
+        source_events = np.unique(source.events)
+        intersection = list(np.intersect1d(target_events, source_events))
+        idx = np.logical_or.reduce([self.source.events==intrs for intrs in intersection])
+        
+        # d_source = self._diff(source.events)
+        # d_target = self._diff(target_events)
+        # v = np.min([d_source, d_target])
 
-        d_source = self._diff(source.events)
-        d_target = self._diff(target_events)
-        v = np.min([d_source, d_target])
+        # # events = np.unique(ev.astype(float))
+        # # events = np.unique(ev)
+        # # labels = np.unique(self.target.y)
+        # # new_labels = {str(events[i]): labels[i] for i in range(events.size)}
+        # # new_labels = {events[i]: labels[i] for i in range(events.size)}
 
-        # events = np.unique(ev.astype(float))
-        # events = np.unique(ev)
-        # labels = np.unique(self.target.y)
-        # new_labels = {str(events[i]): labels[i] for i in range(events.size)}
-        # new_labels = {events[i]: labels[i] for i in range(events.size)}
-
-        # keys = self.target.events.flatten().tolist()
-        # values = self.target.y.flatten().tolist()
-        # new_labels = dict(zip(keys, values))
+        # # keys = self.target.events.flatten().tolist()
+        # # values = self.target.y.flatten().tolist()
+        # # new_labels = dict(zip(keys, values))
 
         new_labels = self.target.labels_to_dict()
-        source.rearrange(target_events, v)
-        source.update_labels(new_labels, v)
+        # source.rearrange(target_events, v)
+        # source.update_labels(new_labels, v)
+        source._rearrange(idx)
+        source.update_labels(new_labels)      
+
         # need to recover original indices of trials
+
 
     def resample(self):
         '''Resample all datasets (target and sources alike) used in evaluation
@@ -171,7 +178,6 @@ class CrossSet(Evaluation):
         #
         chs = self._get_min_channels()
         # ev = np.unique(self.target.events)
-
         # select channels and trials for source datasets
         for src in self.source:
             self.select_channels(src, chs)
@@ -182,6 +188,12 @@ class CrossSet(Evaluation):
             self.select_channels(self.target, chs, replacement)
         else:
             self.select_channels(self.target, chs)
+        #
+        target_events = np.unique(self.target.events) 
+        source_events = np.unique(self.source[0].events)
+        intersection = list(np.intersect1d(target_events, source_events))
+        idx = np.logical_or.reduce([self.target.events==intrs for intrs in intersection])
+        self.target._rearrange(idx)
         #
         self.resample()
 
@@ -578,18 +590,17 @@ class CrossSet(Evaluation):
         # classes = np.unique(self.target.y)
 
         if hasattr(self.target, 'test_epochs'):
-            if len(self.folds) == 1:
+            # if len(self.folds) == 1:
+            X_t = self._flatten(self.target.epochs)
+            Y_t = self._flatten(self.target.y)
 
-                X_t = self._flatten(self.target.epochs)
-                Y_t = self._flatten(self.target.y)
+            X_ts = self._flatten(self.target.test_epochs)
+            Y_ts = self._flatten(self.target.test_y)
 
-                X_ts = self._flatten(self.target.test_epochs)
-                Y_ts = self._flatten(self.target.test_y)
-
-                X_v = None
-                Y_v = None
-            else:
-                pass
+            X_v = None
+            Y_v = None
+            # else:
+            #    pass
 
         else:
             X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
@@ -781,6 +792,7 @@ class CrossSet(Evaluation):
                 return len(self.target.epochs) + test_epochs
         else:
             return 0
+       
 
     def _assert_partition(self, subjects=0, excl=False):
         """Assert if partition to be used do not surpass number of subjects available

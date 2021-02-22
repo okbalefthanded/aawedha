@@ -312,7 +312,7 @@ class DataSet(metaclass=ABCMeta):
         values = self.y.flatten().tolist()
         return dict(zip(keys, values))
         
-    def update_labels(self, new_labels, v):
+    def update_labels(self, new_labels, v=[]):
         '''
         new_labels, v
         '''
