@@ -568,7 +568,7 @@ class DataSet(metaclass=ABCMeta):
 
         return tmp
 
-    def _rearrange(self, ind):
+    def _rearrange_legacy(self, ind):
         '''
         '''
         # takes only train data for future use in CrossSet
@@ -585,3 +585,15 @@ class DataSet(metaclass=ABCMeta):
                 setattr(self, k, tmp)
             else:
                 setattr(self, k, np.array(tmp))
+
+    def _rearrange(self, ind):
+        '''
+        '''
+        # takes only train data for future use in CrossSet
+        # TODO : epochs, y, events are lists
+        attrs = ['epochs', 'y', 'events']
+        for sbj,_ in enumerate(self.epochs):
+            self.epochs[sbj,:,:,:] = self.epochs[sbj,:,:,ind[sbj]].transpose((1,2,0))
+            self.y[sbj,:] = self.y[sbj, ind[sbj]]
+            self.events[sbj,:] = self.events[sbj, ind[sbj]]
+

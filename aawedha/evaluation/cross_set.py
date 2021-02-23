@@ -194,6 +194,7 @@ class CrossSet(Evaluation):
         intersection = list(np.intersect1d(target_events, source_events))
         idx = np.logical_or.reduce([self.target.events==intrs for intrs in intersection])
         self.target._rearrange(idx)
+        self.target.update_labels(self.source[0].labels_to_dict())
         #
         self.resample()
 
