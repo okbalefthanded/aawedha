@@ -403,6 +403,30 @@ class DataSet(metaclass=ABCMeta):
         else:
             return len(np.unique(self.y))
 
+    def print_shapes(self):
+        """Print DataSet Tensors shapes, used as a helper.
+        """
+        if isinstance(self.epochs, np.ndarray):
+            shapes = f"|| Epochs {self.epochs.shape} || Y {self.y.shape} || Events {self.events.shape}"
+        else:
+            epoch_shapes = [ep.shape for ep in self.epochs]
+            y_shapes = [yy.shape for yy in self.y]
+            events_shapes = [ev.shape for ev in self.events]
+            shapes = "|| ".join([epoch_shapes, y_shapes, events_shapes])
+        
+        print(f"Shapes: {shapes}")
+        
+        if hasattr(self, 'test_epochs'):
+            if isinstance(self.epochs, np.ndarray):
+                test_shapes = f"|| Test Epochs {self.test_epochs.shape} || Test Y {self.test_y.shape} || Test Events {self.test_events.shape}"
+            else:
+                test_epoch_shapes = [ep.shape for ep in self.test_epochs]
+                test_y_shapes = [yy.shape for yy in self.test_y]
+                test_events_shapes = [ev.shape for ev in self.test_events]
+                test_shapes = "|| ".join([test_epoch_shapes, test_y_shapes, test_events_shapes])
+        
+        print(f"Test Shapes: {test_shapes}")
+
     def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, slide=0.1, method='divide'):
         """Segment continuous EEG data using an augmentation method
 
