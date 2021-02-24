@@ -642,9 +642,13 @@ class DataSet(metaclass=ABCMeta):
             # tmp_ev.append(getattr(self, attrs[2])[sbj, ind[sbj]])
             tmp_ev.append(getattr(self, attrs[2])[sbj, idx])
         
-        setattr(self, attrs[0], np.array(tmp_ep))
-        setattr(self, attrs[1], np.array(tmp_y))
-        setattr(self, attrs[2], np.array(tmp_ev))
+        setattr(self, attrs[0], tmp_ep)
+        setattr(self, attrs[1], tmp_y)
+        setattr(self, attrs[2], tmp_ev)
+        
+        # setattr(self, attrs[0], np.array(tmp_ep))
+        # setattr(self, attrs[1], np.array(tmp_y))
+        # setattr(self, attrs[2], np.array(tmp_ev))
 
         #self.epochs = np.array(tmp_ep)
         #self.y = np.array(tmp_y)

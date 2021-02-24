@@ -795,8 +795,7 @@ class CrossSet(Evaluation):
             else:
                 return len(self.target.epochs) + test_epochs
         else:
-            return 0
-       
+            return 0       
 
     def _assert_partition(self, subjects=0, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
