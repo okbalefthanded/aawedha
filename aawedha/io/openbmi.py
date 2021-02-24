@@ -111,7 +111,7 @@ class OpenBMISSVEP(DataSet):
                                           )
         self.test_epochs = epochs
         self.test_y = y
-        self.events = events
+        self.test_events = events
 
         if channels:
             self.ch_names = [self.ch_names[ch] for ch in self._get_channels(channels)]

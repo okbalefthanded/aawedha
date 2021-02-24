@@ -114,7 +114,8 @@ class CrossSet(Evaluation):
         target_events = np.unique(self.target.events) 
         source_events = np.unique(source.events)
         intersection = list(np.intersect1d(target_events, source_events))
-        idx = np.logical_or.reduce([source.events==intrs for intrs in intersection])
+        
+        # idx = np.logical_or.reduce([source.events==intrs for intrs in intersection])
         
         # d_source = self._diff(source.events)
         # d_target = self._diff(target_events)
@@ -133,7 +134,8 @@ class CrossSet(Evaluation):
         new_labels = self.target.labels_to_dict()
         # source.rearrange(target_events, v)
         # source.update_labels(new_labels, v)
-        source._rearrange(idx)
+        # source._rearrange(idx)
+        source.rearrange(intersection)
         source.update_labels(new_labels)      
 
         # need to recover original indices of trials
@@ -192,8 +194,9 @@ class CrossSet(Evaluation):
         target_events = np.unique(self.target.events) 
         source_events = np.unique(self.source[0].events)
         intersection = list(np.intersect1d(target_events, source_events))
-        idx = np.logical_or.reduce([self.target.events==intrs for intrs in intersection])
-        self.target._rearrange(idx)
+        # idx = np.logical_or.reduce([self.target.events==intrs for intrs in intersection])
+        # self.target.rearrange(idx)
+        self.target.rearrange(intersection)
         self.target.update_labels(self.source[0].labels_to_dict())
         #
         self.resample()
@@ -660,7 +663,7 @@ class CrossSet(Evaluation):
         # np.random.shuffle (in-place shuffle)
         split['X_train'], split['Y_train'] = self._permute_arrays([X_t, Y_t], axe)
         split['X_train'] = split['X_train'].transpose((2,1,0)) 
-        X_ts = X_ts.transpose((2,1,0))
+        X_ts = X_ts.transpose((2, 1, 0))
         # split['X_test'], split['Y_test'] = self._permute_arrays([X_ts, Y_ts], axe)
         # split['X_val'], split['Y_val'] = self._permute_arrays([X_ts, Y_ts], axe) # X_v, Y_v
 

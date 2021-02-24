@@ -264,7 +264,7 @@ class DataSet(metaclass=ABCMeta):
 
         return indexes
 
-    def rearrange(self, target_events=[], v=0):
+    def rearrange_legacy(self, target_events=[], v=0):
         '''Rearrange dataset by selecting a subset of epochs and their
         labels and events, according to the target events passed.
         Used in CrossSet evaluation
@@ -296,7 +296,19 @@ class DataSet(metaclass=ABCMeta):
                     ind = tmp
             ind_all.append(ind)
 
-        self._rearrange(ind_all)
+        self._rearrange_legacy(ind_all)
+
+    def rearrange(self, intersection_events=[]):
+        """
+        """
+        idx = np.logical_or.reduce([self.events==intrs for intrs in intersection_events])
+        self._rearrange(idx, ['epochs', 'y', 'events'])
+        
+        if hasattr(self, 'test_epochs'):
+            if isinstance(self.test_epochs, np.ndarray):
+                idx = np.logical_or.reduce([self.test_events==intrs for intrs in intersection_events])
+                self._rearrange(idx, ['test_epochs', 'test_y', 'test_events'])
+        
 
     def labels_to_dict(self):
         """Attach events to their corresponding labels in a dict
@@ -586,14 +598,29 @@ class DataSet(metaclass=ABCMeta):
             else:
                 setattr(self, k, np.array(tmp))
 
-    def _rearrange(self, ind):
+    def _rearrange(self, ind, attrs=[]):
         '''
         '''
         # takes only train data for future use in CrossSet
         # TODO : epochs, y, events are lists
-        attrs = ['epochs', 'y', 'events']
-        for sbj,_ in enumerate(self.epochs):
-            self.epochs[sbj,:,:,:] = self.epochs[sbj,:,:,ind[sbj]].transpose((1,2,0))
-            self.y[sbj,:] = self.y[sbj, ind[sbj]]
-            self.events[sbj,:] = self.events[sbj, ind[sbj]]
+        # attrs = ['epochs', 'y', 'events']
+        
+        tmp_ep = []
+        tmp_y = []
+        tmp_ev = []
+        
+        for sbj, _ in enumerate(getattr(self, attrs[0])):
+            tmp_ep.append( getattr(self, attrs[0])[sbj,:,:,ind[sbj]].transpose((1, 2, 0)) )
+            tmp_y.append(getattr(self, attrs[1])[sbj, ind[sbj]])
+            tmp_ev.append(getattr(self, attrs[2])[sbj, ind[sbj]])
+        
+        setattr(self, attrs[0], np.array(tmp_ep))
+        setattr(self, attrs[1], np.array(tmp_y))
+        setattr(self, attrs[2], np.array(tmp_ev))
+        #self.epochs = np.array(tmp_ep)
+        #self.y = np.array(tmp_y)
+        #self.events = np.array(tmp_ev)
+
+
+
 
