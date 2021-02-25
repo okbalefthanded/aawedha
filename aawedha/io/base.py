@@ -322,8 +322,12 @@ class DataSet(metaclass=ABCMeta):
         dict : keys: events str
                values : labels int
         """
-        keys = self.events.flatten().tolist()
-        values = self.y.flatten().tolist()
+        if isinstance(self.y, np.ndarray):
+            keys = self.events.flatten().tolist()
+            values = self.y.flatten().tolist()
+        else:
+            keys = np.concatenate(self.events, axis=-1).tolist()
+            values = np.concatenate(self.y, axis=-1).tolist()
         return dict(zip(keys, values))
         
     def update_labels(self, new_labels, v=[]):
