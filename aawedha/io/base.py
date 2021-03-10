@@ -429,7 +429,7 @@ class DataSet(metaclass=ABCMeta):
                 test_events_shapes = [ev.shape for ev in self.test_events]
                 test_shapes = "|| ".join([test_epoch_shapes, test_y_shapes, test_events_shapes])
         
-        print(f"Test Shapes: {test_shapes}")
+            print(f"Test Shapes: {test_shapes}")
 
     def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, slide=0.1, method='divide'):
         """Segment continuous EEG data using an augmentation method
