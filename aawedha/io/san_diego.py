@@ -24,7 +24,7 @@ class SanDiego(DataSet):
                          )
 
     def generate_set(self, load_path=None,
-                     epoch=1, band=[5.0, 45.0],
+                     epoch=4, band=[5.0, 45.0],
                      order=6, save_folder=None,
                      fname=None,
                      augment=False, method='divide',
@@ -40,7 +40,7 @@ class SanDiego(DataSet):
             raw data folder path
         epoch : int
             epoch duration in seconds relative to trials' onset
-            default : 1 sec
+            default : 4 sec (full trial length)
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [5., 45.]
@@ -74,7 +74,7 @@ class SanDiego(DataSet):
         self.events = self._get_events()
         self.save_set(save_folder, fname)
 
-    def load_raw(self, path=None, epoch_duration=1,
+    def load_raw(self, path=None, epoch_duration=4,
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
         """Read and process raw data into structured arrays
@@ -85,7 +85,7 @@ class SanDiego(DataSet):
             raw data folder path
         epoch_duration : int
             epoch duration in seconds relative to trials' onset
-            default : 1 sec
+            default : 4 sec (full trial length)
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [5., 45.]

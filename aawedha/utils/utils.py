@@ -1,3 +1,4 @@
+from aawedha.analysis.utils import isfloat
 from pynvml import *
 import tensorflow as tf
 import numpy as np
@@ -90,7 +91,7 @@ def init_TPU():
     return strategy
 
 
-def log_to_csv(filepath, folder):
+def log_to_csv(filepath, folder=''):
     """Convert log file into a csv file of results only
 
     Parameters
@@ -110,7 +111,10 @@ def log_to_csv(filepath, folder):
             if 'ACC' in line:
                 if 'epoch' in line:
                     acc_line = line.split('ACC: ')[-1].split(' ')
-                    numbers = float(acc_line[0])
+                    numbers = [ch.split('[')[-1].split(']')[0] for ch in acc_line]
+                    numbers = [float(ch) for ch in numbers if isfloat(ch)]
+                    numbers = numbers[:-1]
+                    # numbers = float(acc_line[0].split('[')[-1])
                 else:
                     acc_line = line.split('ACC: ')[-1]
                     numbers_str = ''.join((ch if ch in '0123456789.-e' else ' ') for ch in acc_line)
@@ -132,7 +136,9 @@ def log_to_csv(filepath, folder):
     columns = [f'Fold {fld+1}' for fld in range(nfolds)]
     df = pd.DataFrame(data=accs, index=rows, columns=columns)
     df.index.name = f"{model_name} / {metric}"
-
-    fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
+    if folder:
+        fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
+    else:
+        fname = f"{evl}_{dataset}_{metric}_{date}.csv"
     df.to_csv(fname, encoding='utf-8')
     print(f"csv file saved to : {fname}")

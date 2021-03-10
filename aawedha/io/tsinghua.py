@@ -14,7 +14,9 @@ class Tsinghua(DataSet):
     [1] X. Chen, Y. Wang, M. Nakanishi, X. Gao, T. -P. Jung, S. Gao,
        "High-speed spelling with a noninvasive brain-computer interface",
        Proc. Int. Natl. Acad. Sci. U. S. A, 112(44): E6058-6067, 2015.
-	[] A Benchmark Dataset for SSVEP-Based Brain–Computer Interfaces 
+	[2] Y. Wang, X. Chen, X. Gao, S. Gao, A Benchmark Dataset for SSVEP-Based 
+    Brain-Computer Interfaces, IEEE Trans. Neural Syst. Rehabil. 
+    Eng. 4320 (2016) 1–1. doi:10.1109/TNSRE.2016.2627556.
     """
 
     def __init__(self):
@@ -31,7 +33,7 @@ class Tsinghua(DataSet):
                          doi='http://dx.doi.org/10.1073/pnas.1508080112'
                          )
 
-    def generate_set(self, load_path=None, ch=None, epoch=1, band=[5.0, 45.0],
+    def generate_set(self, load_path=None, ch=None, epoch=5, band=[5.0, 45.0],
                      order=6, save_folder=None, fname=None,
                      augment=False, method='divide', slide=0.1):
         """Main method for creating and saving DataSet objects and files:
@@ -47,7 +49,7 @@ class Tsinghua(DataSet):
             default : None, keep all channels
         epoch : int
             epoch duration in seconds relative to trials' onset
-            default : 1 sec
+            default : 5 sec (full trial length)
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [5., 45.]
@@ -83,7 +85,7 @@ class Tsinghua(DataSet):
         self.events = self._get_events()
         self.save_set(save_folder, fname)
 
-    def load_raw(self, path=None, ch=None, epoch_duration=1,
+    def load_raw(self, path=None, ch=None, epoch_duration=5,
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
         """Read and process raw data into structured arrays
@@ -97,7 +99,7 @@ class Tsinghua(DataSet):
             default: None, keep all channels
         epoch_duration : int
             epoch duration in seconds relative to trials' onset
-            default : 1 sec
+            default : 5 sec (full trial length)
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [5., 45.]

@@ -33,7 +33,7 @@ class Perturbations(DataSet):
 
     def generate_set(self, load_path=None, ch=None,
                      downsample=4,
-                     epoch=1,
+                     epoch=3,
                      band=[5.0, 45.0],
                      order=6, save_folder=None,
                      fname=None,
@@ -56,7 +56,7 @@ class Perturbations(DataSet):
             default : 4
         epoch : int
             epoch duration in seconds relative to trials' onset
-            default : 1
+            default : 3 sec (full trial length)
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [5., 45.]
@@ -128,7 +128,7 @@ class Perturbations(DataSet):
             data acquisition session mode: 'train' or 'test'
         epoch_duration : int
             epoch duration in seconds relative to trials' onset
-            default : 3
+            default : 3 sec (full trial length)
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [5., 45.]

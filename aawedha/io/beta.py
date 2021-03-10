@@ -32,7 +32,7 @@ class Beta(DataSet):
 
 
 
-    def generate_set(self, load_path=None, ch=None, epoch=1, band=[5.0, 45.0],
+    def generate_set(self, load_path=None, ch=None, epoch=2, band=[5.0, 45.0],
                      order=6, save_folder=None, fname=None,
                      augment=False, method='divide', slide=0.1):
         """Main method for creating and saving DataSet objects and files:
@@ -48,7 +48,8 @@ class Beta(DataSet):
             default : None, keep all channels
         epoch : int
             epoch duration in seconds relative to trials' onset
-            default : 1 sec
+            default : 2 sec (subjects s1  to s15 full trial's lenght is 2 sec
+            3 sec for the rest)
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [5., 45.]
@@ -84,7 +85,7 @@ class Beta(DataSet):
         self.events = self._get_events()
         self.save_set(save_folder, fname)
 
-    def load_raw(self, path=None, ch=None, epoch_duration=1,
+    def load_raw(self, path=None, ch=None, epoch_duration=2,
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
         """Read and process raw data into structured arrays
@@ -98,7 +99,8 @@ class Beta(DataSet):
             default: None, keep all channels
         epoch_duration : int
             epoch duration in seconds relative to trials' onset
-            default : 1 sec
+            default : 2 sec (subjects s1  to s15 full trial's lenght is 2 sec
+            3 sec for the rest)
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [5., 45.]
