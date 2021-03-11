@@ -344,8 +344,12 @@ class SingleSubject(Evaluation):
         X_val, Y_val = None, None
         if indie:
             # independent Test set
+            # shape = (1, 0, 2)
             X_test = self.dataset.test_epochs[subj]
+            # _, _, _, channels_format = self._get_fit_configs()
             if X_test.ndim == 3:
+                # if channels_format == 'channels_first':
+                #   shape = (2, 1, 0)
                 shape = (2, 1, 0)
             else:
                 shape = (1, 0)
@@ -398,7 +402,11 @@ class SingleSubject(Evaluation):
         """
         # prepare data
         x = self.dataset.epochs[subj]
+        # _, _, _, channels_format = self._get_fit_configs()
+        # shape = (0, 1, 2)
         if x.ndim == 3:
+            # if channels_format == 'channels_first':
+            #    shape = (2, 1, 0)
             shape = (2, 1, 0)
         else:
             shape = (1, 0)

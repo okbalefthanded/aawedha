@@ -252,15 +252,24 @@ class CrossSubject(Evaluation):
             classes : array of values used to denote class labels
         """
         split = {}
-
+        '''
+        shape = (1, 0, 2)
+        _, _, _, channels_format = self._get_fit_configs()
+        if channels_format == 'channels_first':
+            shape = (2, 1, 0)
+        '''
+        shape = (2, 1, 0)
         X_train, Y_train = self._cat_lists(fold, 0)
         X_test, Y_test = self._cat_lists(fold, 2)
-        X_train = X_train.transpose((2, 1, 0))
-        X_test = X_test.transpose((2, 1, 0))
+        # X_train = X_train.transpose((2, 1, 0))
+        # X_test = X_test.transpose((2, 1, 0))
+        X_train = X_train.transpose(shape)
+        X_test = X_test.transpose(shape)
 
         if self._has_val():
             X_val, Y_val = self._cat_lists(fold, 1)
-            X_val = X_val.transpose((2, 1, 0))
+            # X_val = X_val.transpose((2, 1, 0))
+            X_val = X_val.transpose(shape)
         else:
             X_val, Y_val = None, None
 

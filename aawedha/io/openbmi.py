@@ -407,6 +407,7 @@ class OpenBMIERP(DataSet):
                 mrk = data['t'][0][0].squeeze() // stride
                 eeg = eeg_epoch(cnt, epoch_duration, mrk)
                 y = data['y_dec'][0][0].squeeze().astype(int)
+                y[y==2] = 0
                 ev = [elm.item() for elm in data['y_class'][0][0].squeeze().tolist()]                
                 del data
                 del cnt

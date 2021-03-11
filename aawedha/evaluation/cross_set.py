@@ -592,7 +592,13 @@ class CrossSet(Evaluation):
         Y_src = []
 
         # classes = np.unique(self.target.y)
-
+        '''
+        shape = (1, 0, 2)
+        _, _, _, channels_format = self._get_fit_configs()
+        if channels_format == 'channels_first':
+            shape = (2, 1, 0)
+        '''
+        shape = (2, 1, 0)
         if hasattr(self.target, 'test_epochs'):
             # if len(self.folds) == 1:
             X_t = self._flatten(self.target.epochs)
@@ -618,7 +624,8 @@ class CrossSet(Evaluation):
                 X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
                 Y_v = self._flatten(self.target.y[self.folds[fold][1]])
                 Y_v = labels_to_categorical(Y_v)
-                X_v = X_v.transpose((2, 1, 0))
+                X_v = X_v.transpose(shape)
+                # X_v = X_v.transpose((2, 1, 0))
                 # X_v, Y_v = self._permute_arrays((X_v, Y_v))
 
             else:
@@ -662,8 +669,12 @@ class CrossSet(Evaluation):
         # FIXME : Training/Val/Test data has to be shuffled
         # np.random.shuffle (in-place shuffle)
         split['X_train'], split['Y_train'] = self._permute_arrays([X_t, Y_t], axe)
-        split['X_train'] = split['X_train'].transpose((2,1,0)) 
-        X_ts = X_ts.transpose((2, 1, 0))
+        split['X_train'] = split['X_train'].transpose(shape) 
+        X_ts = X_ts.transpose(shape)
+        
+        # split['X_train'] = split['X_train'].transpose((2,1,0)) 
+        # X_ts = X_ts.transpose((2, 1, 0))
+        
         # split['X_test'], split['Y_test'] = self._permute_arrays([X_ts, Y_ts], axe)
         # split['X_val'], split['Y_val'] = self._permute_arrays([X_ts, Y_ts], axe) # X_v, Y_v
 

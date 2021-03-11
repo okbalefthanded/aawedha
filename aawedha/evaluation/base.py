@@ -4,6 +4,7 @@ from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.utils.evaluation_utils import class_weights
 from aawedha.evaluation.checkpoint import CheckPoint
 from tensorflow.keras.models import load_model
+from tensorflow.keras import backend as K
 from aawedha.io.base import DataSet
 import tensorflow as tf
 import pandas as pd
@@ -705,6 +706,12 @@ class Evaluation(object):
         spe = None
         if device == 'TPU':
             spe = X_train.shape[0] // batch
+            '''
+            if format == 'channels_first':
+                spe = X_train.shape[0] // batch
+            else:
+                spe = X_train.shape[-1] // batch
+            '''
 
         history = self.model.fit(X_train, Y_train,
                                  batch_size=batch,
@@ -771,8 +778,7 @@ class Evaluation(object):
             else:
                 metrics = []            
             optimizer = 'adam'
-            # set config for checkpoint use
-            
+            # set config for checkpoint use            
 
         return khsara, optimizer, metrics
 
@@ -807,10 +813,14 @@ class Evaluation(object):
             batch = self.model_config['fit']['batch']
             ep = self.model_config['fit']['epochs']
             clbks = self.model_config['fit']['callbacks']
+            # format = self.model_config['fit']['format']
         else:
             batch = 64
             ep = 300
             clbks = []
+            # format = 'channels_first'
+        
+        # K.set_image_data_format(format)
         
         if self.debug:
             # logdir = os.path.join("aawedha/debug", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
@@ -818,7 +828,8 @@ class Evaluation(object):
             if not os.path.isdir(self.log_dir):
                 os.mkdir(self.log_dir)
             clbks.append(tf.keras.callbacks.TensorBoard(self.log_dir))
-        return batch, ep, clbks
+        
+        return batch, ep, clbks #, format
 
     def _get_model_configs_info(self):
         """Construct a logging message to be added to logger at evaluation beginning
