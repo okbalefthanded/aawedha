@@ -358,8 +358,8 @@ class Evaluation(object):
             folderpath = 'trained'
         prdg = self.dataset.paradigm.title
         dt = self.dataset.title
-        filepath = folderpath + '/' + \
-            '_'.join([self.model.name, prdg, dt, '.h5'])
+        # filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])
+        filepath = os.join.path(folderpath, '_'.join([self.model.name, prdg, dt, '.h5']))
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
@@ -635,7 +635,6 @@ class Evaluation(object):
         None
         """
         device = self._get_device()
-        # if not self.model_config:
         khsara, optimizer, metrics = self._get_compile_configs()
 
         if device != 'TPU':
@@ -824,7 +823,8 @@ class Evaluation(object):
         
         if self.debug:
             # logdir = os.path.join("aawedha/debug", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-            self.log_dir = os.path.join("aawedha/debug", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+            debug_dir = os.path.join("aawedha", "debug")
+            self.log_dir = os.path.join(debug_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
             if not os.path.isdir(self.log_dir):
                 os.mkdir(self.log_dir)
             clbks.append(tf.keras.callbacks.TensorBoard(self.log_dir))
@@ -854,7 +854,16 @@ class Evaluation(object):
         return model_config
 
     def _get_metrics(self):
-        """
+        """Get a list of default suitable metrics for training according to the numbder
+        of classes in dataset.
+        
+        - Binary classification : Accuracy, AUC, True Positives, False Positives, True Negatives,
+            False Negatives, Precision, Recall.
+        - Multi Class : Accuracy only.
+        
+        Returns
+        -------
+        List of metrics
         """
         classes = self._get_classes()
         
@@ -874,7 +883,14 @@ class Evaluation(object):
         return metrics
 
     def _get_loss(self):
-        """
+        """Get default suitable Loss name according to the number of classes in dataset.
+        
+        - Binary Classification : binary_crossentropy
+        - Multi Class : sparse_categorical_crossentropy
+
+        Returns
+        -------
+        str : name of Loss
         """
         classes = self._get_classes()
         if classes == 2:
@@ -883,7 +899,10 @@ class Evaluation(object):
             return 'sparse_categorical_crossentropy' 
 
     def _get_classes(self):
-        """
+        """Number of classes in DataSet
+        Returns
+        -------
+        int : number of classes if dataset is set, 0 otherwise.
         """
         if self.dataset:
             return self.dataset.get_n_classes()
@@ -996,7 +1015,16 @@ class Evaluation(object):
         return results
 
     def _update_results(self, res):
-        """
+        """Add metrics results mean to results dict.
+
+        Parameters
+        ----------
+        res : dict
+            dictionary of metrics results
+        Returns
+        -------
+        res : dict
+            updated dictionary with metrics mean fields.
         """
         metrics = list(res.keys())
         if isinstance(self.dataset, DataSet):
@@ -1035,6 +1063,24 @@ class Evaluation(object):
                 device = 'CPU'
             return device
 
+    def _log_operation_results(self, op_ind, op_results):
+        """Save an evaluation iteration results in logger.
+
+        Parameters
+        ----------
+        op_ind : int
+            operation index : 
+             - subject number in case of SingleSubject evaluation.
+             - fold index in case of both CrossSubject and CrossSet evaluation.
+        op_results : dict
+            operation metric results: accuracy and auc (if binary classification)
+        """         
+        msg = f" Subj : {op_ind+1} ACC: {np.array(op_results['accuracy'])*100}"
+        if 'auc' in op_results:
+            msg += f" AUC: {np.array(op_results['auc'])*100}"
+        msg += f' Training stopped at epoch: {self.model_history.epoch[-1]}'
+        self.logger.debug(msg)        
+    
     def _log_results(self):
         """Log metrics means after the end of an evaluation to logger"""
         means = [f'{metric}: {v}' for metric,

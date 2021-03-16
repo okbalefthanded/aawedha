@@ -135,14 +135,14 @@ class SingleSubject(Evaluation):
             subj_results = self._aggregate_results(rets)
 
             if self.log:
+                self._log_operation_results(subj, subj_results)
+                '''
                 msg = f" Subj : {subj+1} ACC: {np.array(subj_results['accuracy'])*100}"
-                # if len(self.model.metrics) > 1:
-                # if len(self.model_config['compile']['metrics']) > 1:
                 if 'auc' in subj_results:
                     msg += f" AUC: {np.array(subj_results['auc'])*100}"
                 msg += f' Training stopped at epoch: {self.model_history.epoch[-1]}'
                 self.logger.debug(msg)
-                # self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+                '''
 
             res.append(subj_results)
 
@@ -285,7 +285,7 @@ class SingleSubject(Evaluation):
         # TODO : when epochs/y/test_epochs/y_test are lists???
         # make lists of lists
         if isinstance(self.dataset.epochs, list):
-            # TODO
+            # TODO            
             pass
         else:
             self.dataset.epochs = np.vstack((self.dataset.epochs, self.dataset.test_epochs))

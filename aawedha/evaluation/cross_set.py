@@ -297,6 +297,8 @@ class CrossSet(Evaluation):
             rets = self._cross_set(fold)      
 
             if self.log:
+                self._log_operation_results(fold, rets)
+                '''
                 msg = f" Subj : {fold+1} ACC: {np.array(rets['accuracy'])*100}"
                 # if len(self.model.metrics) > 1:
                 if len(self.model_config['compile']['metrics']) > 1:
@@ -304,6 +306,7 @@ class CrossSet(Evaluation):
                 msg += f' Training stopped at epoch: {self.model_history.epoch[-1]}'
                 # self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
                 self.logger.debug(msg)
+                '''
 
             res.append(rets)
 

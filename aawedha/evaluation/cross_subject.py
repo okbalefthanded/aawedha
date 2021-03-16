@@ -118,14 +118,14 @@ class CrossSubject(Evaluation):
             rets = self._cross_subject(fold)
 
             if self.log:
+                self._log_operation_results(fold, rets)
+                '''
                 msg = f" Subj : {fold+1} ACC: {np.array(rets['accuracy'])*100}"
-                # if len(self.model.metrics) > 1:
-                # if len(self.model_config['compile']['metrics']) > 1:
                 if 'auc' in rets:
                     msg += f" AUC: {np.array(rets['auc'])*100}"
                 msg += f' Training stopped at epoch: {self.model_history.epoch[-1]}'
                 self.logger.debug(msg)
-                # self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
+                '''
 
             res.append(rets)
 
