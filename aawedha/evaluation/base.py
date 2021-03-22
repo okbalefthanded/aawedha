@@ -140,9 +140,14 @@ class Evaluation(object):
                 title = dataset.title
             else:
                 title = ''
+            dataset_folder = f"aawedha/logs/{title}"
             now = datetime.datetime.now().strftime('%c').replace(' ', '_')
-            f = 'aawedha/logs/' + '_'.join([self.__class__.__name__,
-                                            title, now, '.log'])
+            if not os.path.isdir(dataset_folder):
+                os.mkdir(dataset_folder)
+            # f = 'aawedha/logs/' + '_'.join([self.__class__.__name__,
+            #                                title, now, '.log'])
+            f = dataset_folder + '_'.join([self.__class__.__name__,
+                                           title, now, '.log'])
             self.logger = log(fname=f, logger_name='eval_log')
         else:
             self.logger = None
@@ -242,6 +247,7 @@ class Evaluation(object):
         # classes = Y_test.max()
         if Y_test.ndim == 2:
             Y_test = Y_test.argmax(axis=1)
+            probs = probs[:, 1]
 
         classes = np.unique(Y_test).size       
 

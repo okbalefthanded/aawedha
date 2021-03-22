@@ -411,7 +411,11 @@ class DataSet(metaclass=ABCMeta):
         """Print DataSet Tensors shapes, used as a helper.
         """
         if isinstance(self.epochs, np.ndarray):
-            shapes = f"|| Epochs {self.epochs.shape} || Y {self.y.shape} || Events {self.events.shape}"
+            if isinstance(self.events, np.ndarray):
+                events = self.events.shape
+            else:
+                events = ''
+            shapes = f"|| Epochs {self.epochs.shape} || Y {self.y.shape} || Events {events}"
         else:
             epoch_shapes = [ep.shape for ep in self.epochs]
             y_shapes = [yy.shape for yy in self.y]
@@ -422,7 +426,11 @@ class DataSet(metaclass=ABCMeta):
         
         if hasattr(self, 'test_epochs'):
             if isinstance(self.test_epochs, np.ndarray):
-                test_shapes = f"|| Test Epochs {self.test_epochs.shape} || Test Y {self.test_y.shape} || Test Events {self.test_events.shape}"
+                if isinstance(self.test_events, np.ndarray):
+                    events = self.test_events.shape
+                else:
+                    events = ''
+                test_shapes = f"|| Test Epochs {self.test_epochs.shape} || Test Y {self.test_y.shape} || Test Events {events}"
             else:
                 test_epoch_shapes = [ep.shape for ep in self.test_epochs]
                 test_y_shapes = [yy.shape for yy in self.test_y]

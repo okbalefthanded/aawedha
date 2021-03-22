@@ -162,7 +162,19 @@ class CrossSet(Evaluation):
             src.resample(min_fs)
 
         self.target.resample(min_fs)
-
+        # check epochs length after resampling
+        if isinstance(self.target.epochs, np.ndarray):
+            length_target = self.target.epochs.shape[1]
+        else:
+            length_target = self.target.epochs[0].shape[0]
+        
+        for src in self.source:
+            if isinstance(src.epochs, np.ndarray):
+                src.epochs = src.epochs[:, :length_target, :, :]
+            else:
+                src.epochs = [ep[:length_target, :, :] for ep in src.epochs]
+        
+    
     def generate_set(self, replacement={}):
         '''Unify datasets in a single format by keeping shared channels, trials
         and resampling.
@@ -789,6 +801,17 @@ class CrossSet(Evaluation):
             test_epochs = len(self.target.test_epochs)
         return train_epochs == test_epochs
 
+    def _get_classes(self):
+        """Number of classes in DataSet
+        Returns
+        -------
+        int : number of classes if dataset is set, 0 otherwise.
+        """
+        if self.target:
+            return self.target.get_n_classes()
+        else:
+            return 0  
+    
     def _get_n_subjects(self):
         """Return number of subjects in dataset
 
@@ -832,4 +855,20 @@ class CrossSet(Evaluation):
         prt = np.sum(self.partition)
         return self.n_subjects < prt
 
+
+
+class CrossSetERP(CrossSet):
+
+    def generate_set(self, replacement={}):
+        #
+        chs = self._get_min_channels()        
+        # select channels for source datasets
+        for src in self.source:
+            self.select_channels(src, chs)
+            
+        if replacement:
+            self.select_channels(self.target, chs, replacement)
+        else:
+            self.select_channels(self.target, chs)
+        self.resample()
 

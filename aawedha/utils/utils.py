@@ -1,5 +1,5 @@
-from aawedha.analysis.utils import isfloat
 from pynvml import *
+from aawedha.analysis.utils import isfloat
 import tensorflow as tf
 import numpy as np
 import pandas as pd
