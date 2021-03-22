@@ -136,13 +136,6 @@ class SingleSubject(Evaluation):
 
             if self.log:
                 self._log_operation_results(subj, subj_results)
-                '''
-                msg = f" Subj : {subj+1} ACC: {np.array(subj_results['accuracy'])*100}"
-                if 'auc' in subj_results:
-                    msg += f" AUC: {np.array(subj_results['auc'])*100}"
-                msg += f' Training stopped at epoch: {self.model_history.epoch[-1]}'
-                self.logger.debug(msg)
-                '''
 
             res.append(subj_results)
 

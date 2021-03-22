@@ -487,7 +487,7 @@ class Evaluation(object):
         no value
         """
         s = ['train', 'val', 'test']
-
+        '''
         if self.dataset:
             data = f' Dataset: {self.dataset.title}'
             if isinstance(self.dataset.epochs, list):
@@ -500,6 +500,8 @@ class Evaluation(object):
             data = ''
             duration = '0'
             data_shape = '[]'
+        '''
+        data, duration, data_shape = self._dataset_info()
 
         prt = 'Subjects partition ' + \
               ', '.join(f'{s[i], self.partition[i]}' for i in range(
@@ -1093,6 +1095,34 @@ class Evaluation(object):
                  v in self.results.items() if 'mean' in metric]
         self.logger.debug(' / '.join(means))
 
+    
+    def _dataset_info(self):
+        """Collect informations on evaluation dataset, which will be used in logging.
+        Returns
+        -------
+        data : str
+            dataset title
+        duration : str
+            epoch length in seconds
+        data_shape : str
+            dimension of data : subjects x samples x channels x trials
+        """
+        if self.dataset:
+            data = f' Dataset: {self.dataset.title}'
+            if isinstance(self.dataset.epochs, list):
+                duration = f' epoch duration:{self.dataset.epochs[0].shape[0] / self.dataset.fs} sec'
+                data_shape = f'{len(self.dataset.epochs), self.dataset.epochs[0].shape} list'
+            else:
+                duration = f' epoch duration:{self.dataset.epochs.shape[1] / self.dataset.fs} sec'
+                data_shape = f'{self.dataset.epochs.shape}'
+        else:
+            data = ''
+            duration = '0'
+            data_shape = '[]'
+
+        return data, duration, data_shape
+        
+    
     def _savecsv(self, folder=None):
         """Save evaluation results in a CSV file as Pandas DataFrame
 

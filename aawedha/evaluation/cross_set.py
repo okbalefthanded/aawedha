@@ -310,16 +310,7 @@ class CrossSet(Evaluation):
 
             if self.log:
                 self._log_operation_results(fold, rets)
-                '''
-                msg = f" Subj : {fold+1} ACC: {np.array(rets['accuracy'])*100}"
-                # if len(self.model.metrics) > 1:
-                if len(self.model_config['compile']['metrics']) > 1:
-                    msg += f" AUC: {np.array(rets['auc'])*100}"
-                msg += f' Training stopped at epoch: {self.model_history.epoch[-1]}'
-                # self.logger.debug(f' Training stopped at epoch: {self.model_history.epoch[-1]}')
-                self.logger.debug(msg)
-                '''
-
+                
             res.append(rets)
 
             if check:
@@ -854,6 +845,48 @@ class CrossSet(Evaluation):
         """
         prt = np.sum(self.partition)
         return self.n_subjects < prt
+
+    def _dataset_info(self):
+        """Collect informations on evaluation target  and source datasets, which will be used in logging.
+        Returns
+        -------
+        data : str
+            datasets title
+        duration : str
+            epoch length in seconds
+        data_shape : str
+            dimension of data : subjects x samples x channels x trials
+        """
+        if self.target:
+            data = f' Target: {self.target.title}'
+            if isinstance(self.target.epochs, list):
+                duration = f' epoch duration:{self.target.epochs[0].shape[0] / self.target.fs} sec'
+                data_shape = f'{len(self.target.epochs), self.target.epochs[0].shape} list'
+            else:
+                duration = f' epoch duration:{self.target.epochs.shape[1] / self.target.fs} sec'
+                data_shape = f'{self.target.epochs.shape}'
+        else:
+            data = ''
+            duration = '0'
+            data_shape = '[]'
+
+        data_source = "Source Sets:"
+        duration_source = ''
+        source_shapes = ''
+        for src in self.source:
+            data_source += f"| {src.title}"
+            if isinstance(self.target.epochs, list):
+                duration_source += f' | epoch duration:{src.epochs[0].shape[0] / src.fs} sec'                
+                source_shapes += f'| {len(src.epochs), src.epochs[0].shape} list'
+            else:
+                duration_source += f'| epoch duration:{src.epochs.shape[1] / src.fs} sec'
+                source_shapes += f'| {src.epochs.shape}'
+        
+        data += data_source            
+        duration += duration_source
+        data_shape += source_shapes
+
+        return data, duration, data_shape
 
 
 
