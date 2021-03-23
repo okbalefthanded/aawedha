@@ -3,6 +3,7 @@ from aawedha.utils.utils import log, get_gpu_name, init_TPU
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.utils.evaluation_utils import class_weights
 from aawedha.evaluation.checkpoint import CheckPoint
+from aawedha.models.utils_models import freeze_model
 from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
 from aawedha.io.base import DataSet
@@ -171,14 +172,14 @@ class Evaluation(object):
     @abc.abstractmethod
     def generate_split(self, nfolds):
         """Generate train/validation/test split
-            Overridden in each type of evaluation : SingleSubject | CrossSubject
+            Overridden in each type of evaluation : SingleSubject | CrossSubject | CrossSet
         """
         pass
 
     @abc.abstractmethod
     def run_evaluation(self):
         """Main evaluation process
-            Overridden in each type of evaluation : SingleSubject | CrossSubject
+            Overridden in each type of evaluation : SingleSubject | CrossSubject | CrossSet 
         """
         pass
 
@@ -342,7 +343,7 @@ class Evaluation(object):
         res = self._update_results(res)
         return res
 
-    def save_model(self, folderpath=None):
+    def save_model(self, folderpath=None, save_frozen=False):
         """Save trained model in HDF5 format
         Uses the built-in save method in Keras Model object.
         model name will be: folderpath/modelname_paradigm_dataset.h5
@@ -367,6 +368,9 @@ class Evaluation(object):
         # filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])
         filepath = os.join.path(folderpath, '_'.join([self.model.name, prdg, dt, '.h5']))
         self.model.save(filepath)
+
+        if save_frozen:
+            frozen_path = freeze_model(self.model, folderpath)
 
     def set_model(self, model=None, model_config={}):
         """Assign Model and model_config
@@ -719,6 +723,7 @@ class Evaluation(object):
             else:
                 spe = X_train.shape[-1] // batch
             '''
+        probs, perf = None, None
 
         history = self.model.fit(X_train, Y_train,
                                  batch_size=batch,
@@ -728,9 +733,11 @@ class Evaluation(object):
                                  validation_data=val,
                                  class_weight=cws,
                                  callbacks=clbs)
-
-        probs = self.model.predict(X_test)
-        perf = self.model.evaluate(X_test, Y_test, verbose=0)
+        
+        if isinstance(X_test, np.ndarray):
+            probs = self.model.predict(X_test)
+            perf = self.model.evaluate(X_test, Y_test, verbose=0)
+        
         return history, probs, perf
 
     def _eval_split(self, split={}):
@@ -745,6 +752,7 @@ class Evaluation(object):
         -------
         rets: dict of performance metrics
         """
+        rets = []
         X_train, Y_train = split['X_train'], split['Y_train']
         X_test, Y_test = split['X_test'], split['Y_test']
         X_val, Y_val = split['X_val'], split['Y_val']
@@ -755,7 +763,8 @@ class Evaluation(object):
                                                            X_val, Y_val,
                                                            X_test, Y_test,
                                                            cws)
-        rets = self.measure_performance(Y_test, probs, perf)
+        if isinstance(X_test, np.ndarray):
+            rets = self.measure_performance(Y_test, probs, perf)
         return rets
 
     def _get_compile_configs(self):
