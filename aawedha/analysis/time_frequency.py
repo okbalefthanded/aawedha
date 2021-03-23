@@ -24,14 +24,20 @@ def spectral_power(data, subject=0, channel='POz'):
     frequencies: nd array
         array of frequencies: 0 - nyquist
     """
-
-    samples, channels, trials = data.epochs[subject].shape
-    y = data.y[subject]
+    if isinstance(data.epochs, list) or data.epochs.ndim == 4:
+        samples, channels, trials = data.epochs[subject].shape
+        y = data.y[subject]
+        ev_count = np.unique(data.events[subject]).size
+        epochs = data.epochs[subject]
+    else:
+        samples, channels, trials = data.epochs.shape
+        y = data.y
+        ev_count = np.unique(data.events).size
+        epochs = data.epochs    
+    
     nyquist = data.fs / 2
     # frequencies = np.linspace(0, nyquist, np.floor(samples/2).astype(int)+1)
-    frequencies = np.arange(0, nyquist, data.fs/samples)
-
-    ev_count = np.unique(data.events[subject]).size
+    frequencies = np.arange(0, nyquist, data.fs/samples)   
 
     trials_per_class = np.round(trials / ev_count).astype(int)
     pwr = []
@@ -39,7 +45,7 @@ def spectral_power(data, subject=0, channel='POz'):
     power = np.zeros((len(frequencies), trials_per_class))
 
     for fr in range(ev_count):
-        epo_frq = data.epochs[subject][:, ch, y == fr+1].squeeze()
+        epo_frq = epochs[:, ch, y == fr+1].squeeze()
         tr_per_class = np.sum(y == fr+1)
         for tr in range(tr_per_class):
             f = fft(epo_frq[:, tr]) / samples
@@ -76,13 +82,23 @@ def wavelet(data, subject=0, channel='POz', w=4.):
     frequencies : nd array
         frequencies in signal from 1 to nyquist
     """
-    samples, channels, trials = data.epochs[subject].shape
-    y = data.y[subject]
     fs = data.fs
     ch = data.ch_names.index(channel)
-    ev_count = np.unique(data.events[subject]).size
-
-    sig = data.epochs[subject][:, ch, :]
+    
+    if isinstance(data.epochs, list) or data.epochs.ndim == 4:
+        samples, channels, trials = data.epochs[subject].shape
+        y = data.y[subject]
+        ev_count = np.unique(data.events[subject]).size
+        sig = data.epochs[subject][:, ch, :]
+    else:
+        samples, channels, trials = data.epochs.shape
+        y = data.y
+        ev_count = np.unique(data.events).size
+        sig = data.epochs[:, ch, :]    
+    
+    # samples, channels, trials = data.epochs[subject].shape
+    # y = data.y[subject]  
+    
     t = np.linspace(0, samples/fs, samples)
     freq = np.linspace(1, fs/2, samples//2)
     widths = w*fs / (2*freq*np.pi)
@@ -132,9 +148,9 @@ def snr(power, freqs, fs):
         power = power[1:]
         freqs = freqs[1:]
     snr = []
-    for i in range(len(freqs)):
-        idx = np.argwhere(frequencies == float(freqs[i])).item()
-        adj = [idx + r for r in range(-4, 4) if r != 0]
+    for i, f in enumerate(freqs):
+        idx = np.where(np.isclose(frequencies, float(f)))[0][0]
+        adj = [idx + r for r in range(-4, 4) if r != 0]        
         # idx = np.logical_or.reduce([frequencies == float(freqs[i])+r for r in range(-4,4) if r !=0])
         s = power[i][idx] / np.mean(power[i][adj])
         snr.append(s.item())
