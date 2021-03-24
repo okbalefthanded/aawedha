@@ -365,7 +365,7 @@ class Evaluation(object):
         prdg = self.dataset.paradigm.title
         dt = self.dataset.title
         # filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])
-        filepath = os.join.path(folderpath, '_'.join([self.model.name, prdg, dt, '.h5']))
+        filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt, '.h5']))
         self.model.save(filepath)
 
         if save_frozen:

@@ -191,7 +191,7 @@ class Train(Evaluation):
             if not os.path.isdir('trained/history'):
                 os.mkdir('trained/history')
             folder = 'trained/history'
-        fname = os.join.path(folder, '_'.join([self.model.name, date]))
+        fname = os.path.join(folder, '_'.join([self.model.name, date]))
         df = pd.DataFrame(self.model_history.history)
         df.to_csv(fname, encoding='utf-8')
         
