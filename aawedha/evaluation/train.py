@@ -62,7 +62,7 @@ class Train(Evaluation):
 
         # save training history as a DataFrame
         if save_history:
-          self.save_history(folder=folder)
+          self._save_history(folder=folder)
 
     def _select_trials(self, new_labels=None, events=None):
         """Keep a subset of trials for training
