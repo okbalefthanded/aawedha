@@ -320,7 +320,7 @@ class Evaluation(object):
             examples = len(self.predictions[0])
             dim = len(self.predictions[0][0])
 
-            if self.__class__.__name__ == 'CrossSubject' or self.__class__.__name__ == 'CrossSet':
+            if self.__class__.__name__ == 'CrossSubject':
                 self.predictions = np.array(self.predictions).reshape(
                     (folds, examples, dim))
             elif self.__class__.__name__ == 'SingleSubject':
@@ -328,18 +328,6 @@ class Evaluation(object):
                     (self.n_subjects, folds, examples, dim))
 
         res = self._aggregate_results(res)
-        """
-        metrics = list(res.keys())
-        if self.dataset.get_n_classes() == 2:
-            metrics.remove('viz')
-
-        for metric in metrics:
-            res[metric + '_mean'] = np.array(res[metric]).mean()
-            res[metric + '_mean_per_fold'] = np.array(res[metric]).mean(axis=0)
-            if np.array(res[metric]).ndim == 2:
-                res[metric +
-                    '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
-        """
         res = self._update_results(res)
         return res
 
@@ -490,20 +478,7 @@ class Evaluation(object):
         no value
         """
         s = ['train', 'val', 'test']
-        '''
-        if self.dataset:
-            data = f' Dataset: {self.dataset.title}'
-            if isinstance(self.dataset.epochs, list):
-                duration = f' epoch duration:{self.dataset.epochs[0].shape[0] / self.dataset.fs} sec'
-                data_shape = f'{len(self.dataset.epochs), self.dataset.epochs[0].shape} list'
-            else:
-                duration = f' epoch duration:{self.dataset.epochs.shape[1] / self.dataset.fs} sec'
-                data_shape = f'{self.dataset.epochs.shape}'
-        else:
-            data = ''
-            duration = '0'
-            data_shape = '[]'
-        '''
+        
         data, duration, data_shape = self._dataset_info()
 
         prt = 'Subjects partition ' + \

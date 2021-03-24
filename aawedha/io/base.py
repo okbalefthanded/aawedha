@@ -565,6 +565,20 @@ class DataSet(metaclass=ABCMeta):
         """
         self.ch_names = channels
 
+    def get_length(self):
+        """Get length of dataset epochs in samples
+
+        Returns
+        -------
+        int
+            epochs length in samples
+        """
+        if isinstance(self.epochs, np.ndarray):
+            length = self.epochs.shape[1]
+        else:
+            length = self.epochs[0].shape[0]
+        return length
+
     @staticmethod
     def _resample_array(ndarray, up, down):
         '''
