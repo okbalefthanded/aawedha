@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import logging
+import datetime
 import os
 
 
@@ -142,3 +143,8 @@ def log_to_csv(filepath, folder=''):
         fname = f"{evl}_{dataset}_{metric}_{date}.csv"
     df.to_csv(fname, encoding='utf-8')
     print(f"csv file saved to : {fname}")
+
+def time_now():
+    """[summary]
+    """
+    return datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')

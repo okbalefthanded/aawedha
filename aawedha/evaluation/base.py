@@ -1,5 +1,5 @@
 from tensorflow.keras.layers.experimental import preprocessing
-from aawedha.utils.utils import log, get_gpu_name, init_TPU
+from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.utils.evaluation_utils import class_weights
 from aawedha.evaluation.checkpoint import CheckPoint
@@ -358,7 +358,6 @@ class Evaluation(object):
         -------
         no value
         """
-
         if not os.path.isdir('trained'):
             os.mkdir('trained')
         if not folderpath:
@@ -1171,7 +1170,7 @@ class Evaluation(object):
             columns = [f'Fold {fld+1}' for fld in range(nfolds)]
 
         columns.extend(['Avg', 'Std', 'Sem'])
-        date = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+        date = time_now()
         for metric in metrics:
             acc = np.array(self.results[metric]).round(3) * 100
             if acc.ndim == 1:

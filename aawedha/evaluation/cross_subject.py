@@ -20,7 +20,7 @@ class CrossSubject(Evaluation):
         distinct subset for train/validation/test.
 
     _cat_lists()
-        some datasets has different number of trials for each subject, 
+        some datasets has different number of trials for each subject,   
         so the dataset is a list of ndarrays instead of a single Tensor,
         this method concatenates selected subject in a single Tensor at
         evaluation.
