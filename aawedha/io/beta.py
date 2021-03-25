@@ -194,6 +194,18 @@ class Beta(DataSet):
     
     @staticmethod
     def _get_subject(data):
+        """Extract subject information
+
+        Parameters
+        ----------
+        data : dict
+            subject's raw data
+
+        Returns
+        -------
+        Subject instance
+            
+        """
         suppl_info = data['data'][0][0][1]
         subj_id = suppl_info['sub'][0][0][0]
         gender = suppl_info['gender'][0][0][0][0]

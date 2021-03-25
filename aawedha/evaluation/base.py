@@ -1104,6 +1104,23 @@ class Evaluation(object):
             data_shape = '[]'
 
         return data, duration, data_shape
+
+    def _post_operations(self, savecsv=False, csvfolder=None):
+        """Log results and save them as a pandas DataFrame 
+
+        Parameters
+        ----------
+        savecsv : bool, optional
+            if True, save results as a pandas DataFrame in a csv file. By default False
+        csvfolder : str, optional
+            folder path where to save results, by default None
+        """
+        if self.log:
+            self._log_results()
+
+        if savecsv:
+            if self.results:
+                self._savecsv(csvfolder)
         
     
     def _savecsv(self, folder=None):

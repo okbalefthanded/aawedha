@@ -1,7 +1,6 @@
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
-# from aawedha.utils.evaluation_utils import fit_scale, transform_scale
+from aawedha.utils.evaluation_utils import labels_to_categorical
 from aawedha.analysis.utils import isfloat
 import numpy as np
 
@@ -305,13 +304,15 @@ class CrossSet(Evaluation):
             self.results = self.results_reports(res)
         elif check:
             self.results = self.results_reports(pointer.rets)
-
+        '''
         if self.log:
             self._log_results()
 
         if savecsv:
             if self.results:
                 self._savecsv(csvfolder)
+        '''
+        self._post_operations(savecsv, csvfolder)
 
     def get_folds(self, nfolds, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy
@@ -539,10 +540,15 @@ class CrossSet(Evaluation):
             # else:
             #    pass
         else:
-            X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
-            X_ts = self._flatten(self.target.epochs[self.folds[fold][2]])
-            Y_t = self._flatten(self.target.y[self.folds[fold][0]])            
-            Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
+            if self.target.equal_trials() == 0:            
+                X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
+                X_ts = self._flatten(self.target.epochs[self.folds[fold][2]])
+                Y_t = self._flatten(self.target.y[self.folds[fold][0]])            
+                Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
+            else:
+                # TODO
+                pass
+            
             if self._has_val():
                 X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
                 Y_v = self._flatten(self.target.y[self.folds[fold][1]])
@@ -567,7 +573,7 @@ class CrossSet(Evaluation):
             X_v = None
             Y_v = None
 
-        # samples, channels, trials = X_t.shape        
+        # samples, channels, trials = X_t.shape       
 
         axe = 2
 

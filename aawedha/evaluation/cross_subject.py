@@ -40,10 +40,6 @@ class CrossSubject(Evaluation):
             True, exclude target subject from evaluation to insure a complete
             cross-subject evaluation, False otherwise
             default : True
-
-        Returns
-        -------
-        no value, sets folds attribute with a list of arrays
         """
 
         if self._assert_partition(excl):
@@ -63,9 +59,7 @@ class CrossSubject(Evaluation):
             # error : wrong partition
             raise AssertionError('Wrong partition scheme', self.partition)
 
-        self.folds = self.get_folds(
-            nfolds, self.n_subjects, train_phase, val_phase,
-            test_phase, exclude_subj=excl)
+        self.folds = self.get_folds(nfolds, train_phase, val_phase, test_phase, exclude_subj=excl)
 
     def run_evaluation(self, folds=None, pointer=None, check=False, savecsv=False, csvfolder=None):
         """Perform evaluation on subsets of subjects
@@ -88,10 +82,6 @@ class CrossSubject(Evaluation):
 
         csvfolder : str
             if savecsv is True, the results files in csv will be saved inside this folder
-
-        Returns
-        -------
-        no value, sets results attribute
         """
         # generate folds if folds are empty
         if not self.folds:
@@ -123,9 +113,9 @@ class CrossSubject(Evaluation):
             res.append(rets)
 
             if check:
-                # pointer.set_checkpoint(fold+1, self.model)
                 pointer.set_checkpoint(fold + 1, self.model, rets)
         #
+        # self._post_operations()
         if (isinstance(self.dataset.epochs, np.ndarray) and
                 self.dataset.epochs.ndim == 3):
             #
@@ -136,26 +126,30 @@ class CrossSubject(Evaluation):
         elif check:
             self.results = self.results_reports(pointer.rets)
 
+        '''
         if self.log:
             self._log_results()
 
         if savecsv:
             if self.results:
                 self._savecsv(csvfolder)
+        '''
+        self._post_operations(savecsv, csvfolder)
 
-    def get_folds(self, nfolds, population, tr, vl, ts, exclude_subj=True):
+    def get_folds(self, nfolds, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy
 
         Parameters
         ----------
         nfolds : int
             number of folds to generate
-        population : int
-            number of total trials/subjects available
+
         tr : int
             number of trials/subjects to include in train folds
+        
         vl : int
             number of trials/subjects to include in validation folds
+        
         ts : int
             number of trials/subjects to include in test folds
 
@@ -254,14 +248,11 @@ class CrossSubject(Evaluation):
         shape = (2, 1, 0)
         X_train, Y_train = self._cat_lists(fold, 0)
         X_test, Y_test = self._cat_lists(fold, 2)
-        # X_train = X_train.transpose((2, 1, 0))
-        # X_test = X_test.transpose((2, 1, 0))
         X_train = X_train.transpose(shape)
         X_test = X_test.transpose(shape)
 
         if self._has_val():
             X_val, Y_val = self._cat_lists(fold, 1)
-            # X_val = X_val.transpose((2, 1, 0))
             X_val = X_val.transpose(shape)
         else:
             X_val, Y_val = None, None

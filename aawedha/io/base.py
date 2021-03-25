@@ -177,7 +177,7 @@ class DataSet(metaclass=ABCMeta):
         print(f'Saving dataset {self.title} to destination: {fname}')
         with open(fname, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        # log if verbose
+        
 
     def load_set(self, file_name=None, subjects=None, ch=None):
         """Load saved DataSet as serialized object
@@ -210,10 +210,6 @@ class DataSet(metaclass=ABCMeta):
 
     def flatten(self):
         """Transform multichannel EEG into single channel
-
-        Returns
-        -------
-        None
         """
         if type(self.epochs) is list:
             self.epochs = [self._reshape(ep) for ep in self.epochs]
@@ -225,8 +221,13 @@ class DataSet(metaclass=ABCMeta):
                 self.test_epochs = self._reshape(self.test_epochs)
 
     def select_subjects(self, subjects=[]):
-        '''
-        '''
+        """Keep a subset of subjects in the dataset.
+
+        Parameters
+        ----------
+        subjects : list, optional
+            subjects to keep by index, by default []
+        """
         # TODO : test if equal subjects
         self.epochs = self.epochs[subjects]
         self.y = self.y[subjects]
@@ -299,7 +300,13 @@ class DataSet(metaclass=ABCMeta):
         self._rearrange_legacy(ind_all)
 
     def rearrange(self, intersection_events=[]):
-        """
+        """Keep a subset of trials based on intersection events.
+        Applied to Train and Test epochs/y/events in the dataset.
+
+        Parameters
+        ----------
+        intersection_events : list, optional
+            the events to select trials upon them, by default []
         """
         # idx = np.logical_or.reduce([self.events==intrs for intrs in intersection_events])
         # self._rearrange(idx, ['epochs', 'y', 'events'])
@@ -309,8 +316,7 @@ class DataSet(metaclass=ABCMeta):
             if isinstance(self.test_epochs, np.ndarray):
                 # idx = np.logical_or.reduce([self.test_events==intrs for intrs in intersection_events])
                 # self._rearrange(idx, ['test_epochs', 'test_y', 'test_events'])
-                self._rearrange(intersection_events, ['test_epochs', 'test_y', 'test_events'])
-        
+                self._rearrange(intersection_events, ['test_epochs', 'test_y', 'test_events'])        
 
     def labels_to_dict(self):
         """Attach events to their corresponding labels in a dict
@@ -331,9 +337,19 @@ class DataSet(metaclass=ABCMeta):
         return dict(zip(keys, values))
         
     def update_labels(self, new_labels, v=[]):
-        '''
-        new_labels, v
-        '''
+        """Change values of labels based on the values in new labels.
+
+        Parameters
+        ----------
+        new_labels : dict
+            events and their corresponding labels values to update dataset labels with.
+            keys: str
+                events
+            values : float
+                labels
+        v : list, optional
+            [description], by default []
+        """
         k = list(new_labels)
         for sbj in range(len(self.events)):
             r = len(self.events[sbj])
@@ -352,8 +368,13 @@ class DataSet(metaclass=ABCMeta):
                     self.y[sbj, idx] = new_labels[k[i]]
 
     def resample(self, min_rate):
-        '''
-        '''
+        """Resample epochs following to match min rate.
+
+        Parameters
+        ----------
+        min_rate : int
+            new sampling frequency to resample epochs with
+        """
         if self.fs == min_rate:
             return
         elif self.fs < min_rate:
@@ -362,20 +383,15 @@ class DataSet(metaclass=ABCMeta):
         else:
             up = min_rate
             down = self.fs
-        '''
-        if isinstance(self.epochs, list):
-            self.epochs = [resample_poly(self.epochs[idx], up, down, axis=0)
-                           for idx in range(len(self.epochs))]
-        else:
-            self.epochs = resample_poly(self.epochs, up, down, axis=1)
-        '''
+
         self.epochs = self._resample_array(self.epochs, up, down)
         if hasattr(self, 'test_epochs'):
             self.test_epochs = self._resample_array(self.test_epochs, up, down)
 
     def recover_dim(self):
-        '''
-        '''
+        """Reshape flattened single channel EEG epochs to 
+        multichanel.
+        """
         channels = len(self.ch_names)
         if type(self.epochs) is list:
             self.epochs = [ep.reshape(
@@ -578,11 +594,40 @@ class DataSet(metaclass=ABCMeta):
         else:
             length = self.epochs[0].shape[0]
         return length
+    
+    def equal_trials(self):
+        """Wheter epochs in a list of ndarrays have same count of trials
 
+        Parameters
+        ----------
+        ndarray : list of numpy ndarrays
+            EEG epochs
+
+        Returns
+        -------
+        int
+            0 if all epochs have same trials count, a larger than 0 number otherwise.
+        """
+        return np.sum(np.diff(np.array([ep.shape[-1] for ep in self.epochs])))
+    
     @staticmethod
     def _resample_array(ndarray, up, down):
-        '''
-        '''
+        """Apply resampling using polyphase filtering.
+
+        Parameters
+        ----------
+        ndarray : numpy ndarray [subjects x samples x channels x trials]
+            EEG ndarray
+        up : int
+            upsamling sampling rate
+        down : int
+            downsampling sampling rate
+
+        Returns
+        -------
+        numpy ndarray
+            resampled EEG nd array
+        """
         if isinstance(ndarray, list):
             ndarray = [resample_poly(ndarray[idx], up, down, axis=0)
                        for idx in range(len(ndarray))]
@@ -668,17 +713,25 @@ class DataSet(metaclass=ABCMeta):
             # tmp_ev.append(getattr(self, attrs[2])[sbj, ind[sbj]])
             tmp_ev.append(getattr(self, attrs[2])[sbj, idx])
         
-        setattr(self, attrs[0], tmp_ep)
-        setattr(self, attrs[1], tmp_y)
-        setattr(self, attrs[2], tmp_ev)
-        
+        if self.equal_trials() == 0:
+            setattr(self, attrs[0], np.array(tmp_ep))
+            setattr(self, attrs[1], np.array(tmp_y))
+            setattr(self, attrs[2], np.array(tmp_ev)) 
+        else:
+            setattr(self, attrs[0], tmp_ep)
+            setattr(self, attrs[1], tmp_y)
+            setattr(self, attrs[2], tmp_ev)     
+                
         # setattr(self, attrs[0], np.array(tmp_ep))
         # setattr(self, attrs[1], np.array(tmp_y))
         # setattr(self, attrs[2], np.array(tmp_ev))
+        
+        # self.epochs = np.array(tmp_ep)
+        # self.y = np.array(tmp_y)
+        # self.events = np.array(tmp_ev)
+        
 
-        #self.epochs = np.array(tmp_ep)
-        #self.y = np.array(tmp_y)
-        #self.events = np.array(tmp_ev)
+            
 
 
 

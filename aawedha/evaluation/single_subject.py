@@ -33,10 +33,6 @@ class SingleSubject(Evaluation):
         strategy : str
             cross-validation strategy
             default : 'Kfold'
-
-        Returns
-        -------
-        no value, sets folds attribute with a list of arrays
         """
         n_phase = len(self.partition)
         train_phase = self.partition[0]
@@ -92,10 +88,6 @@ class SingleSubject(Evaluation):
 
         csvfolder : str
             if savecsv is True, the results files in csv will be saved inside this folder
-
-        Returns
-        -------
-        no value, sets results attribute
         """
         # generate folds if folds are empty
         if not self.folds:
@@ -152,12 +144,15 @@ class SingleSubject(Evaluation):
             res = [perf for subj in pointer.rets for perf in subj]
             self.results = self.results_reports(res)
 
+        '''
         if self.log:
             self._log_results()
 
         if savecsv:
             if self.results:
                 self._savecsv(csvfolder)
+        '''
+        self._post_operations(savecsv, csvfolder)
 
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
         """Generate folds following a KFold cross-validation strategy
@@ -322,7 +317,6 @@ class SingleSubject(Evaluation):
         split = {}
         #
         if isinstance(self.dataset.epochs, list):
-            # f = self.folds[fold][subj][:]
             f = self.folds[subj][fold][:]  # subject, fold, phase
         else:
             f = self.folds[fold][:]
@@ -354,7 +348,6 @@ class SingleSubject(Evaluation):
             Y_test = self.dataset.test_y[subj][:].astype(int)
         else:
             if len(self.partition) == 2:
-                # X_val, Y_val = None, None
                 X_test = x[f[1]]
                 Y_test = y[f[1]]
             else:
