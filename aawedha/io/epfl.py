@@ -9,7 +9,7 @@ import glob
 
 
 class EPFL(DataSet):
-    '''
+    """
         EPFL Image speller Dataset [1]
 
         Reference:
@@ -17,7 +17,7 @@ class EPFL(DataSet):
         An efficient P300-based brain-compuer interface for disabled subjects.
         Journal of Neuroscience Methods, 2007
 
-    '''
+    """
 
     def __init__(self):
         super().__init__(title='EPFL_Image_Speller',
@@ -34,8 +34,35 @@ class EPFL(DataSet):
 
     def load_raw(self, path=None, epoch=[0., .7],
                  band=[1, 10], order=2):
-        '''
-        '''
+        """Read and process raw data into structured arrays
+        Note: subject 5 is excluded from the dataset.
+        Parameters
+        ----------
+        path : str
+            raw data folder path
+        
+        epoch_duration : int
+            epoch duration in seconds relative to trials' onset
+            default : 700 msec 
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [1., 10.]
+        order : int
+            band-pass filter order
+            default: 2
+        
+        Returns
+        -------
+        X : nd array (subjects x samples x channels x trials)
+            epoched EEG data for the train
+        Y : nd array (subjects x n_classes)
+            class labels for the train
+        X_test : nd array (subjects x samples x channels x trials)
+            epoched EEG data for the test phase
+        Y_test : nd array (subjects x n_classes)
+            class labels for the test phase
+        
+        """
         subjects = 9
         sessions = range(1, 5)
         # epochs = []
@@ -76,7 +103,6 @@ class EPFL(DataSet):
             Y_test.append(test_y)
             events.append(np.concatenate(stims, axis=-1))
             events_test.append(stm)
-
         #
         self.events = events
         self.test_events = events_test
@@ -87,8 +113,31 @@ class EPFL(DataSet):
                      epoch=[0., 0.7],
                      band=[1, 10],
                      order=2):
-        '''
-        '''
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        
+        save_folder : str
+            DataSet object saving folder path
+
+        epoch : int
+            epoch duration in seconds relative to trials' onset
+            default : 700 msec
+        
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [1., 10.]
+        
+        order : int
+            band-pass filter order
+            default: 2
+        """
         self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(
             load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=9)

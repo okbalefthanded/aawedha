@@ -248,7 +248,7 @@ class Evaluation(object):
         # classes = Y_test.max()
         if Y_test.ndim == 2:
             Y_test = Y_test.argmax(axis=1)
-            probs = probs[:, 1]
+            # probs = probs[:, 1]
 
         classes = np.unique(Y_test).size       
 
@@ -258,6 +258,7 @@ class Evaluation(object):
             results[metric] = value
 
         if classes == 2:
+            probs = probs[:, 1]
             fp_rate, tp_rate, thresholds = roc_curve(Y_test, probs)
             viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
             results['viz'] = viz

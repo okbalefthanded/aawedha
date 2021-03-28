@@ -106,12 +106,12 @@ class CrossSet(Evaluation):
         ----------
         source : dataset instance
         """
-        target_events = np.unique(self.target.events) 
+        target_events = np.unique(self.target.events)
         source_events = np.unique(source.events)
         intersection = list(np.intersect1d(target_events, source_events))
-        
+
         # idx = np.logical_or.reduce([source.events==intrs for intrs in intersection])
-        
+
         # d_source = self._diff(source.events)
         # d_target = self._diff(target_events)
         # v = np.min([d_source, d_target])
@@ -131,10 +131,9 @@ class CrossSet(Evaluation):
         # source.update_labels(new_labels, v)
         # source._rearrange(idx)
         source.rearrange(intersection)
-        source.update_labels(new_labels)      
+        source.update_labels(new_labels)
 
         # need to recover original indices of trials
-
 
     def resample(self):
         """Resample all datasets (target and sources alike) used in evaluation
@@ -158,9 +157,9 @@ class CrossSet(Evaluation):
                 if isinstance(src.epochs, np.ndarray):
                     src.epochs = src.epochs[:, :length_target, :, :]
                 else:
-                    src.epochs = [ep[:length_target, :, :] for ep in src.epochs]
-        
-    
+                    src.epochs = [ep[:length_target, :, :]
+                                  for ep in src.epochs]
+
     def generate_set(self, replacement={}):
         """Unify datasets in a single format by keeping shared channels, trials
         and resampling.
@@ -185,7 +184,7 @@ class CrossSet(Evaluation):
         else:
             self.select_channels(self.target, chs)
         #
-        target_events = np.unique(self.target.events) 
+        target_events = np.unique(self.target.events)
         source_events = np.unique(self.source[0].events)
         intersection = list(np.intersect1d(target_events, source_events))
         # idx = np.logical_or.reduce([self.target.events==intrs for intrs in intersection])
@@ -195,7 +194,7 @@ class CrossSet(Evaluation):
         #
         self.resample()
 
-    def generate_split(self, nfolds=30, excl=True, replacement=[]):
+    def generate_split(self, nfolds=30, excl=True, replacement=[], keep_best=None):
         """Generate cross-validation folds following a cross-validation
         strategy from ShuffleSplit
 
@@ -213,6 +212,10 @@ class CrossSet(Evaluation):
         replacement: dict
             nearest electrodes in dataset to replace missing ones
             in chs
+
+        keep_best : list of lists
+            lists of best subject in classification performance indexes of each source dataset.
+            default : None, keep all subjects in source datasets.
         """
 
         self.generate_set(replacement)
@@ -241,8 +244,11 @@ class CrossSet(Evaluation):
                 raise AssertionError('Wrong partition scheme', self.partition)
 
             self.folds = self.get_folds(
-                    nfolds, train_phase, val_phase,
-                    test_phase, exclude_subj=excl)
+                nfolds, train_phase, val_phase,
+                test_phase, exclude_subj=excl)
+
+        if keep_best:
+            self._keep_best(keep_best)
 
     def run_evaluation(self, folds=None, pointer=None, check=False, savecsv=False, csvfolder=None):
         """Perform evaluation on subsets of subjects.
@@ -284,17 +290,17 @@ class CrossSet(Evaluation):
             self.log_experiment()
 
         operations = self.get_operations(folds)
-        
+
         for fold in operations:
             #
             if self.verbose == 0:
                 print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
 
-            rets = self._cross_set(fold)      
+            rets = self._cross_set(fold)
 
             if self.log:
                 self._log_operation_results(fold, rets)
-                
+
             res.append(rets)
 
             if check:
@@ -386,19 +392,20 @@ class CrossSet(Evaluation):
         Collects evaluation results on a single dict
 
         """
-        
+
         # subjects = self._get_n_subjects()
         # subjects = len(self.predictions)
-        
+
         folds = len(self.folds)
         examples = len(self.predictions[0])
         dim = len(self.predictions[0][0])
-        self.predictions = np.array(self.predictions).reshape((folds, examples, dim))
+        self.predictions = np.array(
+            self.predictions).reshape((folds, examples, dim))
 
         res = self._aggregate_results(res)
         res = self._update_results(res)
         return res
-    
+
     def resume(self, run=False, savecsv=False):
         """Resume evaluation from where it was interrupted
 
@@ -540,15 +547,15 @@ class CrossSet(Evaluation):
             # else:
             #    pass
         else:
-            if self.target.equal_trials() == 0:            
+            if self.target.equal_trials() == 0:
                 X_t = self._flatten(self.target.epochs[self.folds[fold][0]])
                 X_ts = self._flatten(self.target.epochs[self.folds[fold][2]])
-                Y_t = self._flatten(self.target.y[self.folds[fold][0]])            
+                Y_t = self._flatten(self.target.y[self.folds[fold][0]])
                 Y_ts = self._flatten(self.target.y[self.folds[fold][2]])
             else:
                 # TODO
                 pass
-            
+
             if self._has_val():
                 X_v = self._flatten(self.target.epochs[self.folds[fold][1]])
                 Y_v = self._flatten(self.target.y[self.folds[fold][1]])
@@ -573,19 +580,20 @@ class CrossSet(Evaluation):
             X_v = None
             Y_v = None
 
-        # samples, channels, trials = X_t.shape       
+        # samples, channels, trials = X_t.shape
 
         axe = 2
 
         # FIXME : Training/Val/Test data has to be shuffled
         # np.random.shuffle (in-place shuffle)
-        split['X_train'], split['Y_train'] = self._permute_arrays([X_t, Y_t], axe)
-        split['X_train'] = split['X_train'].transpose(shape) 
+        split['X_train'], split['Y_train'] = self._permute_arrays([
+                                                                  X_t, Y_t], axe)
+        split['X_train'] = split['X_train'].transpose(shape)
         X_ts = X_ts.transpose(shape)
-        
-        # split['X_train'] = split['X_train'].transpose((2,1,0)) 
+
+        # split['X_train'] = split['X_train'].transpose((2,1,0))
         # X_ts = X_ts.transpose((2, 1, 0))
-        
+
         # split['X_test'], split['Y_test'] = self._permute_arrays([X_ts, Y_ts], axe)
         # split['X_val'], split['Y_val'] = self._permute_arrays([X_ts, Y_ts], axe) # X_v, Y_v
 
@@ -595,10 +603,10 @@ class CrossSet(Evaluation):
         split['X_test'] = X_ts
         # split['Y_test'] = Y_ts
         split['Y_test'] = labels_to_categorical(Y_ts)
-        
+
         split['X_val'] = X_v
         split['Y_val'] = Y_v
-        
+
         return split
 
     @staticmethod
@@ -644,7 +652,7 @@ class CrossSet(Evaluation):
             else:
                 arrays[i] = np.take(arr, indices, axis=axe)
         return arrays
-    
+
     def _get_min_channels(self):
         """find minimum channels shared between all datasets
 
@@ -668,7 +676,8 @@ class CrossSet(Evaluation):
         else:
             chs = self.source[min_id].ch_names
 
-        intersection = [list(set(src.ch_names).intersection(chs)) for src in self.source]
+        intersection = [list(set(src.ch_names).intersection(chs))
+                        for src in self.source]
         intersection.append(list(set(self.target.ch_names).intersection(chs)))
 
         idx = np.argmin([len(ls) for ls in intersection])
@@ -699,8 +708,8 @@ class CrossSet(Evaluation):
         if self.target:
             return self.target.get_n_classes()
         else:
-            return 0  
-    
+            return 0
+
     def _get_n_subjects(self):
         """Return number of subjects in dataset
         Returns
@@ -716,7 +725,39 @@ class CrossSet(Evaluation):
             else:
                 return len(self.target.epochs) + test_epochs
         else:
-            return 0       
+            return 0
+
+    def _keep_best(self, best=None):
+        """Keep a subect of subjects in each source dataset based on
+        their classification performance indicated by best list. 
+
+        Parameters
+        ----------
+        best : list of lists, optional
+            list of best performing subject in each dataset, by default None
+        """
+        if len(self.source) == len(best):
+            for i, src in enumerate(self.source):
+                
+                if isinstance(src.epochs, list):
+                    src.epochs = [src.epochs[sbj] for sbj in best[i]]
+                    src.y = [src.y[sbj] for sbj in best[i]]
+                    src.events = [src.events[sbj] for sbj in best[i]]
+                    if hasattr(src, 'test_epochs'):                        
+                        src.test_epochs = [src.test_epochs[sbj] for sbj in best[i]]
+                        src.test_y = [src.test_y[sbj] for sbj in best[i]]
+                        src.test_events = [src.test_events[sbj] for sbj in best[i]]
+                else:
+                    src.epochs = src.epochs[best]
+                    src.y = src.y[best]
+                    src.events = src.events[best]
+                    if hasattr(src, 'test_epochs'):                        
+                        src.test_epochs = src.test_epochs[best]
+                        src.test_y = src.test_y[best]
+                        src.test_events = src.test_events[best]
+                
+                src.subjects = [src.subjects[sbj] for sbj in best[i]]
+
 
     def _assert_partition(self, subjects=0, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
@@ -769,13 +810,13 @@ class CrossSet(Evaluation):
         for src in self.source:
             data_source += f"| {src.title}"
             if isinstance(self.target.epochs, list):
-                duration_source += f' | epoch duration:{src.epochs[0].shape[0] / src.fs} sec'                
+                duration_source += f' | epoch duration:{src.epochs[0].shape[0] / src.fs} sec'
                 source_shapes += f'| {len(src.epochs), src.epochs[0].shape} list'
             else:
                 duration_source += f'| epoch duration:{src.epochs.shape[1] / src.fs} sec'
                 source_shapes += f'| {src.epochs.shape}'
-        
-        data += data_source            
+
+        data += data_source
         duration += duration_source
         data_shape += source_shapes
 
@@ -788,14 +829,13 @@ class CrossSetERP(CrossSet):
         """Overrides CrossSet generate_set
         """
         #
-        chs = self._get_min_channels()        
+        chs = self._get_min_channels()
         # select channels for source datasets
         for src in self.source:
             self.select_channels(src, chs)
-            
+
         if replacement:
             self.select_channels(self.target, chs, replacement)
         else:
             self.select_channels(self.target, chs)
         self.resample()
-
