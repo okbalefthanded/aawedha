@@ -45,13 +45,14 @@ class CrossSet(Evaluation):
     _get_min_channels()
     """
 
-    def __init__(self, source=[], target=[], mode='', partition=[],
+    def __init__(self, source=[], target=[], mode='', best=None, partition=[],
                  verbose=2, lg=False, debug=False):
         '''
         '''
         self.source = source
         self.target = target
         self.mode = mode
+        self.best_kept = best
         super().__init__(partition=partition,
                          verbose=verbose, lg=lg,
                          debug=debug)
@@ -194,7 +195,7 @@ class CrossSet(Evaluation):
         #
         self.resample()
 
-    def generate_split(self, nfolds=30, excl=True, replacement=[], keep_best=None):
+    def generate_split(self, nfolds=30, excl=True, replacement=[]):
         """Generate cross-validation folds following a cross-validation
         strategy from ShuffleSplit
 
@@ -212,10 +213,6 @@ class CrossSet(Evaluation):
         replacement: dict
             nearest electrodes in dataset to replace missing ones
             in chs
-
-        keep_best : list of lists
-            lists of best subject in classification performance indexes of each source dataset.
-            default : None, keep all subjects in source datasets.
         """
 
         self.generate_set(replacement)
@@ -247,8 +244,8 @@ class CrossSet(Evaluation):
                 nfolds, train_phase, val_phase,
                 test_phase, exclude_subj=excl)
 
-        if keep_best:
-            self._keep_best(keep_best)
+        if self.best_kept:
+            self._keep_best()
 
     def run_evaluation(self, folds=None, pointer=None, check=False, savecsv=False, csvfolder=None):
         """Perform evaluation on subsets of subjects.
@@ -420,6 +417,8 @@ class CrossSet(Evaluation):
         """
         self.generate_set()
         chk = self.reset(chkpoint=True)
+        if self.best_kept:
+            self._keep_best()
         device = self._get_device()
         if device == 'TPU':
             self._compile_model()
@@ -727,37 +726,31 @@ class CrossSet(Evaluation):
         else:
             return 0
 
-    def _keep_best(self, best=None):
+    def _keep_best(self):
         """Keep a subect of subjects in each source dataset based on
         their classification performance indicated by best list. 
-
-        Parameters
-        ----------
-        best : list of lists, optional
-            list of best performing subject in each dataset, by default None
         """
-        if len(self.source) == len(best):
+        if len(self.source) == len(self.best_kept):
             for i, src in enumerate(self.source):
                 
                 if isinstance(src.epochs, list):
-                    src.epochs = [src.epochs[sbj] for sbj in best[i]]
-                    src.y = [src.y[sbj] for sbj in best[i]]
-                    src.events = [src.events[sbj] for sbj in best[i]]
+                    src.epochs = [src.epochs[sbj] for sbj in self.best_kept[i]]
+                    src.y = [src.y[sbj] for sbj in self.best_kept[i]]
+                    src.events = [src.events[sbj] for sbj in self.best_kept[i]]
                     if hasattr(src, 'test_epochs'):                        
-                        src.test_epochs = [src.test_epochs[sbj] for sbj in best[i]]
-                        src.test_y = [src.test_y[sbj] for sbj in best[i]]
-                        src.test_events = [src.test_events[sbj] for sbj in best[i]]
+                        src.test_epochs = [src.test_epochs[sbj] for sbj in self.best_kept[i]]
+                        src.test_y = [src.test_y[sbj] for sbj in self.best_kept[i]]
+                        src.test_events = [src.test_events[sbj] for sbj in self.best_kept[i]]
                 else:
-                    src.epochs = src.epochs[best]
-                    src.y = src.y[best]
-                    src.events = src.events[best]
+                    src.epochs = src.epochs[self.best_kept[i]]
+                    src.y = src.y[self.best_kept]
+                    src.events = src.events[self.best_kept]
                     if hasattr(src, 'test_epochs'):                        
-                        src.test_epochs = src.test_epochs[best]
-                        src.test_y = src.test_y[best]
-                        src.test_events = src.test_events[best]
+                        src.test_epochs = src.test_epochs[self.best_kept]
+                        src.test_y = src.test_y[self.best_kept]
+                        src.test_events = src.test_events[self.best_kept]
                 
-                src.subjects = [src.subjects[sbj] for sbj in best[i]]
-
+                src.subjects = [src.subjects[sbj] for sbj in self.best_kept[i]]
 
     def _assert_partition(self, subjects=0, excl=False):
         """Assert if partition to be used do not surpass number of subjects available

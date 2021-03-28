@@ -121,6 +121,7 @@ class CheckPoint(object):
         self.rets = []
         if hasattr(evl, 'mode'):
             self.mode = evl.mode
+            self.best_kept = evl.best_kept
 
     def set_checkpoint(self, current=0, model=None, rets=None):
         """Save evaluation state to resume operations later

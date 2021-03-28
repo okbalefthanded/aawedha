@@ -543,6 +543,7 @@ class Evaluation(object):
             self.initial_weights = chk.initial_weights
             if hasattr(chk, 'mode'):
                 self.mode = chk.mode
+                self.best_kept = chk.best_kept
             # self.normalizer = chk.normalizer
 
         else:
