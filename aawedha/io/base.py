@@ -234,6 +234,25 @@ class DataSet(metaclass=ABCMeta):
             self.test_epochs = self.test_epochs[subjects]
             self.test_y = self.test_y[subjects]
 
+    def select_samples(self, duration):
+        """select a time window of epoched EEG data following the duration specified.
+
+        Parameters
+        ----------
+        duration : list of float
+            start and end of time window to keep in msecs.
+        """
+        duration = (np.array(duration) * self.fs).astype(int)
+
+        if isinstance(self.epochs, list):
+            self.epochs = [ep[duration[0]:duration[1],...] for ep in self.epochs]
+            if hasattr(self, 'test_epochs'):
+                self.test_epochs = [ep[duration[0]:duration[1],...] for ep in self.test_epochs]
+        else:
+            self.epochs = self.epochs[:,duration[0]:duration[1],...]
+            if hasattr(self, 'test_epochs'):
+                self.test_epochs = self.test_epochs[:,duration[0]:duration[1],...] 
+
     def select_channels(self, ch=None):
         """Select a subset of channels from specified list of channels
 
@@ -367,7 +386,7 @@ class DataSet(metaclass=ABCMeta):
                     self.y[sbj, idx] = new_labels[k[i]]
 
     def resample(self, min_rate):
-        """Resample epochs following to match min rate.
+        """Resample epochs to match min rate.
 
         Parameters
         ----------
@@ -378,10 +397,12 @@ class DataSet(metaclass=ABCMeta):
             return
         elif self.fs < min_rate:
             up = self.fs
-            down = min_rate
+            down = min_rate            
         else:
             up = min_rate
             down = self.fs
+
+        self.fs = min_rate
 
         self.epochs = self._resample_array(self.epochs, up, down)
         if hasattr(self, 'test_epochs'):
