@@ -176,8 +176,7 @@ class DataSet(metaclass=ABCMeta):
 
         print(f'Saving dataset {self.title} to destination: {fname}')
         with open(fname, 'wb') as f:
-            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-        
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)     
 
     def load_set(self, file_name=None, subjects=None, ch=None):
         """Load saved DataSet as serialized object
@@ -564,8 +563,8 @@ class DataSet(metaclass=ABCMeta):
             list of channels indices in ch
         """
         # return [i for i, x in enumerate(self.ch_names) if x in ch]
-        # return [self.ch_names.index(x) for x in ch if x in self.ch_names]
-        return [self.ch_names.index(x) for x in ch]
+        return [self.ch_names.index(x) for x in ch if x in self.ch_names]
+        # return [self.ch_names.index(x) for x in ch]
 
     def _set_channels(self, channels):
         """Set DataSet channels
