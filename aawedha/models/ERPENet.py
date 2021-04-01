@@ -7,11 +7,11 @@ Reference:
 “Universal Joint Feature Extraction for P300 EEG Classification Using Multi-Task Autoencoder,
 ” IEEE Access, vol. 7, pp. 68415–68428, 2019.
 """
-
-from tensorflow.keras.layers import Input, TimeDistributed, Conv2D
-from tensorflow.keras.layers import Flatten, Dense, Dropout
+from tensorflow.keras.layers.experimental.preprocessing import Normalization
 from tensorflow.keras.layers import BatchNormalization, Reshape, LeakyReLU
 from tensorflow.keras.layers import Reshape, UpSampling2D, ZeroPadding2D 
+from tensorflow.keras.layers import Input, TimeDistributed, Conv2D
+from tensorflow.keras.layers import Flatten, Dense, Dropout
 from tensorflow.keras.layers import LSTM, RepeatVector
 from tensorflow.keras.models import Model
 import tensorflow.keras.backend as K
@@ -139,8 +139,9 @@ def hybrid_LSTM(depth=2, conv_size=16, dense_size=512, input_dim=(100, 5, 9,), d
 
     """Setup"""
     temp_filter = conv_size
-    X = Input(shape=input_dim, name='input')
+    X = Input(shape=input_dim, name='input')    
     model_input = X
+    X = Normalization(axis=(2,3))(X)
     X = Reshape((100, 5, 9, 1))(X)
 
     """Encoder"""
@@ -149,13 +150,13 @@ def hybrid_LSTM(depth=2, conv_size=16, dense_size=512, input_dim=(100, 5, 9,), d
             # j==0 is first layer(j) of the CNN block(i); apply stride with double filter size
             if j == 0:
                 X = TimeDistributed(Conv2D(2*temp_filter, (3, 3), padding='same', strides=(2, 2)), 
-                                    name='encoder_'+str(i)+str(j)+'_timeConv2D')(X)
+                                    name=f"encoder_'{i}{j}_timeConv2D")(X)
             else:
                 X = TimeDistributed(Conv2D(temp_filter, (3, 3), padding='same'), 
-                                    name='encoder_'+str(i)+str(j)+'_timeConv2D')(X)
-            X = BatchNormalization(name='encoder_'+str(i)+str(j)+'_BN')(X)
-            X = LeakyReLU(alpha=0.1, name='encoder_'+str(i)+str(j)+'_relu')(X)
-            X = Dropout(dropoutRate, name='encoder_'+str(i)+str(j)+'_drop')(X)
+                                    name=f"encoder_'{i}{j}_timeConv2D")(X)
+            X = BatchNormalization(name=f"encoder_'{i}{j}_BN")(X)
+            X = LeakyReLU(alpha=0.1, name=f"encoder_'{i}{j}_relu")(X)
+            X = Dropout(dropoutRate, name=f"encoder_'{i}{j}_drop")(X)
         temp_filter = int(temp_filter * 2)
     X = TimeDistributed(Flatten())(X)
     X = LSTM(dense_size, recurrent_dropout=dropoutRate,
@@ -176,16 +177,17 @@ def hybrid_LSTM(depth=2, conv_size=16, dense_size=512, input_dim=(100, 5, 9,), d
         for j in range(3):
             if j == 0:
                 X = TimeDistributed(UpSampling2D(
-                    (2, 2)), name='decoder_'+str(i)+str(j)+'_upsampling')(X)
+                    (2, 2)), name=f"decoder_{i}{j}_upsampling")(X)
                 X = TimeDistributed(ZeroPadding2D(
-                    ((1, 0), (1, 0))), name='decoder_'+str(i)+str(j)+'_padding')(X)
+                    ((1, 0), (1, 0))), name=f"decoder_{i}{j}_padding")(X)
                 X = TimeDistributed(Conv2D(temp_filter*2, (3, 3)),
-                                    name='decoder_'+str(i)+str(j)+'_timeConv2D')(X)
+                                    name=f"decoder_{i}{j}_timeConv2D")(X)
             else:
-                X = TimeDistributed(Conv2D(temp_filter, (3, 3), padding='same'), name='decoder_'+str(i)+str(j)+'_timeConv2D')(X)
-            X = BatchNormalization(name='decoder_'+str(i)+str(j)+'_BN')(X)
-            X = LeakyReLU(alpha=0.1, name='decoder_'+str(i)+str(j)+'_relu')(X)
-            X = Dropout(dropoutRate, name='decoder_'+str(i)+str(j)+'_drop')(X)
+                X = TimeDistributed(Conv2D(temp_filter, (3, 3), padding='same'), 
+                                            name=f"decoder_{i}{j}_timeConv2D")(X)
+            X = BatchNormalization(name=f"decoder_{i}{j}_BN")(X)
+            X = LeakyReLU(alpha=0.1, name=f"decoder_{i}{j}_relu")(X)
+            X = Dropout(dropoutRate, name=f"decoder_{i}{j}_drop")(X)
         temp_filter = int(temp_filter / 2)
     X = TimeDistributed(Conv2D(1, (1, 1), padding='same', name='decoder__timeConv2D'))(X)
     X = Reshape((100, 5, 9))(X)
