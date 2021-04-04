@@ -150,13 +150,13 @@ def hybrid_LSTM(depth=2, conv_size=16, dense_size=512, input_dim=(100, 5, 9,), d
             # j==0 is first layer(j) of the CNN block(i); apply stride with double filter size
             if j == 0:
                 X = TimeDistributed(Conv2D(2*temp_filter, (3, 3), padding='same', strides=(2, 2)), 
-                                    name=f"encoder_'{i}{j}_timeConv2D")(X)
+                                    name=f"encoder_{i}{j}_timeConv2D")(X)
             else:
                 X = TimeDistributed(Conv2D(temp_filter, (3, 3), padding='same'), 
-                                    name=f"encoder_'{i}{j}_timeConv2D")(X)
-            X = BatchNormalization(name=f"encoder_'{i}{j}_BN")(X)
-            X = LeakyReLU(alpha=0.1, name=f"encoder_'{i}{j}_relu")(X)
-            X = Dropout(dropoutRate, name=f"encoder_'{i}{j}_drop")(X)
+                                    name=f"encoder_{i}{j}_timeConv2D")(X)
+            X = BatchNormalization(name=f"encoder_{i}{j}_BN")(X)
+            X = LeakyReLU(alpha=0.1, name=f"encoder_{i}{j}_relu")(X)
+            X = Dropout(dropoutRate, name=f"encoder_{i}{j}_drop")(X)
         temp_filter = int(temp_filter * 2)
     X = TimeDistributed(Flatten())(X)
     X = LSTM(dense_size, recurrent_dropout=dropoutRate,

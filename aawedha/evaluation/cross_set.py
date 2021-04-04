@@ -732,25 +732,25 @@ class CrossSet(Evaluation):
         """
         if len(self.source) == len(self.best_kept):
             for i, src in enumerate(self.source):
+                if self.best_kept[i]:
+                    if isinstance(src.epochs, list):
+                        src.epochs = [src.epochs[sbj] for sbj in self.best_kept[i]]
+                        src.y = [src.y[sbj] for sbj in self.best_kept[i]]
+                        src.events = [src.events[sbj] for sbj in self.best_kept[i]]
+                        if hasattr(src, 'test_epochs'):                        
+                            src.test_epochs = [src.test_epochs[sbj] for sbj in self.best_kept[i]]
+                            src.test_y = [src.test_y[sbj] for sbj in self.best_kept[i]]
+                            src.test_events = [src.test_events[sbj] for sbj in self.best_kept[i]]
+                    else:
+                        src.epochs = src.epochs[self.best_kept[i]]
+                        src.y = src.y[self.best_kept]
+                        src.events = src.events[self.best_kept]
+                        if hasattr(src, 'test_epochs'):                        
+                            src.test_epochs = src.test_epochs[self.best_kept]
+                            src.test_y = src.test_y[self.best_kept]
+                            src.test_events = src.test_events[self.best_kept]
                 
-                if isinstance(src.epochs, list):
-                    src.epochs = [src.epochs[sbj] for sbj in self.best_kept[i]]
-                    src.y = [src.y[sbj] for sbj in self.best_kept[i]]
-                    src.events = [src.events[sbj] for sbj in self.best_kept[i]]
-                    if hasattr(src, 'test_epochs'):                        
-                        src.test_epochs = [src.test_epochs[sbj] for sbj in self.best_kept[i]]
-                        src.test_y = [src.test_y[sbj] for sbj in self.best_kept[i]]
-                        src.test_events = [src.test_events[sbj] for sbj in self.best_kept[i]]
-                else:
-                    src.epochs = src.epochs[self.best_kept[i]]
-                    src.y = src.y[self.best_kept]
-                    src.events = src.events[self.best_kept]
-                    if hasattr(src, 'test_epochs'):                        
-                        src.test_epochs = src.test_epochs[self.best_kept]
-                        src.test_y = src.test_y[self.best_kept]
-                        src.test_events = src.test_events[self.best_kept]
-                
-                src.subjects = [src.subjects[sbj] for sbj in self.best_kept[i]]
+                    src.subjects = [src.subjects[sbj] for sbj in self.best_kept[i]]
 
     def _assert_partition(self, subjects=0, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
