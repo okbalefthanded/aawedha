@@ -743,12 +743,12 @@ class CrossSet(Evaluation):
                             src.test_events = [src.test_events[sbj] for sbj in self.best_kept[i]]
                     else:
                         src.epochs = src.epochs[self.best_kept[i]]
-                        src.y = src.y[self.best_kept]
-                        src.events = src.events[self.best_kept]
+                        src.y = src.y[self.best_kept[i]]
+                        src.events = src.events[self.best_kept[i]]
                         if hasattr(src, 'test_epochs'):                        
-                            src.test_epochs = src.test_epochs[self.best_kept]
-                            src.test_y = src.test_y[self.best_kept]
-                            src.test_events = src.test_events[self.best_kept]
+                            src.test_epochs = src.test_epochs[self.best_kept[i]]
+                            src.test_y = src.test_y[self.best_kept[i]]
+                            src.test_events = src.test_events[self.best_kept[i]]
                 
                     src.subjects = [src.subjects[sbj] for sbj in self.best_kept[i]]
 
