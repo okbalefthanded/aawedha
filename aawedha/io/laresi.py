@@ -256,7 +256,11 @@ class LaresiEEG(DataSet):
                      [0]:info['session_interval'][1], :]
         signal = bandpass(signal, band, self.fs, order)
         cnt[info['session_interval'][0]:info['session_interval'][1], :] = signal
-        eps = eeg_epoch(cnt, epoch, info['pos'])
+        if self.__class__.name == 'LaresiERP':
+            eps = eeg_epoch(cnt, epoch, info['pos'],
+                        self.fs, baseline_correction=True, baseline=0.2)
+        else:
+            eps = eeg_epoch(cnt, epoch, info['pos'])
         # self.events = info['desc']
         return eps
 
@@ -322,7 +326,7 @@ class LaresiERP(LaresiEEG):
             mrk = erp_mrk[idx] - erp_start[tr]
             erp_signal = bandpass(
                 cnt[erp_start[tr]:erp_end[tr], :], band, self.fs, order)
-            erp_epochs.append(eeg_epoch(erp_signal, epoch, mrk))
+            erp_epochs.append(eeg_epoch(erp_signal, epoch, mrk, self.fs, baseline_correction=True, baseline=0.2))
 
         samples, channels, trials = erp_epochs[0].shape
         blocks = len(erp_epochs)

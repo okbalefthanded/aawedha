@@ -198,7 +198,8 @@ class EPFL(DataSet):
         signal = signal[eeg_channels, :]
         signal = bandpass(signal.T, band, original_fs, order)
         signal = signal[::decimation, :]
-        epochs = eeg_epoch(signal, epoch_length, pos)
+        epochs = eeg_epoch(signal, epoch_length, pos, 
+                            self.fs, baseline_correction=True, baseline=0.2)
         y = np.zeros(n_trials)
         y[stimuli == target] = 1
 

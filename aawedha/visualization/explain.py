@@ -52,7 +52,8 @@ def plot_topomaps(data=None, channels=None, fs=512):
         sampling frequency of EEG recordings. by default 512 (LARESI dataset)
     """
     montage = mne.channels.make_standard_montage('standard_1020')
-    info = mne.create_info(channels, fs, 'eeg', montage=montage)
+    info = mne.create_info(channels, fs, 'eeg')
+    info.set_montage(montage)
     if data.ndim == 2:
         fig, ax = plt.subplots(1, data.shape[1])
         #

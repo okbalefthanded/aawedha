@@ -405,7 +405,8 @@ class OpenBMIERP(DataSet):
                 # eeg = bandpass(eeg, band, self.fs, order)
                 cnt = bandpass(data['x'][0][0][::stride, ch_index], band, self.fs, order)                
                 mrk = data['t'][0][0].squeeze() // stride
-                eeg = eeg_epoch(cnt, epoch_duration, mrk)
+                eeg = eeg_epoch(cnt, epoch_duration, mrk,
+                                self.fs, baseline_correction=True, baseline=0.2)
                 y = data['y_dec'][0][0].squeeze().astype(int)
                 y[y==2] = 0
                 ev = [elm.item() for elm in data['y_class'][0][0].squeeze().tolist()]                

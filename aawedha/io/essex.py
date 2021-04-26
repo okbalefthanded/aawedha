@@ -107,7 +107,7 @@ class Essex(DataSet):
             picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False,
                                exclude='bads')
             epos = Epochs(raw, events, ev_id, epoch[0], epoch[1], proj=True, picks=picks,
-                          baseline=None, preload=True)
+                          baseline=(-0.2, 0), preload=True)
             if downsample:
                 epos.decimate(downsample)
             epos = np.transpose(epos.get_data(), (2, 1, 0))

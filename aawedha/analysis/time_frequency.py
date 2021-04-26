@@ -116,16 +116,15 @@ def wavelet(data, subject=0, channel='POz', w=4.):
     return cwtm, t, freq
 
 
-def snr(power, freqs, fs):
+def snr(power, freqs, fs, neighbor=2):
     """Calculate frequency stimulation SNR
-
+    
     Reference:
     "Brain–computer interface based on intermodulation frequency"
     Xiaogang Chen, Zhikai Chen, Shangkai Gao and Xiaorong Gao
     Journal of Neural Engineering, Volume 10, Number 6
     https://doi.org/10.1088/1741-2560/10/6/066009
-
-
+    
     Parameters
     ----------
     power : list of 1d array
@@ -134,7 +133,8 @@ def snr(power, freqs, fs):
         SSVEP stimuli
     fs : int
         sampling rate
-
+    neighbor : int
+        number of neighboring frequencies 
     Returns
     -------
     1d array
@@ -150,7 +150,7 @@ def snr(power, freqs, fs):
     snr = []
     for i, f in enumerate(freqs):
         idx = np.where(np.isclose(frequencies, float(f)))[0][0]
-        adj = [idx + r for r in range(-4, 4) if r != 0]        
+        adj = [idx + r for r in range(-neighbor, neighbor) if r != 0]        
         # idx = np.logical_or.reduce([frequencies == float(freqs[i])+r for r in range(-4,4) if r !=0])
         s = power[i][idx] / np.mean(power[i][adj])
         snr.append(s.item())
