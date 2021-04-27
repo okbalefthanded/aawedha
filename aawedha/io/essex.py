@@ -35,7 +35,7 @@ class Essex(DataSet):
 
     def generate_set(self, load_path=None, channels=None, epoch=[0., .7], 
                      band=[1.0, 10.0], order=2,  downsample=None, 
-                     save_folder=None, fname=None,
+                     save=True, save_folder=None, fname=None,
                      ):
         """
         """
@@ -52,7 +52,8 @@ class Essex(DataSet):
         self.subjects = self._get_subjects()
         self.paradigm = self._get_paradigm()
         self.events = events
-        self.save_set(save_folder, fname)
+        if save:
+            self.save_set(save_folder, fname)
         
 
     def load_raw(self, path=None, channels=None, epoch=[0., .7], 

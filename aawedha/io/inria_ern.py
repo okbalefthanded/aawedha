@@ -94,15 +94,16 @@ class Inria_ERN(DataSet):
         return X
 
     def generate_set(self, load_path=None, epoch=1,
-                     band=[1.0, 40.0],
-                     order=5, save_folder=None):
+                     band=[1.0, 40.0], order=5, 
+                     save=True, save_folder=None, fname=None):
         """
         """
         self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(
             load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=16)
         self.paradigm = self._get_paradigm()
-        self.save_set(save_folder)
+        if save:
+            self.save_set(save_folder, fname)
 
     def get_path(self):
         NotImplementedError

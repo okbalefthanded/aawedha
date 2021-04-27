@@ -109,7 +109,9 @@ class EPFL(DataSet):
         return X, Y, X_test, Y_test
 
     def generate_set(self, load_path=None,
+                     save=True,
                      save_folder=None,
+                     fname=None,
                      epoch=[0., 0.7],
                      band=[1, 10],
                      order=2):
@@ -142,7 +144,8 @@ class EPFL(DataSet):
             load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=9)
         self.paradigm = self._get_paradigm()
-        self.save_set(save_folder)
+        if save:
+            self.save_set(save_folder, fname)
 
     def _load_session(self, files, epoch, band, order):
         '''

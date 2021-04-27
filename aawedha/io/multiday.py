@@ -31,7 +31,7 @@ class MultiDay(DataSet):
 
     def generate_set(self, load_path=None, ch=None, epoch=[0, 6],
                      band=[[38., 44.], [3., 9.], [18., 24.]], order=6,
-                     save_folder=None, fname=None,
+                     save=True, save_folder=None, fname=None,
                      augment=False, method='divide',
                      slide=0.1):
         """Main method for creating and saving DataSet objects and files:
@@ -119,7 +119,8 @@ class MultiDay(DataSet):
             dataset.paradigm = self.paradigm
             dataset.events = events
             dataset.test_events = test_events
-            dataset.save_set(save_folder, fname=fname)
+            if save:
+                dataset.save_set(save_folder, fname=fname)
             #
 
     def load_raw(self, path=None, ch=None, mode='', frange='',

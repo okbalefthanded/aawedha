@@ -34,7 +34,7 @@ class Tsinghua(DataSet):
                          )
 
     def generate_set(self, load_path=None, ch=None, epoch=5, band=[5.0, 45.0],
-                     order=6, save_folder=None, fname=None,
+                     order=6, save=True, save_folder=None, fname=None,
                      augment=False, method='divide', slide=0.1):
         """Main method for creating and saving DataSet objects and files:
             - sets train and test (if present) epochs and labels
@@ -83,7 +83,8 @@ class Tsinghua(DataSet):
         self.subjects = self._get_subjects(path=load_path)
         self.paradigm = self._get_paradigm()
         self.events = self._get_events()
-        self.save_set(save_folder, fname)
+        if save:
+            self.save_set(save_folder, fname)
 
     def load_raw(self, path=None, ch=None, epoch_duration=5,
                  band=[5.0, 45.0], order=6, augment=False,

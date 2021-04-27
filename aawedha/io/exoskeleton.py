@@ -44,6 +44,7 @@ class Exoskeleton(DataSet):
                      epoch=[2, 5],
                      band=[5., 45.],
                      order=6,
+                     save=True,
                      save_folder=None,
                      fname=None,
                      augment=False,
@@ -106,7 +107,8 @@ class Exoskeleton(DataSet):
         self.paradigm = self._get_paradigm()
         self.events = self._get_events(self.y)
         self.test_events = self._get_events(self.test_y)
-        self.save_set(save_folder, fname)
+        if save:    
+            self.save_set(save_folder, fname)
 
     def load_raw(self, path=None, mode='', epoch_duration=[2, 5],
                  band=[5.0, 45.0], order=6, augment=False,

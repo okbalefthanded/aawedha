@@ -51,13 +51,15 @@ class FreiburgOnline(DataSet):
         return X, Y
 
     def generate_set(self, load_path=None,
-                     save_folder=None):
+                     save=True, save_folder=None,
+                     fname=None):
         '''
         '''
         self.epochs, self.y = self.load_raw(load_path)
         self.subjects = self._get_subjects(n_subjects=13)
         self.paradigm = self._get_paradigm()
-        self.save_set(save_folder)
+        if save:
+            self.save_set(save_folder)
 
     def _get_subjects(self, n_subjects=0):
         '''

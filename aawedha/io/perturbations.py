@@ -35,7 +35,8 @@ class Perturbations(DataSet):
                      downsample=4,
                      epoch=3,
                      band=[5.0, 45.0],
-                     order=6, save_folder=None,
+                     order=6, save=True, 
+                     save_folder=None,
                      fname=None,
                      augment=False,
                      method='divide',
@@ -108,7 +109,8 @@ class Perturbations(DataSet):
         if not ch:
             eeg_channels = self._get_eeg_channels()
             self.ch_names = [self.ch_names[i] for i in eeg_channels]
-        self.save_set(save_folder, fname)
+        if save:
+            self.save_set(save_folder, fname)
 
     def load_raw(self, path=None, ch=None, downsample=4, mode='', epoch_duration=3,
                  band=[5.0, 45.0], order=6, augment=False,

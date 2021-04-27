@@ -280,7 +280,8 @@ class OpenBMIERP(DataSet):
     def generate_set(self, load_path=None,
                      epoch=[0., .7],
                      band=[1., 10.],
-                     order=2, save_folder=None,
+                     order=2, save=True, 
+                     save_folder=None,
                      fname=None,
                      channels=None,
                      downsample=None,
@@ -342,7 +343,8 @@ class OpenBMIERP(DataSet):
 
         self.subjects = self._get_subjects(n_subjects=54)
         self.paradigm = self._get_paradigm()
-        self.save_set(save_folder, fname)
+        if save:
+            self.save_set(save_folder, fname)
 
     def load_raw(self, path=None, mode='', epoch_duration=[0., .7],
                  band=[1., 10.], order=2, ch=None,

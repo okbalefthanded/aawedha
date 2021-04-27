@@ -55,6 +55,7 @@ class LaresiHybrid:
         return cnts, infos  # cnt: EEG, info : dict
 
     def generate_set(self, load_path=None, save_folder=None,
+                     save=True, fname=None,
                      epoch=[0., 0.7, 0., 1.0], band=[1, 10, 5, 45],
                      order=[2, 6]):
         '''
@@ -74,9 +75,10 @@ class LaresiHybrid:
         self.ssvep_set.events = self.ssvep_set._get_events(self.ssvep_set.y)
         self.ssvep_set.test_events = self.ssvep_set._get_events(
             self.ssvep_set.test_y)
-        self.save_set(save_folder)
+        if save:
+            self.save_set(save_folder, fname)
 
-    def save_set(self, save_folder=None):
+    def save_set(self, save_folder=None, fname=None):
         '''
         '''
         # save dataset
@@ -85,8 +87,13 @@ class LaresiHybrid:
 
         if not self.title:
             self.title = 'unnamed_set'
+        
+        if fname:
+            fname = f'{save_folder}/{fname}.pkl'
+        else:
+            fname = f'{save_folder}/{self.title}.pkl'
 
-        fname = save_folder + '/' + self.title + '.pkl'
+        # fname = save_folder + '/' + self.title + '.pkl'
         print(f'Saving dataset {self.title} to destination: {fname}')
         with open(fname, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
