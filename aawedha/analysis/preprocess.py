@@ -54,7 +54,7 @@ def eeg_epoch(eeg, epoch_length, markers, fs=512, baseline_correction=False, bas
         offset = 0.0
     start = np.around(offset*fs).astype(int)
     ep = epoch_length[0]
-    epoch_length = [-offset*fs, epoch_length[1]]
+    epoch_length = [-start, epoch_length[1]]
     channels = int(eeg.shape[1])
     epoch_length = np.around(epoch_length)
     dur = np.arange(epoch_length[0], epoch_length[1]).reshape(
