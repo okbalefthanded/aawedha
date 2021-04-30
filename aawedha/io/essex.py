@@ -107,8 +107,11 @@ class Essex(DataSet):
             raw.filter(band[0], band[1], method='iir', iir_params=dict(order=order, ftype='butter'))
             picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False,
                                exclude='bads')
-            epos = Epochs(raw, events, ev_id, epoch[0], epoch[1], proj=True, picks=picks,
-                          baseline=(-0.2, 0), preload=True)
+
+            # epos = Epochs(raw, events, ev_id, epoch[0], epoch[1], proj=True, picks=picks,
+            #               baseline=(-0.2, 0), preload=True)
+            epos = Epochs(raw, events, ev_id, -0.2, epoch[1], proj=True, picks=picks,
+                           baseline=(-0.2, 0), preload=True)
             if downsample:
                 epos.decimate(downsample)
             epos = np.transpose(epos.get_data(), (2, 1, 0))
