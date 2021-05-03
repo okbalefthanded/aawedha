@@ -431,6 +431,15 @@ class DataSet(metaclass=ABCMeta):
                 self.test_epochs = self.test_epochs.reshape(
                     (subjects, samples / channels, channels, trials))
 
+    
+    def trials_count(self):
+        """Get the total number of trials in the training epochs.
+        """
+        if isinstance(self.epochs, list):
+            return sum([y.size for y in self.y])
+        else:
+            return self.y.shape[0]*self.y.shape[1]
+    
     def get_n_classes(self):
         """Get count of classes in DataSet
 
@@ -456,7 +465,7 @@ class DataSet(metaclass=ABCMeta):
             epoch_shapes = [ep.shape for ep in self.epochs]
             y_shapes = [yy.shape for yy in self.y]
             events_shapes = [ev.shape for ev in self.events]
-            shapes = "|| ".join([epoch_shapes, y_shapes, events_shapes])
+            shapes = "|| ".join([str(epoch_shapes), str(y_shapes), str(events_shapes)])
         
         print(f"Shapes: {shapes}")
         
