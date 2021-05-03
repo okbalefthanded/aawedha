@@ -465,7 +465,10 @@ class DataSet(metaclass=ABCMeta):
             epoch_shapes = [ep.shape for ep in self.epochs]
             y_shapes = [yy.shape for yy in self.y]
             events_shapes = [ev.shape for ev in self.events]
-            shapes = "|| ".join([str(epoch_shapes), str(y_shapes), str(events_shapes)])
+            shapes = "|| ".join([f"Epochs {epoch_shapes}", 
+                                 f"Y {y_shapes}", 
+                                 f"Events {events_shapes}"
+                                 ])
         
         print(f"Shapes: {shapes}")
         
@@ -480,10 +483,22 @@ class DataSet(metaclass=ABCMeta):
                 test_epoch_shapes = [ep.shape for ep in self.test_epochs]
                 test_y_shapes = [yy.shape for yy in self.test_y]
                 test_events_shapes = [ev.shape for ev in self.test_events]
-                test_shapes = "|| ".join([test_epoch_shapes, test_y_shapes, test_events_shapes])
+                shapes = "|| ".join([f"Test_Epochs {test_epoch_shapes}", 
+                                     f"Test_Y {test_y_shapes}", 
+                                     f"Test_Events {test_events_shapes}"
+                                    ])
         
             print(f"Test Shapes: {test_shapes}")
 
+    def delete_test(self):
+        """Delete test data attributes, to save memory for Evaluations that
+        use multiple datasets and require only their training data attributes
+        """
+        attrs = ['test_epochs', 'test_y', 'test_events']
+        if hasattr(self, 'test_epochs'):
+            for att in attrs:
+                delattr(self, att)            
+    
     def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, slide=0.1, method='divide'):
         """Segment continuous EEG data using an augmentation method
 

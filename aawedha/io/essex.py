@@ -57,7 +57,7 @@ class Essex(DataSet):
         
 
     def load_raw(self, path=None, channels=None, epoch=[0., .7], 
-                     band=[1.0, 11.0], order=2,  downsample=None):
+                     band=[1.0, 5.0], order=2,  downsample=None):
         """
         """
         set_log_level(verbose=False)
@@ -112,10 +112,11 @@ class Essex(DataSet):
             #               baseline=(-0.2, 0), preload=True)
             epos = Epochs(raw, events, ev_id, -0.2, epoch[1], proj=True, picks=picks,
                            baseline=(-0.2, 0), preload=True)
+            epos.crop(epoch[0], epoch[1])
             if downsample:
                 epos.decimate(downsample)
             epos = np.transpose(epos.get_data(), (2, 1, 0))
-            X.append(epos)
+            X.append(epos*1e6)
             Y.append(y)
             ev.append(events[:, -1])
             del raw, epos, y, events
