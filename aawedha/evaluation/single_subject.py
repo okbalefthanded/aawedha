@@ -144,14 +144,6 @@ class SingleSubject(Evaluation):
             res = [perf for subj in pointer.rets for perf in subj]
             self.results = self.results_reports(res)
 
-        '''
-        if self.log:
-            self._log_results()
-
-        if savecsv:
-            if self.results:
-                self._savecsv(csvfolder)
-        '''
         self._post_operations(savecsv, csvfolder)
 
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):

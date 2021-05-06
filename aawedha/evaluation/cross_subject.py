@@ -126,14 +126,6 @@ class CrossSubject(Evaluation):
         elif check:
             self.results = self.results_reports(pointer.rets)
 
-        '''
-        if self.log:
-            self._log_results()
-
-        if savecsv:
-            if self.results:
-                self._savecsv(csvfolder)
-        '''
         self._post_operations(savecsv, csvfolder)
 
     def get_folds(self, nfolds, tr, vl, ts, exclude_subj=True):

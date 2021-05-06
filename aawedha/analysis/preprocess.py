@@ -48,10 +48,12 @@ def eeg_epoch(eeg, epoch_length, markers, fs=512, baseline_correction=False, bas
     eeg_epochs : nd array (samples, channels, trials)
             epoched EEG (Fortran ordering aka MATLAB format)
     """
+
     if baseline_correction:
         offset = baseline
     else:
         offset = 0.0
+        
     start = np.around(offset*fs).astype(int)
     ep = epoch_length[0]
     epoch_length = [-start, epoch_length[1]]
