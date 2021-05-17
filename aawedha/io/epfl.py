@@ -25,7 +25,7 @@ class EPFL(DataSet):
                                    'C3', 'CP1', 'CP5', 'P7', 'P3', 'Pz', 'PO3',
                                    'O1', 'Oz', 'O2', 'PO4', 'P4', 'P8', 'CP6',
                                    'CP2', 'C4', 'T8', 'FC6', 'FC2', 'F4', 'F8',
-                                   'AF4', 'Fp2', 'Fz', 'Cz', 'MA1', 'MA2'],
+                                   'AF4', 'Fp2', 'Fz', 'Cz'],
                          fs=512,
                          doi='https://doi.org/10.1016/j.jneumeth.2007.03.005')
         self.test_epochs = []
