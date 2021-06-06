@@ -215,6 +215,8 @@ def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
 
     if regularizer == 'ws':
         w_reg = ws_reg
+    else:
+        w_reg = None
 
     # input1 = Input(shape=(1, Chans, Samples))
     input1 = Input(shape=(Chans, Samples))
