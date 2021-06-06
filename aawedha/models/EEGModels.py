@@ -42,7 +42,7 @@
  the file labeled LICENSE.TXT that is a part of this project's official
  distribution.
 """
-
+import tensorflow as tf 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers.experimental.preprocessing import Normalization
 from tensorflow.keras.layers import Dense, Activation, Permute, Dropout, Reshape
@@ -54,6 +54,15 @@ from tensorflow.keras.regularizers import l1_l2
 from tensorflow.keras.layers import Input, Flatten
 from tensorflow.keras.constraints import max_norm
 from tensorflow.keras import backend as K
+from tensorflow_addons.layers import GroupNormalization
+
+
+# weight standardization, channels first
+def ws_reg(kernel):
+    kernel_mean = tf.math.reduce_mean(kernel, axis=[0, 2, 3], keepdims=True, name='kernel_mean')
+    kernel_std = tf.math.reduce_std(kernel, axis=[0, 2, 3], keepdims=True)
+    kernel = kernel - kernel_mean  
+    kernel = kernel / (kernel_std +  1e-5)
 
 
 def EEGNet(nb_classes, Chans=64, Samples=128,
@@ -167,7 +176,8 @@ def EEGNet(nb_classes, Chans=64, Samples=128,
 
 def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
                  dropoutRate=0.5, kernLength=256, F1=96,
-                 D=1, F2=96, dropoutType='Dropout'):
+                 D=1, F2=96, dropoutType='Dropout',
+                 normalizer='batchnorm', regularizer=None):
     """ SSVEP Variant of EEGNet, as used in [1].
 
     Inputs:
@@ -198,6 +208,14 @@ def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
         raise ValueError('dropoutType must be one of SpatialDropout2D '
                          'or Dropout, passed as a string.')
 
+    if normalizer == 'batchnorm':
+        norm_layer = BatchNormalization
+    else:
+        norm_layer = GroupNormalization
+
+    if regularizer == 'ws':
+        w_reg = ws_reg
+
     # input1 = Input(shape=(1, Chans, Samples))
     input1 = Input(shape=(Chans, Samples))
     ##################################################################
@@ -206,19 +224,21 @@ def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
     ##################################################################
     block1 = Conv2D(F1, (1, kernLength), padding='same',
                     input_shape=(1, Chans, Samples),
-                    use_bias=False)(reshape)
-    block1 = BatchNormalization(axis=1)(block1)
+                    use_bias=False, kernel_regularizer=w_reg)(reshape)
+    block1 = norm_layer(axis=1)(block1)
     block1 = DepthwiseConv2D((Chans, 1), use_bias=False,
                              depth_multiplier=D,
-                             depthwise_constraint=max_norm(1.))(block1)
-    block1 = BatchNormalization(axis=1)(block1)
+                             depthwise_constraint=max_norm(1.),
+                             kernel_regularizer=w_reg)(block1)
+    block1 = norm_layer(axis=1)(block1)
     block1 = Activation('elu')(block1)
     block1 = AveragePooling2D((1, 4))(block1)
     block1 = dropoutType(dropoutRate)(block1)
 
     block2 = SeparableConv2D(F2, (1, 16),
-                             use_bias=False, padding='same')(block1)
-    block2 = BatchNormalization(axis=1)(block2)
+                             use_bias=False, padding='same',
+                             kernel_regularizer=w_reg)(block1)
+    block2 = norm_layer(axis=1)(block2)
     block2 = Activation('elu')(block2)
     block2 = AveragePooling2D((1, 8))(block2)
     block2 = dropoutType(dropoutRate)(block2)
