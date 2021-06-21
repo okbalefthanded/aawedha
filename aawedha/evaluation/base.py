@@ -332,8 +332,9 @@ class Evaluation(object):
         res = self._update_results(res)
         return res
 
-    def save_model(self, folderpath=None, save_frozen=False):
-        """Save trained model in HDF5 format
+    # def save_model(self, folderpath=None, save_frozen=False):
+    def save_model(self, folderpath=None, modelformat='TF'):
+        """Save trained model in HDF5 format or SavedModel TF format
         Uses the built-in save method in Keras Model object.
         model name will be: folderpath/modelname_paradigm_dataset.h5
 
@@ -351,14 +352,17 @@ class Evaluation(object):
             os.mkdir('trained')
         if not folderpath:
             folderpath = 'trained'
-        prdg = self.dataset.paradigm.title
-        dt = self.dataset.title
+
         # filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])
-        filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt, '.h5']))
+        if modelformat == 'h5':
+            prdg = self.dataset.paradigm.title
+            dt = self.dataset.title
+            filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt, '.h5']))
+
         self.model.save(filepath)
 
-        if save_frozen:
-            frozen_path = freeze_model(self.model, folderpath)
+        # if save_frozen:
+        #     frozen_path = freeze_model(self.model, folderpath)
 
     def set_model(self, model=None, model_config={}):
         """Assign Model and model_config
