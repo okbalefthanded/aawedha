@@ -18,8 +18,7 @@ def plot_grand_average(data=None, subject=None, channel=['Cz']):
         subject index in dataset, if None plot grand average.
     channel : list of str or 'all'
         channels to calculate average from, by default 'Cz'.
-        if 'all', plot all channels in dataset
-        
+        if 'all', plot all channels in dataset        
     """
 
     samples = data.epochs[0].shape[0]

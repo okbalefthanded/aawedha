@@ -1051,7 +1051,7 @@ class Evaluation(object):
         evl = self.__class__.__name__
         columns = []
         
-        if evl == 'CrossSubject' or 'CrossSet':
+        if evl == 'CrossSubject' or evl == 'CrossSet':
             columns = ['Fold 1']
         elif evl == 'SingleSubject':
             nfolds = len(self.results['accuracy'][0])

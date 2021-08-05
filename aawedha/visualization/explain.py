@@ -14,7 +14,6 @@ def plot_temporal_filters(filters, fs):
     fs : int
        sampling frequency of EEG recordings.
     """
-
     kernel_length = filters.shape[2]
     time = np.arange(0, kernel_length/fs, 1/fs) * 1000
     n_filters = filters.shape[-1]
