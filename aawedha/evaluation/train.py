@@ -8,7 +8,7 @@ import os
 class Train(Evaluation):
 
     def run_evaluation(self, val_size=0.1, selection=None, save_model=False, 
-                       save_frozen=False, save_history=False, folder=None,
+                       model_format='TF', save_history=False, folder=None,
                        new_labels=None, events=None):
         """Performs training
 
@@ -22,12 +22,11 @@ class Train(Evaluation):
             subjects data to be kept for training, by default None
         
         save_model : bool, optional
-            if True, save model after training as a Keras HDF5 file, by default False
-        
-        save_frozen : bool, optional
-            if True, save trained model as Tensorflow pb model, by default False
-            used afterwards for inference.
-        
+            if True, save model after training as a the model_format specified, by default False
+
+        model_format : str, optional
+            model saving format either TF SavedModel of Keras HDF5, by default TF SavedModel.
+                
         save_history : bool, optional
             if True, save model's training history as a pandas DataFrame. by default False
         
@@ -58,7 +57,7 @@ class Train(Evaluation):
 
         # save model in HDF5 format and/or frozen
         if save_model:
-          self.save_model(folderpath=folder, save_frozen=save_frozen)
+          self.save_model(folderpath=folder, modelformat=model_format)
 
         # save training history as a DataFrame
         if save_history:
@@ -171,9 +170,9 @@ class Train(Evaluation):
             class labels
         """
         if isinstance(X, list):
-          n_selection = len(X)
+            n_selection = len(X)
         else:
-          n_selection = X.shape[0]
+            n_selection = X.shape[0]
         X = np.concatenate([X[idx] for idx in range(n_selection)], axis=-1)
         Y = np.concatenate([Y[idx] for idx in range(n_selection)], axis=-1)
         return X, Y

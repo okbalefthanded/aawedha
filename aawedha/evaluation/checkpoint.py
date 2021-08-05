@@ -154,7 +154,8 @@ class CheckPoint(object):
             self.rets.append(rets)
         self.current = current
         # save model using built-in save_model, to avoid pickle error
-        self.model_name = 'aawedha/trained/current_model.h5'
+        # self.model_name = 'aawedha/trained/current_model.h5'
+        self.model_name = 'aawedha/trained/current_model'
         model.save(self.model_name)
         # save evaluation as object?
         save_folder = 'aawedha/checkpoints'

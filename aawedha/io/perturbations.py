@@ -11,7 +11,6 @@ class Perturbations(DataSet):
     based brain-computer interface (BCI) performance under different
     perturbations. PLoS ONE 13(1): e0191673.
     """
-
     def __init__(self):
         super().__init__(title='Perturbations',
                          ch_names=['Fp1', 'Fz', 'F3', 'F7', 'FC5', 'FC1',
@@ -64,6 +63,8 @@ class Perturbations(DataSet):
         order : int
             band-pass filter order
             default: 6
+        save : bool
+            if True save DataSet, default True.
         save_folder : str
             DataSet object saving folder path
         fname: str, optional
@@ -81,9 +82,6 @@ class Perturbations(DataSet):
             used with 'slide' augmentation method, specifies sliding window
             length.
             default : 0.1
-
-        Returns
-        -------
         """
         offline = load_path + '/OFFLINE'
         online = load_path + '/ONLINE'

@@ -11,7 +11,7 @@ import glob
 class Beta(DataSet):
     """
     Beta Large SSVEP Benchmark
-    [1]Liu B, Huang X, Wang Y, Chen X and Gao X (2020) BETA: 
+    [1] Liu B, Huang X, Wang Y, Chen X and Gao X (2020) BETA: 
     A Large Benchmark Database Toward SSVEP-BCI Application. 
     Front. Neurosci. 14:627. doi: 10.3389/fnins.2020.00627
     """
@@ -29,7 +29,6 @@ class Beta(DataSet):
                          fs=250,
                          doi='http://dx.doi.org/10.3389/fnins.2020.00627'
                          )
-
 
 
     def generate_set(self, load_path=None, ch=None, epoch=2, band=[5.0, 45.0],
@@ -73,9 +72,6 @@ class Beta(DataSet):
             used with 'slide' augmentation method, specifies sliding window
             length.
             default : 0.1
-
-        Returns
-        -------
         """
         self.epochs, self.y, subj_info = self.load_raw(load_path,ch,
                                             epoch, band, order,
@@ -171,8 +167,7 @@ class Beta(DataSet):
 
         X = np.array(X)
         Y = np.array(Y).squeeze()
-        return X, Y, subj_info
-        
+        return X, Y, subj_info        
 
 
     def _get_events(self):
@@ -182,7 +177,6 @@ class Beta(DataSet):
         Returns
         -------
         events: nd array (subjects x trials)
-
         """
         events = np.empty(self.y.shape, dtype=object)
         rows, cols = events.shape
@@ -204,8 +198,7 @@ class Beta(DataSet):
 
         Returns
         -------
-        Subject instance
-            
+        Subject instance            
         """
         suppl_info = data['data'][0][0][1]
         subj_id = suppl_info['sub'][0][0][0]

@@ -15,7 +15,6 @@ class OpenBMISSVEP(DataSet):
     GigaScience, Volume 8, Issue 5, May 2019, giz002,
     https://doi.org/10.1093/gigascience/giz002
     """
-
     def __init__(self):
         super().__init__(title='OpenBMI_SSVEP',
                          ch_names=['Fp1', 'Fp2', 'F7', 'F3', 'Fz',
@@ -225,7 +224,7 @@ class OpenBMISSVEP(DataSet):
 
     @staticmethod
     def _position_to_event(position):
-        """
+        """Convert stimulations event in position to its corresponding frequency.
         """
         position_dict = {'down':'5.45', 'right':'6.67', 'left':'8.57', 'up':'12.'}
         idx = np.nonzero(list(position_dict.keys()) == position[:, None])[1]
@@ -280,7 +279,8 @@ class OpenBMIERP(DataSet):
     def generate_set(self, load_path=None,
                      epoch=[0., .7],
                      band=[1., 10.],
-                     order=2, save=True, 
+                     order=2, 
+                     save=True, 
                      save_folder=None,
                      fname=None,
                      channels=None,
@@ -304,6 +304,8 @@ class OpenBMIERP(DataSet):
         order : int
             band-pass filter order
             default: 2
+        save : bool
+            if True save DataSet, default True
         save_folder : str
             DataSet object saving folder path
         fname: str, optional
@@ -315,9 +317,6 @@ class OpenBMIERP(DataSet):
         downsample: int, optional
             down-sampling factor
             default : None
-
-        Returns
-        -------
         """
         if downsample:
             self.fs = self.fs // int(downsample)

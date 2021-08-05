@@ -68,6 +68,8 @@ class Exoskeleton(DataSet):
         order : int
             band-pass filter order
             default: 6
+        save : bool,
+            it True save DataSet, default True.
         save_folder : str
             DataSet object saving folder path
         fname: str, optional
@@ -85,9 +87,6 @@ class Exoskeleton(DataSet):
             used with 'slide' augmentation method, specifies sliding window
             length.
             default : 0.1
-
-        Returns
-        -------
         """
         self.epochs, self.y = self.load_raw(load_path, 'train',
                                             epoch, band,

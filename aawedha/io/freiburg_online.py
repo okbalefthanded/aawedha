@@ -7,15 +7,14 @@ import glob
 
 
 class FreiburgOnline(DataSet):
-    '''
+    """
         Freiburg ERP online speller dataset [1]
 
         Reference:
         [1] Hübner D, Verhoeven T, Schmid K, Müller K-R, Tangermann M and Kindermans P-J.
         Learning from Label Proportions in Brain-Computer Interfaces: Online Unsupervised
         Learning with Guarantees. PLOS ONE. 2017
-    '''
-
+    """
     def __init__(self):
         super().__init__(title='Freiburg_ERP_online',
                          ch_names=['C3', 'C4', 'CP1', 'CP2',
@@ -31,8 +30,20 @@ class FreiburgOnline(DataSet):
                          )
 
     def load_raw(self, path=None):
-        '''
-        '''
+        """Read and process raw data into structured arrays
+
+        Parameters
+        ----------
+        path : str,
+            Dataset folder path
+
+        Returns
+        -------
+        X : nd array (subjects x samples x channels x trials)
+            EEG epochs
+        Y : nd array (subjects x trials)
+            epochs labels : 0/1 : 0 non target, 1 target
+        """
         files_list = sorted(glob.glob(path + '/S*.mat'))
         n_subjects = 13
         X = []
@@ -53,23 +64,46 @@ class FreiburgOnline(DataSet):
     def generate_set(self, load_path=None,
                      save=True, save_folder=None,
                      fname=None):
-        '''
-        '''
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        save : bool,
+            it True save DataSet, default True.
+        save_folder : str
+            DataSet object saving folder path
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
+        """
         self.epochs, self.y = self.load_raw(load_path)
         self.subjects = self._get_subjects(n_subjects=13)
         self.paradigm = self._get_paradigm()
         if save:
-            self.save_set(save_folder)
+            self.save_set(save_folder, fname)
 
     def _get_subjects(self, n_subjects=0):
-        '''
-        '''
+        """Construct Subjects list
+
+        Parameters
+        ----------
+        n_subjects : int
+            subjects count in DataSet, by default 0
+
+        Returns
+        -------
+        list of Subject instance
+        """
         return [Subject(id='S' + str(s), gender='M', age=0, handedness='')
                 for s in range(1, n_subjects + 1)]
 
     def _get_paradigm(self):
-        '''
-        '''
         return ERP(title='ERP_FRIEBURG', stimulation=100,
                    break_duration=150, repetition=68,
                    phrase='Franzy jagt im komplett verwahrlosten Taxi quer durch Freiburg',

@@ -58,6 +58,7 @@ from tensorflow_addons.layers import GroupNormalization
 
 
 # weight standardization, channels first
+@tf.keras.utils.register_keras_serializable(package='Custom', name='ws_reg')
 def ws_reg(kernel):
     kernel_mean = tf.math.reduce_mean(kernel, axis=[0, 2, 3], keepdims=True, name='kernel_mean')
     kernel_std = tf.math.reduce_std(kernel, axis=[0, 2, 3], keepdims=True)

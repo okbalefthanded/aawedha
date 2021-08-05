@@ -13,7 +13,6 @@ class MultiDay(DataSet):
     potential–based brain-computer interface, GigaScience, Volume 8,
     Issue 11, November 2019, giz133, https://doi.org/10.1093/gigascience/giz133
     """
-
     def __init__(self):
         super().__init__(title='Multiday',
                          ch_names=['Fp1', 'Fp2', 'AF4', 'AF3', 'F5',
@@ -73,9 +72,6 @@ class MultiDay(DataSet):
             used with 'slide' augmentation method, specifies sliding window
             length.
             default : 0.1
-
-        Returns
-        -------
         """
         franges = ['HIGH', 'LOW', 'MID']
         for i, rng in enumerate(franges):

@@ -1,7 +1,7 @@
 import numpy as np
 
 def r_square_signed(data=None, subject=None):
-    """calculate signed r square emeasure of seperability between two classes.
+    """calculate signed r square measure of seperability between two classes.
 
     Reference:
     Benjamin Blankertz, Steven Lemm, Matthias Treder, Stefan Haufe, Klaus-Robert Müller,
@@ -11,8 +11,9 @@ def r_square_signed(data=None, subject=None):
 
     Parameters
     ----------
-    data : DataSet instace 
-    subject :int, optional
+    data : DataSet instace
+
+    subject : int, optional
         subject index in dataset, by default None
         if None, calculate grand average among all subjects.
 

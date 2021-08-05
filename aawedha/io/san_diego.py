@@ -7,14 +7,13 @@ import glob
 
 
 class SanDiego(DataSet):
-    '''
+    """
         San Diego SSVEP joint frequency and phase modulation dataset [1]
         [1] Masaki Nakanishi, Yijun Wang, Yu-Te Wang and Tzyy-Ping Jung,
         A Comparison Study of Canonical Correlation Analysis Based Methods for
         Detecting Steady-State Visual Evoked Potentials,"
         PLoS One, vol.10, no.10, e140703, 2015.
-    '''
-
+    """
     def __init__(self):
         super().__init__(title='San_Diego',
                          ch_names=['PO7', 'PO3', 'POz',
@@ -48,6 +47,8 @@ class SanDiego(DataSet):
         order : int
             band-pass filter order
             default: 6
+        save : bool
+            if True save DataSet, default True.
         save_folder : str
             DataSet object saving folder path
         fname: str, optional
@@ -65,9 +66,6 @@ class SanDiego(DataSet):
             used with 'slide' augmentation method, specifies sliding window
             length.
             default : 0.1
-
-        Returns
-        -------
         """
         self.epochs, self.y = self.load_raw(load_path, epoch, band, order, augment, method, slide)
         self.subjects = self._get_subjects(n_subjects=10)

@@ -41,9 +41,9 @@ class EPFL(DataSet):
         path : str
             raw data folder path
         
-        epoch_duration : int
+        epoch : list of float
             epoch duration in seconds relative to trials' onset
-            default : 700 msec 
+            default : 700 msec [0., 0.7]
         band : list
             band-pass filter frequencies, low-freq and high-freq
             default : [1., 10.]
@@ -60,13 +60,10 @@ class EPFL(DataSet):
         X_test : nd array (subjects x samples x channels x trials)
             epoched EEG data for the test phase
         Y_test : nd array (subjects x n_classes)
-            class labels for the test phase
-        
+            class labels for the test phase        
         """
         subjects = 9
         sessions = range(1, 5)
-        # epochs = []
-        # y = []
         events = []
         events_test = []
         target = []
@@ -128,9 +125,9 @@ class EPFL(DataSet):
         save_folder : str
             DataSet object saving folder path
 
-        epoch : int
+        epoch : list of float
             epoch duration in seconds relative to trials' onset
-            default : 700 msec
+            default : 700 msec, [0., .7]
         
         band : list
             band-pass filter frequencies, low-freq and high-freq
@@ -148,8 +145,36 @@ class EPFL(DataSet):
             self.save_set(save_folder, fname)
 
     def _load_session(self, files, epoch, band, order):
-        '''
-        '''
+        """Process a single session files (multiple runs for each subject): load, filter, epoch.
+
+        Parameters
+        ----------
+        files : list
+            session runs files paths.
+
+        epoch : list of float
+            epoch duration in seconds relative to trials' onset
+            default : 700 msec, [0., .7]
+
+        band : list of int
+            band-pass filter frequencies, low-freq and high-freq
+            default : [1., 10.]
+
+        order : int
+            band-pass filter order
+            default: 2
+
+        Returns
+        -------
+        epochs : ndarray (samples x channels x trials)
+            EEG epochs
+        y : 1d array (trials)
+            epochs labels 0/1 : 0 non target, 1 target
+        target : int
+            target label value
+        stims : 1d array (trials)
+            trials stimulus
+        """
         epochs = []
         y = []
         target = []
@@ -171,8 +196,36 @@ class EPFL(DataSet):
         return epochs, y, target, stims
 
     def _get_epochs(self, data, epoch, band, order):
-        '''
-        '''
+        """Process a single run file for a subject.
+
+        Parameters
+        ----------
+        data : HDF5 instance
+            .mat file containg data
+
+        epoch : list of float
+            epoch duration in seconds relative to trials' onset
+            default : 700 msec, [0., .7]
+
+        band : list of int
+            band-pass filter frequencies, low-freq and high-freq
+            default : [1., 10.]
+
+        order : int
+            band-pass filter order
+            default: 2
+
+        Returns
+        -------
+        epochs : ndarray (samples x channels x trials)
+            EEG epochs
+        y : 1d array (trials)
+            epochs labels 0/1 : 0 non target, 1 target
+        target : int
+            target label value
+        stims : 1d array (trials)
+            trials stimulus
+        """
         original_fs = 2048
         decimation = int(original_fs / self.fs)
         epoch_length = np.round(np.array(epoch) * self.fs).astype(int)
@@ -209,8 +262,18 @@ class EPFL(DataSet):
         return epochs, y, target, stimuli
 
     def _get_subjects(self, n_subjects=0):
-        '''
-        '''
+        """Construct Subjects info list from subjects info files.
+
+        Parameters
+        ----------
+        n_subjects : int, optional
+            sujbects count in dataset, by default 0
+
+        Returns
+        -------
+        list
+            of Subject objects containing subjects infos.
+        """
         s = []
         disabled_subjects = 4
         disabled_gender = ['M', 'M', 'M', 'F']
@@ -234,8 +297,12 @@ class EPFL(DataSet):
         return s
 
     def _get_paradigm(self):
-        '''
-        '''
+        """Creates paradigm object.
+        
+        Returns 
+        -------
+        Paradigm instance.
+        """
         return ERP(title='ERP_EPFL', stimulation=100,
                    break_duration=300, repetition=20,
                    stimuli=6, phrase='',

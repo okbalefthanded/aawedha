@@ -21,12 +21,12 @@ class Tsinghua(DataSet):
 
     def __init__(self):
         super().__init__(title='Tsinghua',
-                         ch_names=['FP1', 'FPZ', 'FP2', 'AF3', 'AF4', 'F7', 'F5', 'F3',
-                                   'F1', 'FZ', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5',
+                         ch_names=['FP1', 'FPz', 'FP2', 'AF3', 'AF4', 'F7', 'F5', 'F3',
+                                   'F1', 'Fz', 'F2', 'F4', 'F6', 'F8', 'FT7', 'FC5',
                                    'FC3', 'FC1', 'FCz', 'FC2', 'FC4', 'FC6', 'FT8', 'T7',
                                    'C5', 'C3', 'C1', 'Cz', 'C2', 'C4', 'C6', 'T8', 'M1',
-                                   'TP7', 'CP5', 'CP3', 'CP1', 'CPZ', 'CP2', 'CP4', 'CP6',
-                                   'TP8', 'M2', 'P7', 'P5', 'P3', 'P1', 'PZ', 'P2',
+                                   'TP7', 'CP5', 'CP3', 'CP1', 'CPz', 'CP2', 'CP4', 'CP6',
+                                   'TP8', 'M2', 'P7', 'P5', 'P3', 'P1', 'Pz', 'P2',
                                    'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
                                    'PO6', 'PO8', 'CB1', 'O1', 'Oz', 'O2', 'CB2'],
                          fs=250,
@@ -73,9 +73,6 @@ class Tsinghua(DataSet):
             used with 'slide' augmentation method, specifies sliding window
             length.
             default : 0.1
-
-        Returns
-        -------
         """
         self.epochs, self.y = self.load_raw(load_path,ch,
                                             epoch, band, order,
@@ -137,12 +134,13 @@ class Tsinghua(DataSet):
         n_subjects = 35
         X, Y = [], []
         # augmented = 0
+        # onset = int( (0.5+0.14) * self.fs)
         onset = int(0.5 * self.fs)
         stimulation = 5
         for subj in range(n_subjects):
             data = loadmat(list_of_files[indices == subj][0])
             eeg = data['data'].transpose((1, 0, 2, 3))
-            eeg = eeg[:, chans, :, :]
+            eeg = eeg[:1375, chans, :, :]
             del data
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
@@ -210,6 +208,12 @@ class Tsinghua(DataSet):
                 for s in info if len(s) > 0]
 
     def _get_paradigm(self):
+        """Return a paradigm object following the dataset experiment's info.
+
+        Returns
+        -------
+        Paradigm instance
+        """
         return SSVEP(title='SSVEP_JFPM', stimulation=5000, break_duration=500,
                      repetition=6, stimuli=40, phrase='',
                      stim_type='Sinusoidal',

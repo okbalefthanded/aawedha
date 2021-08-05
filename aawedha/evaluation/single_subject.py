@@ -77,7 +77,7 @@ class SingleSubject(Evaluation):
             default : None, evaluate each subject
 
         pointer : CheckPoint instance
-            save state of evaluation
+            saves the state of evaluation
 
         check : bool
             if True, sets evaluation checkpoint for future operation resume,
@@ -96,7 +96,7 @@ class SingleSubject(Evaluation):
         if not pointer and check:
             pointer = CheckPoint(self)
         #
-        res = []
+        # res = []
 
         independent_test = False
 
@@ -118,6 +118,8 @@ class SingleSubject(Evaluation):
             print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
             self.log_experiment()
 
+        res = self.execute(operations, independent_test, check, pointer)
+        '''
         for subj in operations:
             #
             if self.verbose == 0:
@@ -133,6 +135,7 @@ class SingleSubject(Evaluation):
 
             if check:
                 pointer.set_checkpoint(subj+1, self.model, rets)
+        '''
         #
         if (not isinstance(self.dataset.epochs, list) and
                 self.dataset.epochs.ndim == 3):
@@ -215,7 +218,48 @@ class SingleSubject(Evaluation):
             operations = range(self.n_subjects)
 
         return operations
+           
+    def execute(self, operations, independent_test, check, pointer):
+        """Execute the evaluations on specified subjects in operations.
 
+        Parameters
+        ----------
+        operations : Iterable
+            range | list, specify index of subjects to evaluate.
+        
+        independent_test : bool
+            if True, DataSet contains and independent Test set, False otherwise.
+        
+        check : bool
+            if True, sets evaluation checkpoint for future operation resume,
+            False otherwise.
+        
+        pointer : CheckPoint instance
+            saves the state of evaluation
+
+        Returns
+        -------
+        list
+            list of each subject performance following the metrics specified in the model config.
+        """
+        res = []
+        for subj in operations:
+            if self.verbose == 0:
+                print(f'Evaluating Subject: {subj+1}/{self.n_subjects}...')
+
+            rets = self._single_subject(subj, independent_test)
+            subj_results = self._aggregate_results(rets)
+
+            if self.log:
+                self._log_operation_results(subj, subj_results)
+
+            res.append(subj_results)
+
+            if check:
+                pointer.set_checkpoint(subj+1, self.model, rets)
+        
+        return res
+    
     def _single_subject(self, subj, indie=False):
         """Evaluate a subject on each fold
 

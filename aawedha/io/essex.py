@@ -17,8 +17,6 @@ class Essex(DataSet):
     doi:10.1088/1741-2560/7/5/056006.
     """
     def __init__(self):
-        """
-        """
         super().__init__(title='Essex_P300',
                          ch_names=['Fp1', 'AF7', 'AF3', 'F1', 'F3', 'F5', 'F7', 
                                     'FT7', 'FC5', 'FC3', 'FC1','C1', 'C3', 'C5', 
@@ -37,7 +35,37 @@ class Essex(DataSet):
                      band=[1.0, 10.0], order=2,  downsample=None, 
                      save=True, save_folder=None, fname=None,
                      ):
-        """
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        channels : list, optional
+            default : None, keep all channels
+        epoch : list
+            epoch window start and end in seconds relative to trials' onst
+            default : [0, .7]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [1., 10.]
+        order : int
+            band-pass filter order
+            default: 2
+        downsample: int, optional
+            down-sampling factor
+            default : None
+        save : bool,
+            it True save DataSet, default True.
+        save_folder : str
+            DataSet object saving folder path
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
         """
         if downsample:
             self.fs = self.fs // int(downsample)
@@ -58,7 +86,36 @@ class Essex(DataSet):
 
     def load_raw(self, path=None, channels=None, epoch=[0., .7], 
                      band=[1.0, 5.0], order=2,  downsample=None):
-        """
+        """Read and process raw data into structured arrays
+
+        Parameters
+        ----------
+        path : str
+            raw data folder path
+        channels : list of str
+            list of channels to keep, default None, select all channels.
+        epoch : list
+            epoch duration window start and end in seconds relative to trials' onset
+            default : [0., .7]
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [1., 10.]
+        ch : list, optional
+            default : None, keep all channels
+        order : int
+            band-pass filter order
+            default: 2
+        downsample: int, optional
+            down-sampling factor
+            default : 4
+        Returns
+        -------
+        X : list of nd array (samples x channels x trials_per_subject)
+            epoched EEG data for the entire set or train/test phase
+        Y : list of 1d array (trials_per_subject)
+            class labels for the entire set or train/test phase
+        ev : list of 1d array (trials_per_subject)
+            frequency stimulation of each class
         """
         set_log_level(verbose=False)
         subjects = range(1, 13)
@@ -129,7 +186,11 @@ class Essex(DataSet):
 
     @staticmethod
     def _get_labels(targets, events, starts, ends, ev_id):
-        """
+        """Extract labels from description.
+        Returns
+        -------
+        1d array
+            trials labels 0/1 : 0 non target, 1 target
         """
         y = []
         for idx, tr in enumerate(targets):                    
@@ -151,8 +212,6 @@ class Essex(DataSet):
         return np.hstack(y)
     
     def _get_paradigm(self):
-        """
-        """
         return ERP(title='Essex_P300', stimulation=100,
                    break_duration=50, repetition=20,
                    stimuli=12, phrase='',

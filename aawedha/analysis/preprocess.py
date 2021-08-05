@@ -44,6 +44,12 @@ def eeg_epoch(eeg, epoch_length, markers, fs=512, baseline_correction=False, bas
     markers : nd array (n_markers,)
         event markers onset in samples
 
+    baseline_correction : bool
+        perform baseline correction if True. default False
+
+    baseline : float
+        baseline duration in seconds.
+
     Returns
     -------
     eeg_epochs : nd array (samples, channels, trials)

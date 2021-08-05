@@ -100,6 +100,9 @@ class CrossSubject(Evaluation):
 
         operations = self.get_operations(folds)
 
+        res = self.execute(operations, check, pointer)
+
+        '''
         for fold in operations:
             #
             if self.verbose == 0:
@@ -114,6 +117,7 @@ class CrossSubject(Evaluation):
 
             if check:
                 pointer.set_checkpoint(fold + 1, self.model, rets)
+        '''
         #
         # self._post_operations()
         if (isinstance(self.dataset.epochs, np.ndarray) and
@@ -168,6 +172,45 @@ class CrossSubject(Evaluation):
                               ])
         #
         return folds
+
+    def execute(self, operations, check, pointer):
+        """Execute the evaluations on specified folds in operations.
+
+        Parameters
+        ----------
+        operations : Iterable
+            range | list, specify index of folds to evaluate.
+        
+       
+        check : bool
+            if True, sets evaluation checkpoint for future operation resume,
+            False otherwise.
+        
+        pointer : CheckPoint instance
+            saves the state of evaluation
+
+        Returns
+        -------
+        list
+            list of each fold performance following the metrics specified in the model config.
+        """
+        res = []
+        for fold in operations:
+            #
+            if self.verbose == 0:
+                print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
+
+            rets = self._cross_subject(fold)
+
+            if self.log:
+                self._log_operation_results(fold, rets)
+
+            res.append(rets)
+
+            if check:
+                pointer.set_checkpoint(fold + 1, self.model, rets)
+
+        return res
 
     def get_operations(self, folds=None):
         """get an iterable object for evaluation, it can be

@@ -55,6 +55,19 @@ class DataSet(metaclass=ABCMeta):
     """
 
     def __init__(self, title='', ch_names=[], fs=None, doi=''):
+        """DataSet base constructor
+
+        Parameters
+        ----------
+        title : str, optional
+            dataset title, by default ''
+        ch_names : list, optional
+            EEG channels names following 10/20 placement system, by default []
+        fs : int, optional
+            EEG data sampling frequency, by default None
+        doi : str, optional
+            DataSet published paper doi, by default ''
+        """
         self.epochs = None
         self.y = None
         self.events = []
@@ -67,10 +80,13 @@ class DataSet(metaclass=ABCMeta):
         self.path = '' # keep the path were the final object is saved as pkl
 
     def __str__(self):
-        if type(self.epochs) is np.ndarray:
-            subjects = len(self.epochs)
+        subjects = len(self.epochs)
+        if type(self.epochs) is np.ndarray:            
             epoch_length = self.epochs.shape[1]
-            trials = self.epochs[-1]
+            trials = self.epochs.shape[-1]
+        elif type(self.epochs) is list:
+            epoch_length = self.epochs[0].shape[0]
+            trials = [self.epochs[i].shape[-1] for i in range(subjects)]        
         else:
             subjects = 0
             epoch_length = 0.0
@@ -79,7 +95,7 @@ class DataSet(metaclass=ABCMeta):
         info = (f'DataSet: {self.title} | <{self.paradigm.title}>',
                 f'sampling rate: {self.fs}',
                 f'Subjects: {subjects}',
-                f'Epoch length: {epoch_length}'
+                f'Epoch length: {epoch_length}',
                 f'Channels: {self.ch_names}',
                 f'Trials: {trials}')
         return '\n'.join(info)
@@ -154,14 +170,11 @@ class DataSet(metaclass=ABCMeta):
         ----------
         save_folder: str
             folder path where to save the DataSet
+
         fname: str, optional
             saving path for file, specified when different versions of
             DataSet are saved in the same folder
             default: None
-
-        Returns
-        -------
-        None
         """
         # save dataset
         if not os.path.isdir(save_folder):
@@ -240,7 +253,8 @@ class DataSet(metaclass=ABCMeta):
         Parameters
         ----------
         duration : list of float
-            start and end of time window to keep in msecs.
+            start and end of time window to keep in secs. e.g. [0.1, 0.5] for a selection of
+            100-500 ms.
         """
         duration = (np.array(duration) * self.fs).astype(int)
 
@@ -318,8 +332,8 @@ class DataSet(metaclass=ABCMeta):
         self._rearrange_legacy(ind_all)
 
     def rearrange(self, intersection_events=[]):
-        """Keep a subset of trials based on intersection events.
-        Applied to Train and Test epochs/y/events in the dataset.
+        """Keep a subset of trials based on intersection events between different dataset.
+        Applied to Train and Test epochs/y/events attributes in the dataset.
 
         Parameters
         ----------
@@ -338,8 +352,6 @@ class DataSet(metaclass=ABCMeta):
 
     def labels_to_dict(self):
         """Attach events to their corresponding labels in a dict
-        Parameters
-        ----------
 
         Return
         ------
@@ -434,6 +446,9 @@ class DataSet(metaclass=ABCMeta):
     
     def trials_count(self):
         """Get the total number of trials in the training epochs.
+        Returns
+        -------
+            int : number of trials in all dataset.
         """
         if isinstance(self.epochs, list):
             return sum([y.size for y in self.y])
@@ -447,47 +462,15 @@ class DataSet(metaclass=ABCMeta):
         -------
             int : how many classes the Dataset contains
         """
-        if isinstance(self.y, list):
-            return len(np.unique(self.y[0]))
-        else:
-            return len(np.unique(self.y))
+        return np.unique(self.y[0]).size
 
     def print_shapes(self):
         """Print DataSet Tensors shapes, used as a helper.
         """
-        if isinstance(self.epochs, np.ndarray):
-            if isinstance(self.events, np.ndarray):
-                events = self.events.shape
-            else:
-                events = ''
-            shapes = f"|| Epochs {self.epochs.shape} || Y {self.y.shape} || Events {events}"
-        else:
-            epoch_shapes = [ep.shape for ep in self.epochs]
-            y_shapes = [yy.shape for yy in self.y]
-            events_shapes = [ev.shape for ev in self.events]
-            shapes = "|| ".join([f"Epochs {epoch_shapes}", 
-                                 f"Y {y_shapes}", 
-                                 f"Events {events_shapes}"
-                                 ])
-        
-        print(f"Shapes: {shapes}")
-        
+        shapes = self._get_shapes(['epochs', 'y', 'events'])
+        print(f"Shapes : {shapes}")
         if hasattr(self, 'test_epochs'):
-            if isinstance(self.test_epochs, np.ndarray):
-                if isinstance(self.test_events, np.ndarray):
-                    events = self.test_events.shape
-                else:
-                    events = ''
-                test_shapes = f"|| Test Epochs {self.test_epochs.shape} || Test Y {self.test_y.shape} || Test Events {events}"
-            else:
-                test_epoch_shapes = [ep.shape for ep in self.test_epochs]
-                test_y_shapes = [yy.shape for yy in self.test_y]
-                test_events_shapes = [ev.shape for ev in self.test_events]
-                shapes = "|| ".join([f"Test_Epochs {test_epoch_shapes}", 
-                                     f"Test_Y {test_y_shapes}", 
-                                     f"Test_Events {test_events_shapes}"
-                                    ])
-        
+            test_shapes = self._get_shapes(['test_epochs', 'test_y', 'test_events'])
             print(f"Test Shapes: {test_shapes}")
 
     def delete_test(self):
@@ -739,40 +722,73 @@ class DataSet(metaclass=ABCMeta):
             else:
                 setattr(self, k, np.array(tmp))
 
-    #def _rearrange(self, ind, attrs=[]):
+
     def _rearrange(self, inevents, attrs=[]):
-        '''
-        '''
+        """Keeps trials that correspond to inevents in dataset.
+
+        Parameters
+        ----------
+        inevents : list
+            events shared among different datasets.
+        attrs : list, optional
+            DataSet attributes to apply selection on. e.g. ['epochs', 'y', 'events']    
+        """
         # takes only train data for future use in CrossSet
         # TODO : epochs, y, events are lists
-        tmp_ep = []
+        tmp_epochs = []
         tmp_y = []
-        tmp_ev = []
+        tmp_events = []
         
         for sbj, _ in enumerate(getattr(self, attrs[0])):
             evs = getattr(self, attrs[2])[sbj]
             idx = np.logical_or.reduce([evs==intrs for intrs in inevents])
-            tmp_ep.append(getattr(self, attrs[0])[sbj, :, :, idx].transpose((1, 2, 0)) )
+            tmp_epochs.append(getattr(self, attrs[0])[sbj, :, :, idx].transpose((1, 2, 0)) )
             tmp_y.append(getattr(self, attrs[1])[sbj, idx])
             # tmp_ev.append(getattr(self, attrs[2])[sbj, ind[sbj]])
-            tmp_ev.append(getattr(self, attrs[2])[sbj, idx])
+            tmp_events.append(getattr(self, attrs[2])[sbj, idx])
         
         if self.equal_trials() == 0:
-            setattr(self, attrs[0], np.array(tmp_ep))
+            setattr(self, attrs[0], np.array(tmp_epochs))
             setattr(self, attrs[1], np.array(tmp_y))
-            setattr(self, attrs[2], np.array(tmp_ev)) 
+            setattr(self, attrs[2], np.array(tmp_events)) 
         else:
-            setattr(self, attrs[0], tmp_ep)
+            setattr(self, attrs[0], tmp_epochs)
             setattr(self, attrs[1], tmp_y)
-            setattr(self, attrs[2], tmp_ev)     
-                
-        # setattr(self, attrs[0], np.array(tmp_ep))
-        # setattr(self, attrs[1], np.array(tmp_y))
-        # setattr(self, attrs[2], np.array(tmp_ev))
-        
-        # self.epochs = np.array(tmp_ep)
-        # self.y = np.array(tmp_y)
-        # self.events = np.array(tmp_ev)
+            setattr(self, attrs[2], tmp_events)
+
+    def _get_shapes(self, attr=[]):
+        """Get shapes of Dataset ndarray attributes passed in attr.
+
+        Parameters
+        ----------
+        attr : list,
+            list of attributes to get shapes from.eg. ['epoch', 'y', 'events']
+
+        Returns
+        -------
+        Str
+            Shapes of ndarray attributes
+        """
+        shapes = ""
+        epochs = getattr(self, attr[0])
+        y = getattr(self, attr[1])
+        events = getattr(self, attr[2])
+
+        if isinstance(epochs, np.ndarray):
+            if isinstance(events, np.ndarray):
+                events = events.shape
+            else:
+                events = ''
+            shapes = f"|| Epochs {epochs.shape} || Y {y.shape} || Events {events}"
+        else:
+            epoch_shapes = [ep.shape for ep in epochs]
+            y_shapes = [yy.shape for yy in y]
+            events_shapes = [ev.shape for ev in events]
+            shapes = "|| ".join([f"Epochs {epoch_shapes}", 
+                                 f"Y {y_shapes}", 
+                                 f"Events {events_shapes}"
+                                 ])
+        return shapes     
         
 
             

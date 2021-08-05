@@ -1,9 +1,7 @@
-from tensorflow.keras.layers.experimental import preprocessing
 from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.utils.evaluation_utils import class_weights
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.models.utils_models import freeze_model
 from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
 from aawedha.io.base import DataSet
@@ -155,7 +153,6 @@ class Evaluation(object):
         self.model_compiled = False
         self.model_config = {}
         self.initial_weights = []
-        #  self.normalizer = None # preprocessing.Normalization(axis=(1, 2))
         self.current = None
         self.debug = debug
         self.log_dir = None
@@ -218,10 +215,6 @@ class Evaluation(object):
         ----------
         dt : dataset instance
             a dataset object
-
-        Returns
-        -------
-        no value
         """
         self.dataset = dt
 
@@ -271,7 +264,7 @@ class Evaluation(object):
 
         return results
 
-    def results_reports(self, res, tfpr={}):
+    def results_reports(self, res):
         """Collects evaluation results on a single dict
 
         Parameters
@@ -284,10 +277,6 @@ class Evaluation(object):
             - 'auc' : list (only for binary class tasks)
                 - SingleSubject : AUC of each subject on all folds
                 - CrossSubject :  AUC on all folds
-
-        tfpr : dict (only for binary class tasks)
-            - 'fp' : False positives rate on all fold
-            - 'tp' : True positives rate on all fold
 
         Returns
         -------
@@ -332,7 +321,7 @@ class Evaluation(object):
         res = self._update_results(res)
         return res
 
-    # def save_model(self, folderpath=None, save_frozen=False):
+
     def save_model(self, folderpath=None, modelformat='TF'):
         """Save trained model in HDF5 format or SavedModel TF format
         Uses the built-in save method in Keras Model object.
@@ -343,10 +332,6 @@ class Evaluation(object):
         folderpath : str
             folder location where the model will be saved
             default : 'aawedha/trained
-
-        Returns
-        -------
-        no value
         """
         if not os.path.isdir('trained'):
             os.mkdir('trained')
@@ -360,9 +345,6 @@ class Evaluation(object):
             filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt, '.h5']))
 
         self.model.save(filepath)
-
-        # if save_frozen:
-        #     frozen_path = freeze_model(self.model, folderpath)
 
     def set_model(self, model=None, model_config={}):
         """Assign Model and model_config
@@ -390,53 +372,11 @@ class Evaluation(object):
             - callbacks : list : Keras model callbacks
                 - default : []
             default : empty dict, attributed will be set at compile/fit calls
-
-        Returns
-        -------
-        no value
         """
         if model_config:
             self.set_config(model_config)
-            # self.model_config = model_config
 
-        # UNRESOLVED : due to TF disconnected graph issue that will occur
-        # if we use the below code, we'll revert back to the old code where
-        # we didn't modify any layer of the model, i.e. it's set as it is
-        # defined at/outside this method call.
-        '''
-        if type(model.layers[0].input_shape) is list:
-            # model created using Functional API
-            input_shape = model.layers[0].input_shape[0][1:]
-        else:
-            # model created using Sequential class
-            input_shape = model.layers[0].input_shape[1:]
-
-        if type(model.layers[0]).__name__ is 'InputLayer':
-            layer_input = 1
-        else:
-            layer_input = 0
-
-        input_type = type(model.layers[layer_input]).__name__
-        
-        if input_type is not 'Normalization':
-            model_name = f'{model.name}_norm_'
-            model_input = tf.keras.Input(shape=input_shape[1:])
-            norm = self.normalizer(model_input)
-            hidden = tf.keras.layers.Reshape(input_shape)(norm)
-            for layer in model.layers:
-                if type(layer).__name__ is 'InputLayer':
-                    continue
-                hidden = layer(hidden)
-            self.model = tf.keras.models.Model(inputs=model_input, outputs=hidden, name=model_name)
-        else:
-            self.model = model
-        '''
         self.model = model
-        '''
-        for layer in self.model.layers:
-            if type(layer).__name__ is 'Normalization':
-                self.normalizer = layer
-        '''
         self.initial_weights = self.model.get_weights()
 
     def set_config(self, model_config):
@@ -462,10 +402,6 @@ class Evaluation(object):
             - callbacks : list : Keras model callbacks
                 - default : []
             default : empty dict, attributed will be set at compile/fit calls
-
-        Returns
-        -------
-        no value
         """
         self.model_config = model_config
 
@@ -473,14 +409,6 @@ class Evaluation(object):
         """Write in logger, evaluation information after completing a fold
         Message format :
         date-time-logger_name-logging_level-{fold|subject}-{ACC|AUC}-performance
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        no value
         """
         s = ['train', 'val', 'test']
         
@@ -548,8 +476,6 @@ class Evaluation(object):
             if hasattr(chk, 'mode'):
                 self.mode = chk.mode
                 self.best_kept = chk.best_kept
-            # self.normalizer = chk.normalizer
-
         else:
             self.model = None
             self.predictions = []
@@ -575,10 +501,6 @@ class Evaluation(object):
         """Test whether dataset's train_epochs and test_epochs has same number
         of subjects
 
-        Parameters
-        ----------
-        None
-
         Returns
         -------
         bool : True if number of subjects in training data equals the number of
@@ -592,10 +514,6 @@ class Evaluation(object):
 
     def _get_n_subjects(self):
         """Return number of subjects in dataset
-
-        Parameters
-        ----------
-        None
 
         Returns
         -------
@@ -617,14 +535,6 @@ class Evaluation(object):
 
         Sets model_compiled attribute to true after successful model
             compilation
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
         """
         device = self._get_device()
         khsara, optimizer, metrics = self._get_compile_configs()
@@ -750,10 +660,6 @@ class Evaluation(object):
     def _get_compile_configs(self):
         """Returns default model compile configurations as tuple
 
-        Parameters
-        ----------
-        None
-
         Returns
         -------
         khsara (loss in Arabic): str
@@ -792,10 +698,6 @@ class Evaluation(object):
     def _get_fit_configs(self):
         """Returns fit configurations as tuple
 
-        Parameters
-        ----------
-        None
-
         Returns
         -------
         batch : int
@@ -832,10 +734,6 @@ class Evaluation(object):
         """Construct a logging message to be added to logger at evaluation beginning
 
         the message details the models configuration used for model
-
-        Parameters
-        ----------
-        None
 
         Returns
         -------
@@ -928,9 +826,6 @@ class Evaluation(object):
     @staticmethod
     def _load_checkpoint():
         """load saved checkpoint to resume evaluation
-        Parameters
-        ----------
-        no parameters
 
         Returns
         -------
@@ -1136,10 +1031,6 @@ class Evaluation(object):
         ----------
         folder : str
             results files will be stored inside folder, if None, a default folder inside aawedha is used.
-
-        Returns
-        -------
-        None
         """
         if not folder:
             folder = 'aawedha/results'
