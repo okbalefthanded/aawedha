@@ -2,6 +2,7 @@ from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass
 from scipy.io import loadmat
+import aawedha.utils.network as network
 import numpy as np
 import glob
 
@@ -19,10 +20,13 @@ class SanDiego(DataSet):
                          ch_names=['PO7', 'PO3', 'POz',
                                    'PO4', 'PO8', 'O1', 'Oz', 'O2'],
                          fs=256,
-                         doi='http://dx.doi.org/10.1371/journal.pone.0140703'
+                         doi='http://dx.doi.org/10.1371/journal.pone.0140703',
+                         url="sccn.ucsd.edu"
                          )
 
+
     def generate_set(self, load_path=None,
+                     download=False,
                      epoch=4, band=[5.0, 45.0],
                      order=6, save=True, 
                      save_folder=None,
@@ -38,6 +42,8 @@ class SanDiego(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         epoch : int
             epoch duration in seconds relative to trials' onset
             default : 4 sec (full trial length)
@@ -67,6 +73,9 @@ class SanDiego(DataSet):
             length.
             default : 0.1
         """
+        if download:
+            self.download_raw(load_path)
+
         self.epochs, self.y = self.load_raw(load_path, epoch, band, order, augment, method, slide)
         self.subjects = self._get_subjects(n_subjects=10)
         self.paradigm = self._get_paradigm()
@@ -145,6 +154,17 @@ class SanDiego(DataSet):
         X = np.array(X)
         Y = np.array(Y).squeeze()
         return X, Y
+
+    def download_raw(self, store_path=None):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        ftp_client = network.connect_ftp(self.url)
+        network.download_ftp_folder(ftp_client, 'pub/cca_ssvep', store_path)
 
     def _get_events(self):
         """Attaches the experiments paradigm frequencies to

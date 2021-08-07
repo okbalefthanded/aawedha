@@ -1,10 +1,19 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.erp import ERP
 from aawedha.paradigms.subject import Subject
+from aawedha.utils.network import download_file
+from aawedha.utils.utils import unzip_files
 from scipy.io import loadmat
 import numpy as np
 import glob
 
+
+
+files = ['description.pdf',
+         'online_study_1-7.zip',
+         'online_study_8-13.zip',
+         'sequence.mat'
+         ]
 
 class FreiburgOnline(DataSet):
     """
@@ -26,7 +35,8 @@ class FreiburgOnline(DataSet):
                                    'P4', 'P7', 'P8', 'P9',
                                    'Pz', 'T7', 'T8'],
                          fs=100,
-                         doi='https://doi.org/10.1371/journal.pone.0175856'
+                         doi='https://doi.org/10.1371/journal.pone.0175856',
+                         url="https://zenodo.org/record/192684/files"
                          )
 
     def load_raw(self, path=None):
@@ -61,7 +71,7 @@ class FreiburgOnline(DataSet):
 
         return X, Y
 
-    def generate_set(self, load_path=None,
+    def generate_set(self, load_path=None, download=False,
                      save=True, save_folder=None,
                      fname=None):
         """Main method for creating and saving DataSet objects and files:
@@ -73,6 +83,8 @@ class FreiburgOnline(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         save : bool,
             it True save DataSet, default True.
         save_folder : str
@@ -82,11 +94,27 @@ class FreiburgOnline(DataSet):
             DataSet are saved in the same folder
             default: None
         """
+        if download:
+            self.download_raw(load_path)
         self.epochs, self.y = self.load_raw(load_path)
         self.subjects = self._get_subjects(n_subjects=13)
         self.paradigm = self._get_paradigm()
         if save:
             self.save_set(save_folder, fname)
+
+    def download_raw(self, store_path):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        for f in files:
+            download_file(f"{self.url}/{f}", store_path)
+        zip_files = glob.glob(f"{store_path}/*.zip")
+        unzip_files(zip_files, store_path)        
+        
 
     def _get_subjects(self, n_subjects=0):
         """Construct Subjects list

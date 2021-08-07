@@ -3,8 +3,9 @@ from aawedha.analysis.utils import isfloat
 import tensorflow as tf
 import numpy as np
 import pandas as pd
-import logging
 import datetime
+import zipfile
+import tarfile
 import os
 
 
@@ -145,6 +146,42 @@ def log_to_csv(filepath, folder=''):
     print(f"csv file saved to : {fname}")
 
 def time_now():
-    """[summary]
+    """Return current time in Year_Month_day_Hour_Minutes_Seconds format.
     """
     return datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+
+def unzip_files(zip_files, store_path):
+    """Unzip compressed files and delete zipped files.
+
+    Parameters
+    ----------
+    zip_files : list of str
+        path to zipped files to extract
+    store_path : str
+        folder where to extract zipped files.
+    """
+    for zipf in zip_files:
+        zip_ref = zipfile.ZipFile(zipf) # create zipfile object
+        zip_ref.extractall(store_path) # extract file to dir
+        zip_ref.close() # close file
+        os.remove(zipf) # delete zipped file
+
+def untar_files(tar_files, store_path):
+    """Untar compressed files and delete tar files.
+
+    Parameters
+    ----------
+    tar_files : list of str
+        path to zipped files to extract
+    store_path : str
+        folder where to extract zipped files.
+    """
+    for tfile in tar_files:
+        tar = tarfile.open(tfile)
+        tar.extractall(store_path)
+        tar.close()
+        os.remove(tfile)
+
+
+
+    

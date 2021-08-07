@@ -1,6 +1,8 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
+from aawedha.utils.utils import untar_files
+import aawedha.utils.network as network
 import numpy as np
 import glob
 import h5py
@@ -23,12 +25,14 @@ class MultiDay(DataSet):
                                    'O1', 'PO3', 'P3', 'CP5', 'P7',
                                    'PO7', 'T7', 'T8'],
                          fs=200,
-                         doi='https://doi.org/10.1093/gigascience/giz133')
+                         doi='https://doi.org/10.1093/gigascience/giz133',
+                         url="parrot.genomics.cn")
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
 
-    def generate_set(self, load_path=None, ch=None, epoch=[0, 6],
+    def generate_set(self, load_path=None, download=False, 
+                     ch=None, epoch=[0, 6],
                      band=[[38., 44.], [3., 9.], [18., 24.]], order=6,
                      save=True, save_folder=None, fname=None,
                      augment=False, method='divide',
@@ -42,6 +46,8 @@ class MultiDay(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         ch : list, optional
             default : None, keep all channels
         epoch : list
@@ -73,6 +79,8 @@ class MultiDay(DataSet):
             length.
             default : 0.1
         """
+        if download:
+            self.download_raw(load_path)
         franges = ['HIGH', 'LOW', 'MID']
         for i, rng in enumerate(franges):
             epochs, y = self.load_raw(load_path, ch,
@@ -232,6 +240,20 @@ class MultiDay(DataSet):
         X = np.array(X)
         Y = np.array(Y).squeeze()
         return X, Y
+
+    def download_raw(self, store_path):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        ftp_client = network.connect_ftp(self.url)        
+        network.download_ftp_folder(ftp_client, 'gigadb/pub/10.5524/100001_101000/100660', store_path, 'mrk-and-cnt_datasets.tar.gz')
+        # untar
+        tar_files = glob.glob(f"{store_path}/*tar.gz")
+        untar_files(tar_files)
 
     def get_path(self):
         NotImplementedError

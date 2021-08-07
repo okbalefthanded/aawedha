@@ -336,14 +336,14 @@ class Evaluation(object):
         if not os.path.isdir('trained'):
             os.mkdir('trained')
         if not folderpath:
-            folderpath = 'trained'
+            folderpath = 'trained/'
 
         # filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])
-        if modelformat == 'h5':
-            prdg = self.dataset.paradigm.title
-            dt = self.dataset.title
-            filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt, '.h5']))
-
+        prdg = self.dataset.paradigm.title
+        dt = self.dataset.title
+        filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt]))
+        if modelformat == 'h5':            
+            filepath = f"{filepath}.h5" 
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):

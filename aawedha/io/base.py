@@ -54,7 +54,7 @@ class DataSet(metaclass=ABCMeta):
 
     """
 
-    def __init__(self, title='', ch_names=[], fs=None, doi=''):
+    def __init__(self, title='', ch_names=[], fs=None, doi='', url=None):
         """DataSet base constructor
 
         Parameters
@@ -77,6 +77,7 @@ class DataSet(metaclass=ABCMeta):
         self.ch_names = ch_names
         self.fs = fs
         self.doi = doi
+        self.url = url
         self.path = '' # keep the path were the final object is saved as pkl
 
     def __str__(self):
@@ -126,6 +127,12 @@ class DataSet(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def download_raw(self):
+        """Download raw data from dataset repo url and stored it in a folder.
+        """
+        pass
+    
     @abstractmethod
     def get_path(self):
         """Fetch raw dataset files URL

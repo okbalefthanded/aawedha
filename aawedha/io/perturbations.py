@@ -1,6 +1,8 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass
+from aawedha.utils.network import download_file
+from aawedha.utils.utils import unzip_files
 from scipy.io import loadmat
 import numpy as np
 import glob
@@ -25,12 +27,15 @@ class Perturbations(DataSet):
                                    'C6', 'C2', 'FC4', 'FT8', 'F6', 'F2',
                                    'AF4', 'AF8', 'BIP1'],
                          fs=1000,
-                         doi='https://doi.org/10.1371/journal.pone.0191673')
+                         doi='https://doi.org/10.1371/journal.pone.0191673',
+                         url="https://zenodo.org/record/1146091/files/DATA_REPOSITORY.zip")
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
 
-    def generate_set(self, load_path=None, ch=None,
+    def generate_set(self, load_path=None, 
+                     download=False,
+                     ch=None,
                      downsample=4,
                      epoch=3,
                      band=[5.0, 45.0],
@@ -49,6 +54,8 @@ class Perturbations(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.    
         ch : list, optional
             default : None, keep all channels
         downsample: int, optional
@@ -85,6 +92,10 @@ class Perturbations(DataSet):
         """
         offline = load_path + '/OFFLINE'
         online = load_path + '/ONLINE'
+
+        if download:
+            self.download_raw(load_path)
+
         if downsample:
             self.fs = self.fs // int(downsample)
 
@@ -206,6 +217,18 @@ class Perturbations(DataSet):
         X = np.array(X)
         Y = np.array(Y).squeeze()
         return X, Y
+
+    def download_raw(self, store_path):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        download_file(self.url, store_path)        
+        zip_files = [f"{store_path}/*.zip"]
+        unzip_files(zip_files, store_path)
 
     def get_path(self):
         NotImplementedError

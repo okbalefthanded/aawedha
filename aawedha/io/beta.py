@@ -2,11 +2,23 @@ from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
 from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass
+from aawedha.utils.network import download_file
+from aawedha.utils.utils import unzip_files
 from scipy.io import loadmat
 import numpy as np
-import re
 import glob
+import re
 
+URLS = ["http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S1-S10.mat.zip",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S11-S20.mat.zip",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S21-S30.mat.zip",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S31-S40.mat.zip",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S41-S50.mat.zip",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S41-S50.mat.zip",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S51-S60.mat.zip",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S61-S70.mat.zip",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/note.txt",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/description.txt"]
 
 class Beta(DataSet):
     """
@@ -27,11 +39,12 @@ class Beta(DataSet):
                                    'PO6', 'PO8', 'CB1', 'O1', 'Oz', 'O2', 'CB2'],
 
                          fs=250,
-                         doi='http://dx.doi.org/10.3389/fnins.2020.00627'
+                         doi='http://dx.doi.org/10.3389/fnins.2020.00627',
+                         url="http://bci.med.tsinghua.edu.cn/upload/liubingchuan"
                          )
 
 
-    def generate_set(self, load_path=None, ch=None, epoch=2, band=[5.0, 45.0],
+    def generate_set(self, load_path=None, download=False, ch=None, epoch=2, band=[5.0, 45.0],
                      order=6, save=True, save_folder=None, fname=None,
                      augment=False, method='divide', slide=0.1):
         """Main method for creating and saving DataSet objects and files:
@@ -43,6 +56,8 @@ class Beta(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         ch : list, optional
             default : None, keep all channels
         epoch : int
@@ -73,6 +88,10 @@ class Beta(DataSet):
             length.
             default : 0.1
         """
+
+        if download:
+            self.download_raw(load_path)
+
         self.epochs, self.y, subj_info = self.load_raw(load_path,ch,
                                             epoch, band, order,
                                             augment, method, slide)
@@ -167,8 +186,21 @@ class Beta(DataSet):
 
         X = np.array(X)
         Y = np.array(Y).squeeze()
-        return X, Y, subj_info        
+        return X, Y, subj_info  
 
+    def download_raw(self, store_path=None):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        for url in URLS:
+            download_file(url, store_path)
+        # unzip files and delete
+        zip_files = glob.glob(f"{store_path}/*.zip")
+        unzip_files(zip_files, store_path)        
 
     def _get_events(self):
         """Attaches the experiments paradigm frequencies to

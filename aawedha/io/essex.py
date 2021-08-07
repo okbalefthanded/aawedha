@@ -1,12 +1,14 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.erp import ERP
 from aawedha.paradigms.subject import Subject
+from aawedha.utils.network import download_file
 from mne import Epochs, pick_types, events_from_annotations
 from mne import set_log_level
 from mne.io import concatenate_raws, read_raw_edf
 import pandas as pd
 import numpy as np
 import glob
+import os
 
 
 class Essex(DataSet):
@@ -28,10 +30,11 @@ class Essex(DataSet):
                                     'C4', 'C6', 'T8', 'TP8', 'CP6', 'CP4', 'CP2', 
                                     'P2', 'P4', 'P6', 'P8', 'P10', 'PO8', 'PO4', 'O2'],
                          fs=2048,
-                         doi='http://dx.doi.org/10.1088/1741-2560/7/5/056006'
+                         doi='http://dx.doi.org/10.1088/1741-2560/7/5/056006',
+                         url="https://archive.physionet.org/pn4/erpbci"
                          )
 
-    def generate_set(self, load_path=None, channels=None, epoch=[0., .7], 
+    def generate_set(self, load_path=None, download=False, channels=None, epoch=[0., .7], 
                      band=[1.0, 10.0], order=2,  downsample=None, 
                      save=True, save_folder=None, fname=None,
                      ):
@@ -44,6 +47,8 @@ class Essex(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         channels : list, optional
             default : None, keep all channels
         epoch : list
@@ -70,6 +75,9 @@ class Essex(DataSet):
         if downsample:
             self.fs = self.fs // int(downsample)
         
+        if download:
+            self.download_raw(load_path)
+
         self.epochs, self.y, events = self.load_raw(load_path, channels,
                                                     epoch, band, order, 
                                                     downsample
@@ -184,6 +192,29 @@ class Essex(DataSet):
 
         return X, Y, ev
 
+    def download_raw(self, store_path=None):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        record_file = f"{self.url}/RECORDS"
+        download_file(record_file, store_path)
+        urls = self._get_files_urls(store_path)
+        for i in range(12):
+            # mkdir for subject
+            if i < 10:
+                subj_folder = f"{store_path}/s0{i+1}"
+            else:
+                subj_folder = f"{store_path}/s{i+1}"
+            if not os.path.isdir(subj_folder):
+                os.mkdir(subj_folder)
+            # download edf and edf.event file for subject
+            for subj_urls in urls[i]:
+                download_file(subj_urls, subj_folder)
+
     @staticmethod
     def _get_labels(targets, events, starts, ends, ev_id):
         """Extract labels from description.
@@ -220,3 +251,32 @@ class Essex(DataSet):
     
     def get_path(self):
         NotImplementedError
+
+    def _get_files_urls(self, store_path):
+        """Return each subject files url by reading RECORDS file.
+
+        Parameters
+        ----------
+        store_path : str
+            folder path where record file is stored
+
+        Returns
+        -------
+        list of lists
+            each list contains subject file urls
+        """
+        with open(f"{store_path}/RECORDS", "r") as f:
+            recs = f.read()
+        files = recs.split('\n')
+        urls = []
+        for i in range(1,13):
+            tmp = []
+            for f in files:
+                if i < 10:
+                    ptrn = f"s0{i}"
+                else:
+                    ptrn = f"s{i}"
+                if f.startswith(ptrn):
+                    tmp.extend([f"{self.url}/{f}", f"{self.url}/{f}.event"])                
+            urls.append(tmp)
+        return urls

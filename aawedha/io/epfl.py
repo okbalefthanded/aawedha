@@ -2,6 +2,8 @@ from aawedha.analysis.preprocess import bandpass, eeg_epoch
 from aawedha.io.base import DataSet
 from aawedha.paradigms.erp import ERP
 from aawedha.paradigms.subject import Subject
+from aawedha.utils.network import download_file
+from aawedha.utils.utils import unzip_files
 from scipy.io import loadmat
 from datetime import datetime
 import numpy as np
@@ -27,7 +29,8 @@ class EPFL(DataSet):
                                    'CP2', 'C4', 'T8', 'FC6', 'FC2', 'F4', 'F8',
                                    'AF4', 'Fp2', 'Fz', 'Cz'],
                          fs=512,
-                         doi='https://doi.org/10.1016/j.jneumeth.2007.03.005')
+                         doi='https://doi.org/10.1016/j.jneumeth.2007.03.005',
+                         url='https://documents.epfl.ch/groups/m/mm/mmspg/www/BCI/p300')
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
@@ -106,6 +109,7 @@ class EPFL(DataSet):
         return X, Y, X_test, Y_test
 
     def generate_set(self, load_path=None,
+                     download=False,
                      save=True,
                      save_folder=None,
                      fname=None,
@@ -121,6 +125,9 @@ class EPFL(DataSet):
         ----------
         load_path : str
             raw data folder path
+
+        download : bool,
+            if True, download raw data first. default False.
         
         save_folder : str
             DataSet object saving folder path
@@ -137,6 +144,8 @@ class EPFL(DataSet):
             band-pass filter order
             default: 2
         """
+        if download:
+            self.download_raw(load_path)
         self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(
             load_path, epoch, band, order)
         self.subjects = self._get_subjects(n_subjects=9)
@@ -194,6 +203,21 @@ class EPFL(DataSet):
         target = np.array(target)
         stims = np.concatenate(stims, axis=-1)
         return epochs, y, target, stims
+
+    def download_raw(self, store_path=None):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        for i in range(1, 10):
+            url_f = f"{self.url}/subject{i}.zip"
+            download_file(url_f, store_path)
+        # unzip files and delete
+        zip_files = glob.glob(f"{store_path}/*.zip")
+        unzip_files(zip_files, store_path) 
 
     def _get_epochs(self, data, epoch, band, order):
         """Process a single run file for a subject.

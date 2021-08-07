@@ -32,13 +32,15 @@ class OpenBMISSVEP(DataSet):
                                    'AF3', 'AF4', 'AF8', 'PO3',
                                    'PO4'],
                          fs=1000,
-                         doi='https://doi.org/10.1093/gigascience/giz002')
+                         doi='https://doi.org/10.1093/gigascience/giz002',
+                         url="parrot.genomics.cn")
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
         self.sessions = 100  # index of last trial in a session
 
     def generate_set(self, load_path=None,
+                     download=False,
                      epoch=[0, 4],
                      band=[4.0, 45.0],
                      order=6, save_folder=None,
@@ -57,6 +59,8 @@ class OpenBMISSVEP(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         epoch : list
             epoch window start and end in seconds relative to trials' onst
             default : [0, 4]
@@ -92,6 +96,9 @@ class OpenBMISSVEP(DataSet):
         Returns
         -------
         """
+        if download:
+            self.download_raw(load_path)
+
         if downsample:
             self.fs = self.fs // int(downsample)
 
@@ -222,6 +229,16 @@ class OpenBMISSVEP(DataSet):
         events = np.array(events).squeeze()
         return X, Y, events
 
+    def download_raw(self, store_path):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        pass
+    
     @staticmethod
     def _position_to_event(position):
         """Convert stimulations event in position to its corresponding frequency.

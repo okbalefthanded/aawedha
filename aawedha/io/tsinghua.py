@@ -3,9 +3,10 @@ from aawedha.paradigms.ssvep import SSVEP
 from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass
 from scipy.io import loadmat
+import aawedha.utils.network as network
 import numpy as np
-import re
 import glob
+import re
 
 
 class Tsinghua(DataSet):
@@ -30,10 +31,12 @@ class Tsinghua(DataSet):
                                    'P4', 'P6', 'P8', 'PO7', 'PO5', 'PO3', 'POz', 'PO4',
                                    'PO6', 'PO8', 'CB1', 'O1', 'Oz', 'O2', 'CB2'],
                          fs=250,
-                         doi='http://dx.doi.org/10.1073/pnas.1508080112'
+                         doi='http://dx.doi.org/10.1073/pnas.1508080112',
+                         url='sccn.ucsd.edu'
                          )
 
-    def generate_set(self, load_path=None, ch=None, epoch=5, band=[5.0, 45.0],
+    def generate_set(self, load_path=None, download=False, 
+                    ch=None, epoch=5, band=[5.0, 45.0],
                      order=6, save=True, save_folder=None, fname=None,
                      augment=False, method='divide', slide=0.1):
         """Main method for creating and saving DataSet objects and files:
@@ -45,6 +48,8 @@ class Tsinghua(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         ch : list, optional
             default : None, keep all channels
         epoch : int
@@ -74,6 +79,9 @@ class Tsinghua(DataSet):
             length.
             default : 0.1
         """
+        if download:
+            self.download_raw(load_path)
+
         self.epochs, self.y = self.load_raw(load_path,ch,
                                             epoch, band, order,
                                             augment, method, slide)
@@ -166,6 +174,17 @@ class Tsinghua(DataSet):
         X = np.array(X)
         Y = np.array(Y).squeeze()
         return X, Y
+
+    def download_raw(self, store_path=None):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        ftp_client = network.connect_ftp(self.url)
+        network.download_ftp_folder(ftp_client, 'pub/ssvep_benchmark_dataset', store_path)
 
     def _get_events(self):
         """Attaches the experiments paradigm frequencies to

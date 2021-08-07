@@ -1,10 +1,13 @@
 from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
+from aawedha.utils.network import download_file
+from aawedha.utils.utils import unzip_files
 import numpy as np
 import pickle
 import glob
 import gzip
+import os
 
 
 class Exoskeleton(DataSet):
@@ -35,12 +38,15 @@ class Exoskeleton(DataSet):
                          ch_names=['Oz', 'O1', 'O2', 'PO3',
                                    'POz', 'PO7', 'PO8', 'PO4'],
                          fs=256,
-                         doi='http://dx.doi.org/10.1109/AIM.2014.6878132')
+                         doi='http://dx.doi.org/10.1109/AIM.2014.6878132',
+                         url="https://github.com/sylvchev/dataset-ssvep-exoskeleton/archive/refs/heads/master.zip"
+                         )
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
 
     def generate_set(self, load_path=None,
+                     download=False,
                      epoch=[2, 5],
                      band=[5., 45.],
                      order=6,
@@ -59,6 +65,8 @@ class Exoskeleton(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         epoch : int
             epoch duration window start and end in seconds relative to trials' onset
             default : [2, 5]
@@ -88,6 +96,10 @@ class Exoskeleton(DataSet):
             length.
             default : 0.1
         """
+
+        if download:
+            self.download_raw(load_path)
+
         self.epochs, self.y = self.load_raw(load_path, 'train',
                                             epoch, band,
                                             order, augment,
@@ -149,7 +161,11 @@ class Exoskeleton(DataSet):
             class labels for the entire set or train/test phase
             trials is not a fixed number, it varies according to subjects sessions
         """
-        files_list = sorted(glob.glob(path + '/s*'))
+        if os.path.isdir(f"{path}/dataset-ssvep-exoskeleton"):
+            files_list = sorted(glob.glob(path + '/dataset-ssvep-exoskeleton-master/s*'))
+        else:
+            files_list = sorted(glob.glob(path + '/s*'))
+        
         n_subjects = 12
         X, Y = [], []
         for subj in range(n_subjects):
@@ -165,6 +181,18 @@ class Exoskeleton(DataSet):
             Y.append(y)
 
         return X, Y
+
+    def download_raw(self, store_path=None):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        download_file(self.url, store_path)
+        fname = f"{store_path}/master.zip"
+        unzip_files([fname], store_path)
 
     def _get_epoched(self, files=[], records=[],
                      epoch=[2, 5], band=[5., 45.],
