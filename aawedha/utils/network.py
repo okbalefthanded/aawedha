@@ -1,6 +1,7 @@
 from tqdm import tqdm
 import requests
 import ftplib
+import glob
 import os
 
 
@@ -55,7 +56,7 @@ def connect_ftp(url, user='anonymous', password=''):
     ftp.login(user, password)
     return ftp
 
-def ftp_fetch_folder(ftp, folder):
+def ftp_fetch_folder(ftp, folder, pattern=None):
     """Change ftp client working directory and return its content files in a list.
 
     Parameters
@@ -64,7 +65,9 @@ def ftp_fetch_folder(ftp, folder):
         ftp client
     folder : str
         folder in ftp server to fetch
-
+    pattern : str
+        all files by extension or name to fetch and download from remote folder, default None download all 
+        files.    
     Returns
     -------
     list of str
@@ -72,21 +75,28 @@ def ftp_fetch_folder(ftp, folder):
     """
     ftp.cwd(folder)
     print(f"Changed directory to remote {folder}")
-    return ftp.nlst()
+    if pattern:
+        return ftp.nlst(pattern)
+    else:
+        return ftp.nlst()
 
-def download_ftp_folder(ftp, folder, store_path, only_files=None):
+
+def download_ftp_folder(ftp, folder, store_path, only_files=None, pattern=None):
     """Download all files in ftp folder to local store_path.
 
     Parameters
     ----------
     ftp : FTP instance
-        ftp client
-    only_files : list | None
-        specific files to download from remote folder, default None download all files.
+        ftp client    
    folder : str
         folder in ftp server to fetch
     store_path : str
-        
+        folder path where to store files locally.
+    only_files : list | None
+        specific files by name to download from remote folder, default None download all files. 
+    pattern : str
+        all files by extension or name to fetch and download from remote folder, default None download all 
+        files.    
     """
     if only_files:
         if isinstance(only_files, list):
@@ -94,11 +104,42 @@ def download_ftp_folder(ftp, folder, store_path, only_files=None):
         else:
             files = [f"{folder}/{only_files}"]
     else:
-        files = ftp_fetch_folder(ftp, folder)
-
+        files = ftp_fetch_folder(ftp, folder, pattern)
+    
     for f in files:
         fpath = os.path.join(store_path, f)
         print(f"Storing file : {f} in {store_path}")
         ftp.retrbinary("RETR " + f, open(fpath, 'wb').write)
+
+
+def check_size(ftp, path, remote_folder):
+    """Compare size of local file with remote one, used to re-download a file
+    in case of uncomplete download. 
+
+    Parameters
+    ----------
+    ftp : FTP instance
+        ftp client 
+    path : str
+        local folder path
+    remote_folder : str
+        remote folder path
+
+    Returns
+    -------
+    bool
+        True if all files in folder has been downloaded correctly, False otherwise.
+    """
+    files = glob.glob(f"{path}/*")
+    state = []
+    for f in files:
+        fname = f.split('/')[-1]
+        local_size = os.path.getsize(f)
+        remote_size =  ftp.size(f"{remote_folder}/{fname}")
+        if local_size == remote_size:
+            state.append(1)
+        else:
+            state.append(0)
+    return all(state)     
 
     

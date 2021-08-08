@@ -3,8 +3,10 @@ from aawedha.paradigms.ssvep import SSVEP
 from aawedha.paradigms.erp import ERP
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
 from scipy.io import loadmat
+import aawedha.utils.network as network
 import numpy as np
 import glob
+import os
 
 
 class OpenBMISSVEP(DataSet):
@@ -237,7 +239,19 @@ class OpenBMISSVEP(DataSet):
         store_path : str, 
             folder path where raw data will be stored, by default None. data will be stored in working path.
         """
-        pass
+        sessions = ['session1', 'session2']
+        for sess in sessions:            
+            for subj in range(1, 55):
+                ftp_client = network.connect_ftp(self.url)
+                subj_folder = f"{sess}/s{subj}"
+                folder = f"gigadb/pub/10.5524/100001_101000/100542/{subj_folder}"
+                path = f"{store_path}/{subj_folder}"
+                if not os.path.isdir(path):
+                    os.mkdir(path)
+                elif any(os.scandir(path)):
+                    if network.check_size(ftp_client, path, folder):
+                        continue
+                network.download_ftp_folder(ftp_client, folder, path, pattern="*SSVEP.mat")
     
     @staticmethod
     def _position_to_event(position):
@@ -286,7 +300,8 @@ class OpenBMIERP(DataSet):
                                    'AF3', 'AF4', 'AF8', 'PO3',
                                    'PO4'],
                          fs=1000,
-                         doi='https://doi.org/10.1093/gigascience/giz002')
+                         doi='https://doi.org/10.1093/gigascience/giz002',
+                         url="parrot.genomics.cn")
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
@@ -294,6 +309,7 @@ class OpenBMIERP(DataSet):
         self.test_sessions = 2160  # index of last trial in a session
 
     def generate_set(self, load_path=None,
+                     download=False,
                      epoch=[0., .7],
                      band=[1., 10.],
                      order=2, 
@@ -312,6 +328,8 @@ class OpenBMIERP(DataSet):
         ----------
         load_path : str
             raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
         epoch : list
             epoch window start and end in seconds relative to trials' onst
             default : [0, .7]
@@ -335,6 +353,9 @@ class OpenBMIERP(DataSet):
             down-sampling factor
             default : None
         """
+        if download:
+            self.download_raw(load_path)
+
         if downsample:
             self.fs = self.fs // int(downsample)
 
@@ -442,6 +463,28 @@ class OpenBMIERP(DataSet):
         Y = np.array(Y).squeeze()
         events = np.array(events).squeeze()
         return X, Y, events
+
+    def download_raw(self, store_path):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        sessions = ['session1', 'session2']
+        for sess in sessions:            
+            for subj in range(1, 55):
+                ftp_client = network.connect_ftp(self.url)
+                subj_folder = f"{sess}/s{subj}"
+                folder = f"gigadb/pub/10.5524/100001_101000/100542/{subj_folder}"
+                path = f"{store_path}/{subj_folder}"
+                if not os.path.isdir(path):
+                    os.mkdir(path)
+                elif any(os.scandir(path)):
+                    if network.check_size(ftp_client, path, folder):
+                        continue
+                network.download_ftp_folder(ftp_client, folder, path, pattern="*ERP.mat")
 
     @staticmethod
     def _position_to_event(position):
