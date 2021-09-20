@@ -37,7 +37,6 @@ class Paradigm(metaclass=ABCMeta):
     Methods
     -------
     """
-
     def __init__(self, title=None, control=None, stimulation=0,
                  break_duration=0, repetition=0, stimuli=0, stim_type=None, phrase=None):
         self.title = title
@@ -48,3 +47,7 @@ class Paradigm(metaclass=ABCMeta):
         self.stimuli = stimuli
         self.stim_type = stim_type
         self.phrase = phrase
+
+    def __str__(self):
+        info = [f" {attr} : {getattr(self, attr)}" for attr in self.__dict__]
+        return '\n'.join(info)    

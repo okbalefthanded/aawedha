@@ -155,8 +155,7 @@ class Evaluation(object):
         self.initial_weights = []
         self.current = None
         self.debug = debug
-        self.log_dir = None
-
+        self.log_dir = None 
 
     def __str__(self):
         name = self.__class__.__name__
@@ -320,7 +319,6 @@ class Evaluation(object):
         res = self._aggregate_results(res)
         res = self._update_results(res)
         return res
-
 
     def save_model(self, folderpath=None, modelformat='TF'):
         """Save trained model in HDF5 format or SavedModel TF format
@@ -979,7 +977,6 @@ class Evaluation(object):
                  v in self.results.items() if 'mean' in metric]
         self.logger.debug(' / '.join(means))
 
-    
     def _dataset_info(self):
         """Collect informations on evaluation dataset, which will be used in logging.
         Returns
@@ -1023,7 +1020,6 @@ class Evaluation(object):
             if self.results:
                 self._savecsv(csvfolder)
         
-    
     def _savecsv(self, folder=None):
         """Save evaluation results in a CSV file as Pandas DataFrame
 

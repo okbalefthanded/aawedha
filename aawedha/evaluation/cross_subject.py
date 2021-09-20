@@ -25,7 +25,6 @@ class CrossSubject(Evaluation):
         this method concatenates selected subject in a single Tensor at
         evaluation.
     '''
-
     def generate_split(self, nfolds=30, excl=True):
         """Generate cross-validation folds following a cross-validation
         strategy from ShuffleSplit
@@ -101,23 +100,6 @@ class CrossSubject(Evaluation):
         operations = self.get_operations(folds)
 
         res = self.execute(operations, check, pointer)
-
-        '''
-        for fold in operations:
-            #
-            if self.verbose == 0:
-                print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
-
-            rets = self._cross_subject(fold)
-
-            if self.log:
-                self._log_operation_results(fold, rets)
-
-            res.append(rets)
-
-            if check:
-                pointer.set_checkpoint(fold + 1, self.model, rets)
-        '''
         #
         # self._post_operations()
         if (isinstance(self.dataset.epochs, np.ndarray) and

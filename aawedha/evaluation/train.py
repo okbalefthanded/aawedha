@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import os
 
+
 class Train(Evaluation):
 
     def run_evaluation(self, val_size=0.1, selection=None, save_model=False, 
@@ -55,7 +56,7 @@ class Train(Evaluation):
 
         rets = self._train(selection, val_size)
 
-        # save model in HDF5 format and/or frozen
+        # save model in HDF5 format or SavedModel
         if save_model:
           self.save_model(folderpath=folder, modelformat=model_format)
 

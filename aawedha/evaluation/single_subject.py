@@ -119,23 +119,6 @@ class SingleSubject(Evaluation):
             self.log_experiment()
 
         res = self.execute(operations, independent_test, check, pointer)
-        '''
-        for subj in operations:
-            #
-            if self.verbose == 0:
-                print(f'Evaluating Subject: {subj+1}/{self.n_subjects}...')
-
-            rets = self._single_subject(subj, independent_test)
-            subj_results = self._aggregate_results(rets)
-
-            if self.log:
-                self._log_operation_results(subj, subj_results)
-
-            res.append(subj_results)
-
-            if check:
-                pointer.set_checkpoint(subj+1, self.model, rets)
-        '''
         #
         if (not isinstance(self.dataset.epochs, list) and
                 self.dataset.epochs.ndim == 3):

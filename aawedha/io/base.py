@@ -578,6 +578,7 @@ class DataSet(metaclass=ABCMeta):
             slide = epoch_duration
             v = [eeg[onset + slide * s:onset + slide * s + epoch_duration] for s in strides]
         elif method == 'slide':
+            # augmented = range(int((stimulation - epoch) // slide))
             augmented = range(int((stimulation - epoch) // slide) + 1)
             slide = int(slide * self.fs)
             v = [eeg[onset + slide * s:onset + slide * s + epoch_duration] for s in augmented]

@@ -136,6 +136,8 @@ class Tsinghua(DataSet):
         else:
             chans = range(len(self.ch_names))
         list_of_files = np.array(glob.glob(path + '/S*.mat'))
+        if not list_of_files:
+            raise Exception("Incorrect Data path")
         indices = np.array([int(re.findall(r'\d+', n)[0]) for n in list_of_files]) - 1
         ep = epoch_duration
         epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)

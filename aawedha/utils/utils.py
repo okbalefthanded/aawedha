@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import datetime
+import logging
 import zipfile
 import tarfile
 import os
