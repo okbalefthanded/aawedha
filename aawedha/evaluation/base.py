@@ -250,7 +250,8 @@ class Evaluation(object):
             results[metric] = value
 
         if classes == 2:
-            probs = probs[:, 1]
+            if probs.shape[1] > 1:            
+                probs = probs[:, 1]
             fp_rate, tp_rate, thresholds = roc_curve(Y_test, probs)
             viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
             results['viz'] = viz
@@ -331,6 +332,7 @@ class Evaluation(object):
             folder location where the model will be saved
             default : 'aawedha/trained
         """
+        device = self._get_device()
         if not os.path.isdir('trained'):
             os.mkdir('trained')
         if not folderpath:
@@ -340,7 +342,10 @@ class Evaluation(object):
         prdg = self.dataset.paradigm.title
         dt = self.dataset.title
         filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt]))
-        if modelformat == 'h5':            
+        if modelformat == 'h5' or device == 'TPU':
+            # due to cloud TPUs restrictions, we force
+            # model saving to H5 format. used for long
+            # benchmarking evaluations            
             filepath = f"{filepath}.h5" 
         self.model.save(filepath)
 
