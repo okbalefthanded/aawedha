@@ -7,6 +7,7 @@ import datetime
 import logging
 import zipfile
 import tarfile
+import random
 import os
 
 
@@ -183,6 +184,17 @@ def untar_files(tar_files, store_path):
         tar.close()
         os.remove(tfile)
 
+def set_seed(seed):
+    """Reseed random numbers generators with a common seed.
+
+    Parameters
+    ----------
+    seed : int
+       random numbers generators seed
+    """
+    np.random.seed(seed)
+    random.seed(seed)
+    tf.random.set_seed(seed)
 
 
     
