@@ -787,13 +787,13 @@ class DataSet(metaclass=ABCMeta):
                 events = events.shape
             else:
                 events = ''
-            shapes = f"|| Epochs {epochs.shape} || Y {y.shape} || Events {events}"
+            shapes = f"|| Epochs {epochs.shape} <{epochs.dtype}> || Y {y.shape} <{y.dtype}> || Events {events}"
         else:
             epoch_shapes = [ep.shape for ep in epochs]
             y_shapes = [yy.shape for yy in y]
             events_shapes = [ev.shape for ev in events]
-            shapes = "|| ".join([f"Epochs {epoch_shapes}", 
-                                 f"Y {y_shapes}", 
+            shapes = "|| ".join([f"Epochs {epoch_shapes} <{epochs[0].dtype}>", 
+                                 f"Y {y_shapes} <{y[0].dtype}>", 
                                  f"Events {events_shapes}"
                                  ])
         return shapes     
