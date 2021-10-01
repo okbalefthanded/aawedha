@@ -1,6 +1,7 @@
+from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
 from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now
-from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.utils.evaluation_utils import class_weights
+from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.evaluation.checkpoint import CheckPoint
 from tensorflow.keras.models import load_model
 from tensorflow.keras import backend as K
@@ -676,6 +677,10 @@ class Evaluation(object):
             metrics = self.model_config['compile']['metrics']
             khsara = self.model_config['compile']['loss']
             optimizer = self.model_config['compile']['optimizer']
+            if isinstance(optimizer, str):
+                opt_lib = optimizer_lib(optimizer)
+                if opt_lib != 'builtin':
+                    optimizer = get_optimizer(optimizer, opt_lib)
         else:
             khsara = self._get_loss()
             if self._get_device() != 'TPU':
