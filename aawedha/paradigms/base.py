@@ -38,7 +38,8 @@ class Paradigm(metaclass=ABCMeta):
     -------
     """
     def __init__(self, title=None, control=None, stimulation=0,
-                 break_duration=0, repetition=0, stimuli=0, stim_type=None, phrase=None):
+                 break_duration=0, repetition=0, stimuli=0, stim_type=None, phrase=None,
+                 filename=None):
         self.title = title
         self.control = control
         self.stimulation = stimulation
@@ -47,7 +48,8 @@ class Paradigm(metaclass=ABCMeta):
         self.stimuli = stimuli
         self.stim_type = stim_type
         self.phrase = phrase
+        self.filename = filename
 
     def __str__(self):
         info = [f" {attr} : {getattr(self, attr)}" for attr in self.__dict__]
-        return '\n'.join(info)    
+        return '\n'.join(info)

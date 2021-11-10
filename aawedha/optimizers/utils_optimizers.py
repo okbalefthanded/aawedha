@@ -26,7 +26,7 @@ def optimizer_lib(identifier):
     """
     lib = 'custom'
     try: 
-        opt = get(identifier)
+        _ = get(identifier)
         return 'builtin' 
     except ValueError:
         if identifier.lower() in list(tfaopt.__dict__.keys()):

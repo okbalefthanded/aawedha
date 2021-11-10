@@ -33,27 +33,36 @@ def spectral_power(data, subject=0, channel='POz'):
         samples, channels, trials = data.epochs.shape
         y = data.y
         ev_count = np.unique(data.events).size
-        epochs = data.epochs    
-    
+        epochs = data.epochs
+        
     nyquist = data.fs / 2
     # frequencies = np.linspace(0, nyquist, np.floor(samples/2).astype(int)+1)
-    frequencies = np.arange(0, nyquist, data.fs/samples)   
+    frequencies = np.arange(0, nyquist, data.fs/samples)
 
     trials_per_class = np.round(trials / ev_count).astype(int)
     pwr = []
-    ch = data.ch_names.index(channel)
+    if channel == 'all':
+        ch = range(len(data.ch_names))
+    else:
+        ch = [data.ch_names.index(channel)]
     power = np.zeros((len(frequencies), trials_per_class))
-
+    
     for fr in range(ev_count):
-        epo_frq = epochs[:, ch, y == fr+1].squeeze()
-        tr_per_class = np.sum(y == fr+1)
-        for tr in range(tr_per_class):
-            f = fft(epo_frq[:, tr]) / samples
-            f = 2*np.abs(f)
-            f = f[0:len(frequencies)]
-            power[:, tr] = f
-        pwr.append(power.mean(axis=-1))
-
+        tmp = []
+        for c in ch:
+            epo_frq = epochs[:, c, y == fr+1].squeeze()
+            tr_per_class = np.sum(y == fr+1)
+            for tr in range(tr_per_class):
+                f = fft(epo_frq[:, tr]) / samples
+                f = 2*np.abs(f)
+                f = f[0:len(frequencies)]
+                power[:, tr] = f
+            tmp.append(power.mean(axis=-1))
+        # pwr.append(power.mean(axis=-1))
+        pwr.append(tmp)
+    
+    if len(ch) == 1:
+        pwr = [p.pop() for p in pwr]
     return pwr, frequencies
 
 
@@ -124,7 +133,7 @@ def snr(power, freqs, fs, neighbor=2):
     Xiaogang Chen, Zhikai Chen, Shangkai Gao and Xiaorong Gao
     Journal of Neural Engineering, Volume 10, Number 6
     https://doi.org/10.1088/1741-2560/10/6/066009
-    
+
     Parameters
     ----------
     power : list of 1d array
@@ -134,7 +143,7 @@ def snr(power, freqs, fs, neighbor=2):
     fs : int
         sampling rate
     neighbor : int
-        number of neighboring frequencies 
+        number of neighboring frequencies
     Returns
     -------
     1d array

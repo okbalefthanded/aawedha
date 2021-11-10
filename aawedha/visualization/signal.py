@@ -6,6 +6,7 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 import numpy as np
 import mne
+import os
 
 
 def plot_grand_average(data=None, subject=None, channel=['Cz']):
@@ -18,7 +19,7 @@ def plot_grand_average(data=None, subject=None, channel=['Cz']):
         subject index in dataset, if None plot grand average.
     channel : list of str or 'all'
         channels to calculate average from, by default 'Cz'.
-        if 'all', plot all channels in dataset        
+        if 'all', plot all channels in dataset       
     """
 
     samples = data.epochs[0].shape[0]
@@ -94,7 +95,8 @@ def plot_grand_average(data=None, subject=None, channel=['Cz']):
     plt.show()
 
 
-def plot_spectral_power(data, subject=0, channel='Poz', harmonics=2, flim=50):
+def plot_spectral_power(data, subject=0, channel='POz', harmonics=2, flim=50, ylim=2,
+                        save=False, savefolder=None):
     """Plot spectral power for a given subject in a dataset at
     a specified electrode.
     Parameters
@@ -106,7 +108,6 @@ def plot_spectral_power(data, subject=0, channel='Poz', harmonics=2, flim=50):
     channel : str, optional
         electrode name, by default 'Poz' (suitable for SSVEP based experiments)
     """
-
     pwr, frequencies = spectral_power(data, subject, channel)
 
     if data.paradigm.title == 'ERP':
@@ -129,10 +130,17 @@ def plot_spectral_power(data, subject=0, channel='Poz', harmonics=2, flim=50):
         plt.plot(frequencies, pwr[fr])
         plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
         plt.xlim(0, flim)
+        plt.ylim(0, ylim)
         plt.xlabel('Frequnecy [HZ]')
         plt.ylabel('Power Spectrum')
-        plt.title(
-            f'Subject: {subject + 1} Frequency: {stimuli[fr]}, at {channel}')
+        plt.title(f'Subject: {subject + 1} Frequency: {stimuli[fr]}, at {channel}')
+    if save:
+        if not savefolder:
+            if not os.path.exists("savedfigs"):
+                os.mkdir("savedfigs")
+            savefolder = "savedfigs"                
+        fname = fname= f"{savefolder}/psd_{data.paradigm.filename}.png"
+        plt.savefig(fname, bbox_inches='tight')
 
 
 def plot_time_frequency(data, subject=0, channel='POz', w=4.):
