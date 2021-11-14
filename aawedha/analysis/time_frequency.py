@@ -11,8 +11,10 @@ def spectral_power(data, subject=0, channel='POz'):
     ----------
     data : dataset instance
         epoched EEG signal dataset
-    subject : int
-        given index for a subject, by default 0 (first subject in the dataset)
+    subject : int | list | str
+        int : given index for a subject, by default 0 (first subject in the dataset)
+        list : indices subject's subset.
+        str : 'all', mean of psd across all subjects in data.
     channel : str, optional
         electrode name, by default 'Poz'
 
@@ -24,17 +26,25 @@ def spectral_power(data, subject=0, channel='POz'):
     frequencies: nd array
         array of frequencies: 0 - nyquist
     """
+
     if isinstance(data.epochs, list) or data.epochs.ndim == 4:
-        samples, channels, trials = data.epochs[subject].shape
-        y = data.y[subject]
-        ev_count = np.unique(data.events[subject]).size
-        epochs = data.epochs[subject]
+        if subject == 'all':
+            subjects = range(len(data.epochs))
+            epochs = np.concatenate([data.epochs[idx] for idx in subjects], axis=-1)
+            y = np.concatenate([data.y[idx] for idx in subjects], axis=-1)
+            samples, _ ,trials = epochs.shape
+            ev_count = np.unique(np.concatenate([ev for ev in data.events])).size
+        else:
+            samples, _, trials = data.epochs[subject].shape
+            y = data.y[subject]
+            ev_count = np.unique(data.events[subject]).size
+            epochs = data.epochs[subject]
     else:
-        samples, channels, trials = data.epochs.shape
+        samples, _, trials = data.epochs.shape
         y = data.y
         ev_count = np.unique(data.events).size
         epochs = data.epochs
-        
+
     nyquist = data.fs / 2
     # frequencies = np.linspace(0, nyquist, np.floor(samples/2).astype(int)+1)
     frequencies = np.arange(0, nyquist, data.fs/samples)
@@ -46,7 +56,7 @@ def spectral_power(data, subject=0, channel='POz'):
     else:
         ch = [data.ch_names.index(channel)]
     power = np.zeros((len(frequencies), trials_per_class))
-    
+
     for fr in range(ev_count):
         tmp = []
         for c in ch:
@@ -60,7 +70,7 @@ def spectral_power(data, subject=0, channel='POz'):
             tmp.append(power.mean(axis=-1))
         # pwr.append(power.mean(axis=-1))
         pwr.append(tmp)
-    
+
     if len(ch) == 1:
         pwr = [p.pop() for p in pwr]
     return pwr, frequencies

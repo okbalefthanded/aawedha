@@ -103,10 +103,22 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2, flim=50, yl
     ----------
     data : dataset instance
         epoched EEG signal dataset
-    subject : int
-        given index for a sujbect, by default 0 (first subject in the dataset)
+    subject : int | list | str
+        int : given index for a subject, by default 0 (first subject in the dataset)
+        list : indices subject's subset.
+        str : 'all', mean of psd across all subjects in data.
     channel : str, optional
         electrode name, by default 'Poz' (suitable for SSVEP based experiments)
+    harmonics : int
+        number of frequency harmonics to highlight in plot, default 2
+    flim : int
+        x-axis limit, frequencies in Hz. Default 50
+    ylim: int
+        y-axis limit, PSD. Default 2
+    save : bool
+        if True save figures in savefolder. Default False.
+    savefolder : str 
+        figure saving folder path, default None.
     """
     pwr, frequencies = spectral_power(data, subject, channel)
 
@@ -114,26 +126,54 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2, flim=50, yl
         stimuli = data.events[subject]
     else:
         stimuli = data.paradigm.frequencies
+    if channel == 'all':
+        chs = data.ch_names
+    else:
+        chs = channel
 
-    for fr in range(len(pwr)):
-        event = stimuli[fr]
+    if type(channel) is list or channel == 'all':
+        if len(stimuli) == 1:
+            for ch in range(len(pwr[0])):
+                event = stimuli[0]
+                if event == 'idle':
+                    ff = np.zeros((3))
+                else:
+                    event = float(event)
+                    ff = np.array([event*ev for ev in range(1, harmonics+1)])
+                f_idx = np.logical_or.reduce([frequencies == f for f in ff.tolist()])
 
-        if event == 'idle':
-            ff = np.zeros((3))
+                plt.figure()
+                plt.plot(frequencies, pwr[0][ch])
+                plt.plot(frequencies[f_idx], pwr[0][ch][f_idx], 'ro')
+                plt.xlim(0, flim)
+                plt.ylim(0, ylim)
+                plt.xlabel('Frequnecy [HZ]')
+                plt.ylabel('Power Spectrum')
+                plt.title(f'Subject: {subject + 1} Frequency: {stimuli[0]}, at {chs[ch]}')
+    else:
+        if subject == 'all':
+                subject = "Grand Average"
         else:
-            event = float(event)
-            # ff = np.array([event, 2*event, 3*event, 4*event])
-            ff = np.array([event*ev for ev in range(1, harmonics+1)])
-        f_idx = np.logical_or.reduce([frequencies == f for f in ff.tolist()])
+                subject = subject + 1
+        for fr in range(len(pwr)):
+            event = stimuli[fr]
 
-        plt.figure()
-        plt.plot(frequencies, pwr[fr])
-        plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
-        plt.xlim(0, flim)
-        plt.ylim(0, ylim)
-        plt.xlabel('Frequnecy [HZ]')
-        plt.ylabel('Power Spectrum')
-        plt.title(f'Subject: {subject + 1} Frequency: {stimuli[fr]}, at {channel}')
+            if event == 'idle':
+                ff = np.zeros((3))
+            else:
+                event = float(event)
+                # ff = np.array([event, 2*event, 3*event, 4*event])
+                ff = np.array([event*ev for ev in range(1, harmonics+1)])
+            f_idx = np.logical_or.reduce([frequencies == f for f in ff.tolist()])
+
+            plt.figure()
+            plt.plot(frequencies, pwr[fr])
+            plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
+            plt.xlim(0, flim)
+            plt.ylim(0, ylim)
+            plt.xlabel('Frequnecy [HZ]')
+            plt.ylabel('Power Spectrum')
+            plt.title(f'Subject: {subject} Frequency: {stimuli[fr]}, at {channel}')
     if save:
         if not savefolder:
             if not os.path.exists("savedfigs"):
