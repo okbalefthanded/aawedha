@@ -132,7 +132,7 @@ class DataSet(metaclass=ABCMeta):
         """Download raw data from dataset repo url and stored it in a folder.
         """
         pass
-    
+
     @abstractmethod
     def get_path(self):
         """Fetch raw dataset files URL
@@ -350,7 +350,7 @@ class DataSet(metaclass=ABCMeta):
         # idx = np.logical_or.reduce([self.events==intrs for intrs in intersection_events])
         # self._rearrange(idx, ['epochs', 'y', 'events'])
         self._rearrange(intersection_events, ['epochs', 'y', 'events'])
-        
+
         if hasattr(self, 'test_epochs'):
             if isinstance(self.test_epochs, np.ndarray):
                 # idx = np.logical_or.reduce([self.test_events==intrs for intrs in intersection_events])
@@ -630,7 +630,7 @@ class DataSet(metaclass=ABCMeta):
         else:
             length = self.epochs[0].shape[0]
         return length
-    
+
     def equal_trials(self):
         """Wheter epochs in a list of ndarrays have same count of trials
 
@@ -797,11 +797,4 @@ class DataSet(metaclass=ABCMeta):
                                  f"Y {y_shapes} <{y[0].dtype}>", 
                                  f"Events {events_shapes}"
                                  ])
-        return shapes     
-        
-
-            
-
-
-
-
+        return shapes

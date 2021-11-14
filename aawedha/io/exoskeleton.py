@@ -187,7 +187,7 @@ class Exoskeleton(DataSet):
 
         Parameters
         ----------
-        store_path : str, 
+        store_path : str,
             folder path where raw data will be stored, by default None. data will be stored in working path.
         """
         download_file(self.url, store_path)
