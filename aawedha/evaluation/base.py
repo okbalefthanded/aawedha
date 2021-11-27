@@ -176,7 +176,7 @@ class Evaluation(object):
     @abc.abstractmethod
     def run_evaluation(self):
         """Main evaluation process
-            Overridden in each type of evaluation : SingleSubject | CrossSubject | CrossSet 
+            Overridden in each type of evaluation : SingleSubject | CrossSubject | CrossSet
         """
         pass
 
