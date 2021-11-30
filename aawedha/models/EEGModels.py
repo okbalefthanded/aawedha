@@ -249,7 +249,12 @@ def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
     flatten = Flatten(name='flatten')(block2)
 
     dense = Dense(nb_classes, name='dense')(flatten)
-    softmax = Activation('softmax', name='softmax')(dense)
+    if nb_classes == 1:
+        activation = 'sigmoid'
+    else:
+        activation = 'softmax'
+    softmax = Activation(activation, name='softmax')(dense)
+    # softmax = Activation('softmax', name='softmax')(dense)
 
     return Model(inputs=input1, outputs=softmax, name="EEGNet_SSVEP")
 

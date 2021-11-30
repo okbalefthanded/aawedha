@@ -9,7 +9,7 @@ from tensorflow import keras
 
 def activation_block(x, activation="gelu"):
     x = layers.Activation(activation)(x)
-    return layers.BatchNormalization()(x)
+    return layers.BatchNormalization(axis=1)(x) # for channel first
 
 def conv_stem(x, filters: int, patch_size: int, activation: str):
     x = layers.Conv2D(filters, kernel_size=patch_size, strides=patch_size)(x)
