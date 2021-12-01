@@ -1,5 +1,6 @@
 from tensorflow.keras.layers.experimental.preprocessing import Normalization
 from tensorflow.keras.layers import Activation, Reshape
+from tensorflow.keras.constraints import max_norm
 from tensorflow.keras import layers
 from tensorflow import keras
 
@@ -18,7 +19,8 @@ def conv_stem(x, filters: int, patch_size: int, activation: str):
 def conv_mixer_block(x, filters: int, kernel_size: int):
     # Depthwise convolution.
     x0 = x
-    x = layers.DepthwiseConv2D(kernel_size=kernel_size, padding="same")(x)
+    x = layers.DepthwiseConv2D(kernel_size=kernel_size, padding="same", 
+                                depthwise_constraint=max_norm(1.))(x)
     x = layers.Add()([activation_block(x), x0])  # Residual.
 
     # Pointwise convolution.
@@ -28,7 +30,7 @@ def conv_mixer_block(x, filters: int, kernel_size: int):
     return x
 
 def ConvMixer(Chans=15, Samples=205, filters=256, depth=8, kernel_size=5, patch_size=2,
-              nb_classes=2, activation="gelu"):
+              nb_classes=2, activation="gelu", norm_rate=0.25):
     """ConvMixer-256/8: https://openreview.net/pdf?id=TVHS5Y4dNvM.
     The hyperparameter values are taken from the paper.
     """
@@ -45,7 +47,7 @@ def ConvMixer(Chans=15, Samples=205, filters=256, depth=8, kernel_size=5, patch_
 
     # Classification block.
     x = layers.GlobalAvgPool2D()(x)
-    dense = layers.Dense(nb_classes, name='dense')(x)
+    dense = layers.Dense(nb_classes, name='dense', kernel_constraint=max_norm(norm_rate))(x)
     if nb_classes == 1:
         activation = 'sigmoid'
     else:
