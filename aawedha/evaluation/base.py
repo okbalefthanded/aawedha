@@ -673,23 +673,40 @@ class Evaluation(object):
         mets : list : str | keras metrics
             metrics
         """   
+ 
         if 'compile' in self.model_config:
-            metrics = self.model_config['compile']['metrics']
-            khsara = self.model_config['compile']['loss']
-            optimizer = self.model_config['compile']['optimizer']
-            if isinstance(optimizer, str):
-                opt_lib = optimizer_lib(optimizer)
-                if opt_lib != 'builtin':
-                    optimizer = get_optimizer(optimizer, opt_lib)
-        else:
-            khsara = self._get_loss()
-            if self._get_device() != 'TPU':
-                metrics = self._get_metrics()
+            if 'metrics' in self.model_config['compile']: 
+                metrics = self.model_config['compile']['metrics']
             else:
-                metrics = []            
-            optimizer = 'adam'
+                metrics = self._get_metrics()
+            if 'loss' in self.model_config['compile']:
+                khsara = self.model_config['compile']['loss']
+            else:
+                khsara = self._get_loss()
+            if 'optimizer' in self.model_config['compile']: 
+                optimizer = self.model_config['compile']['optimizer']
+                if isinstance(optimizer, str):
+                    opt_lib = optimizer_lib(optimizer)
+                    if opt_lib != 'builtin':
+                        optimizer = get_optimizer(optimizer, opt_lib)
+            else:
+                optimizer = 'adam'    
+        else:
+            khsara, optimizer, metrics = self._default_compile()
             # set config for checkpoint use            
 
+        return khsara, optimizer, metrics
+
+    def _default_compile(self):
+        """Default model compile configuration, used when no compile
+        config is passed to evaluation.
+        """
+        khsara = self._get_loss()
+        if self._get_device() != 'TPU':
+            metrics = self._get_metrics()
+        else:
+            metrics = []            
+        optimizer = 'adam'
         return khsara, optimizer, metrics
 
     def _normalize(self, X_train):
