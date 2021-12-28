@@ -1,9 +1,10 @@
 from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
 from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now
-from aawedha.utils.evaluation_utils import class_weights
+from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.evaluation.checkpoint import CheckPoint
 from tensorflow.keras.models import load_model
+from aawedha.evaluation.mixup import mix_up
 from tensorflow.keras import backend as K
 from aawedha.io.base import DataSet
 import tensorflow as tf
@@ -591,7 +592,7 @@ class Evaluation(object):
         perf : array
             model's performance on test data: accuracy and loss
         """
-        batch, ep, clbs = self._get_fit_configs()
+        batch, ep, clbs, aug = self._get_fit_configs()
 
         device = self._get_device()
         '''
@@ -618,8 +619,41 @@ class Evaluation(object):
                 spe = X_train.shape[-1] // batch
             '''
         probs, perf = None, None
-
-        history = self.model.fit(x=X_train, y=Y_train,
+        if aug:
+            alpha = 0.2
+            if isinstance(aug, list):
+                alpha = aug[1]                
+            X_train = X_train.astype(np.float32)
+            Y_train = labels_to_categorical(Y_train)
+            if isinstance(Y_val, np.ndarray):
+                X_val = X_val.astype(np.float32)
+                Y_val = labels_to_categorical(Y_val)
+                val = tf.data.Dataset.from_tensor_slices((X_val, Y_val)).batch(batch)
+            if isinstance(Y_test, np.ndarray):
+                X_test = X_test.astype(np.float32)
+                Y_test = labels_to_categorical(Y_test)
+            train_ds_one = (tf.data.Dataset.from_tensor_slices((X_train, Y_train))
+                            .shuffle(batch * 100)
+                            .batch(batch)
+                            )
+            train_ds_two = (tf.data.Dataset.from_tensor_slices((X_train, Y_train))
+                            .shuffle(batch * 100)
+                            .batch(batch)
+                            )
+            train_ds = tf.data.Dataset.zip((train_ds_one, train_ds_two))
+                
+            X_train = train_ds.map(lambda ds_one, ds_two: mix_up(ds_one, ds_two, alpha=alpha),
+                                       num_parallel_calls=tf.data.AUTOTUNE)
+            #
+            history = self.model.fit(X_train,
+                                 epochs=ep,
+                                 steps_per_epoch=spe,
+                                 verbose=self.verbose,
+                                 validation_data=val,
+                                 class_weight=cws,
+                                 callbacks=clbs)
+        else:    
+            history = self.model.fit(x=X_train, y=Y_train,
                                  batch_size=batch,
                                  epochs=ep,
                                  steps_per_epoch=spe,
@@ -736,11 +770,13 @@ class Evaluation(object):
             batch = self.model_config['fit']['batch']
             ep = self.model_config['fit']['epochs']
             clbks = self.model_config['fit']['callbacks']
+            aug = self.model_config['fit']['augment']
             # format = self.model_config['fit']['format']
         else:
             batch = 64
             ep = 300
             clbks = []
+            aug = None
             # format = 'channels_first'
         
         # K.set_image_data_format(format)
@@ -753,7 +789,7 @@ class Evaluation(object):
                 os.mkdir(self.log_dir)
             clbks.append(tf.keras.callbacks.TensorBoard(self.log_dir))
         
-        return batch, ep, clbks #, format
+        return batch, ep, clbks, aug #, format
 
     def _get_model_configs_info(self):
         """Construct a logging message to be added to logger at evaluation beginning
@@ -766,11 +802,12 @@ class Evaluation(object):
             model's configuration
         """
         khsara, opt, mets = self._get_compile_configs()
-        batch, ep, clbs = self._get_fit_configs()
+        batch, ep, clbs, aug = self._get_fit_configs()
         model_config = f' Loss: {khsara} | Optimizer: {opt} | \
                             metrics: {mets} | batch_size: {batch} | \
                             epochs: {ep} | \
-                            callbacks: {clbs}'
+                            callbacks: {clbs} \
+                            augment : {aug}'
         return model_config
 
     def _get_metrics(self):
