@@ -3,6 +3,7 @@ from tensorflow.keras.models import load_model as K_load_model
 from tensorflow import keras
 import tensorflow as tf
 import numpy as np
+import yaml
 
 
 def freeze_model(model, frozen_folder, debug=False):
@@ -56,3 +57,32 @@ def freeze_model(model, frozen_folder, debug=False):
                       name=f"{frozen_graph_filename}.pbtxt",
                       as_text=True)
     return pb_file_name
+
+def create_model_from_config(config, optional):
+    """Create a Keras model instance from configuration dict.
+
+    Parameters
+    ----------
+    config : dict
+        the model parameters
+    optional : dict
+        optional parameters: number of channels and length of samples,
+        which are speficied after loading data.
+
+    Returns
+    -------
+    Keras Model instance
+    """
+    missing_keys = ["Chans", "Samples"]
+    for key in missing_keys:
+        if key not in config["parameters"]:
+            config["parameters"][key] = optional[key]
+
+    mod = __import__(config['from'], fromlist=[config['name']])        
+    # create the instance
+    if 'parameters' in config.keys():
+        params = config['parameters']
+    else:
+        params = {}
+    instance = getattr(mod, config['name'])(**params)    
+    return instance

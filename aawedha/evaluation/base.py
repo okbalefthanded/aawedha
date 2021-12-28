@@ -619,7 +619,7 @@ class Evaluation(object):
             '''
         probs, perf = None, None
 
-        history = self.model.fit(X_train, Y_train,
+        history = self.model.fit(x=X_train, y=Y_train,
                                  batch_size=batch,
                                  epochs=ep,
                                  steps_per_epoch=spe,

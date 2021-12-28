@@ -112,5 +112,5 @@ def TCN_block(input_layer, input_dimension, depth, kernel_size, filters,
         block = Dropout(dropout)(block)
         added = Add()([block, out])
         out = Activation(activation)(added)
-        
+    
     return out
