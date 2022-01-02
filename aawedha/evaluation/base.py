@@ -260,7 +260,7 @@ class Evaluation(object):
             preds = np.zeros(len(probs))
             preds[probs.squeeze() > .5] = 1.
         else:
-            preds = probs.argmax(axis=-1)     
+            preds = probs.argmax(axis=-1)
         
         self.cm.append(confusion_matrix(Y_test, preds))
 
@@ -347,8 +347,8 @@ class Evaluation(object):
         if modelformat == 'h5' or device == 'TPU':
             # due to cloud TPUs restrictions, we force
             # model saving to H5 format. used for long
-            # benchmarking evaluations            
-            filepath = f"{filepath}.h5" 
+            # benchmarking evaluations
+            filepath = f"{filepath}.h5"
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
@@ -622,7 +622,7 @@ class Evaluation(object):
         if aug:
             alpha = 0.2
             if isinstance(aug, list):
-                alpha = aug[1]                
+                alpha = aug[1]
             X_train = X_train.astype(np.float32)
             Y_train = labels_to_categorical(Y_train)
             if isinstance(Y_val, np.ndarray):
@@ -652,7 +652,7 @@ class Evaluation(object):
                                  validation_data=val,
                                  class_weight=cws,
                                  callbacks=clbs)
-        else:    
+        else:
             history = self.model.fit(x=X_train, y=Y_train,
                                  batch_size=batch,
                                  epochs=ep,
@@ -770,7 +770,9 @@ class Evaluation(object):
             batch = self.model_config['fit']['batch']
             ep = self.model_config['fit']['epochs']
             clbks = self.model_config['fit']['callbacks']
-            aug = self.model_config['fit']['augment']
+            aug = None
+            if 'augment' in self.model_config['fit']: 
+                aug = self.model_config['fit']['augment']
             # format = self.model_config['fit']['format']
         else:
             batch = 64
@@ -843,7 +845,7 @@ class Evaluation(object):
         """Get default suitable Loss name according to the number of classes in dataset.
         
         - Binary Classification : binary_crossentropy
-        - Multi Class : sparse_categorical_crossentropy
+        - Multi Class : sparse_categorical_crossentropy | categorical_crossentropy
 
         Returns
         -------
@@ -852,8 +854,11 @@ class Evaluation(object):
         classes = self._get_classes()
         if classes == 2:
             return 'binary_crossentropy'
+        elif 'fit' in self.model_config:
+            if 'augment' in self.model_config['fit']:
+                return 'categorical_crossentropy'
         else:
-            return 'sparse_categorical_crossentropy' 
+            return 'sparse_categorical_crossentropy'
 
     def _get_classes(self):
         """Number of classes in DataSet

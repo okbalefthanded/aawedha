@@ -6,7 +6,7 @@ from tensorflow.keras.models import Model
 """adapted from author's code available at: https://github.com/gibranfp/P300-CNNT
 """
 
-def SepConv1D(Chans=6, Samples=206, Filters=32):
+def SepConv1D(nb_classes=1, Chans=6, Samples=206, Filters=32):
     """Simple CNN architecture introduced in [1], consisting of
     2 layers, a single input and n_Filters of 1D Separable Convolutions.
 
@@ -39,6 +39,10 @@ def SepConv1D(Chans=6, Samples=206, Filters=32):
                                  use_bias=True)(padded)
     block1       = Activation('tanh')(block1)
     flatten      = Flatten(name='flatten')(block1)
-    prediction   = Dense(1, activation='sigmoid')(flatten)
+    if nb_classes == 1:
+        activation = 'sigmoid'
+    else:
+        activation = 'softmax'    
+    prediction   = Dense(nb_classes, activation=activation)(flatten)
 
     return Model(inputs=eeg_input, outputs=prediction, name='SepConv1D')  

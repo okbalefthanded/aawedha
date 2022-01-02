@@ -27,7 +27,7 @@ def optimizer_lib(identifier):
     lib = 'custom'
     try: 
         _ = get(identifier)
-        return 'builtin' 
+        return 'builtin'
     except ValueError:
         if identifier.lower() in list(tfaopt.__dict__.keys()):
             return 'TFA' # tfa : tensorflow_addons
@@ -36,7 +36,7 @@ def optimizer_lib(identifier):
 
 def get_optimizer(identifier, opt_lib=None):
     """Returns optimizer instance from identifier
-    
+
     Parameter
     --------
         identifier : str
