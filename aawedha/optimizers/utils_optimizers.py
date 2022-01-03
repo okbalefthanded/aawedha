@@ -3,7 +3,9 @@ from tensorflow.keras.optimizers import get
 import tensorflow_addons.optimizers as tfaopt
 from madgrad import MadGrad
 
-all_classes_tfa = {'cocob': tfaopt.COCOB,
+all_classes_tfa = {'adabelief': tfaopt.AdaBelief,
+                    'adamw': tfaopt.AdamW,                 
+                  'cocob': tfaopt.COCOB,
                   'conditional_gradient': tfaopt.ConditionalGradient,
                   'lamb' : tfaopt.LAMB,
                   'novograd': tfaopt.NovoGrad,
