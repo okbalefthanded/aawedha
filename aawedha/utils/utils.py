@@ -8,6 +8,7 @@ import logging
 import zipfile
 import tarfile
 import random
+import torch
 import os
 
 
@@ -195,6 +196,7 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     tf.random.set_seed(seed)
+    torch.manual_seed(seed)
 
 
 def make_folders(root="aawedha"):

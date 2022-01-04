@@ -4,6 +4,7 @@ mne
 tensorflow
 tensorflow-addons
 tf-madgrad
+torch
 scikit-learn
 scipy
 h5py
