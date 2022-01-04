@@ -1,6 +1,6 @@
-from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
-from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now
+from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now, make_folders
 from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
+from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.evaluation.checkpoint import CheckPoint
 from tensorflow.keras.models import load_model
@@ -141,12 +141,12 @@ class Evaluation(object):
                 title = dataset.title
             else:
                 title = ''
-            dataset_folder = f"aawedha/logs/{title}"
+            if not os.path.isdir("aawedha/logs"):
+                make_folders()
+            dataset_folder = f"aawedha/logs/{title}/"
             now = datetime.datetime.now().strftime('%c').replace(' ', '_')
             if not os.path.isdir(dataset_folder):
                 os.mkdir(dataset_folder)
-            # f = 'aawedha/logs/' + '_'.join([self.__class__.__name__,
-            #                                title, now, '.log'])
             f = dataset_folder + '_'.join([self.__class__.__name__,
                                            title, now, '.log'])
             self.logger = log(fname=f, logger_name='eval_log')
@@ -707,7 +707,7 @@ class Evaluation(object):
         mets : list : str | keras metrics
             metrics
         """   
- 
+
         if 'compile' in self.model_config:
             if 'metrics' in self.model_config['compile']: 
                 metrics = self.model_config['compile']['metrics']
@@ -719,7 +719,7 @@ class Evaluation(object):
                 khsara = self._get_loss()
             if 'optimizer' in self.model_config['compile']: 
                 optimizer = self.model_config['compile']['optimizer']
-                if isinstance(optimizer, str):
+                if isinstance(optimizer, str) or isinstance(optimizer, list):
                     opt_lib = optimizer_lib(optimizer)
                     if opt_lib != 'builtin':
                         optimizer = get_optimizer(optimizer, opt_lib)
@@ -739,7 +739,7 @@ class Evaluation(object):
         if self._get_device() != 'TPU':
             metrics = self._get_metrics()
         else:
-            metrics = []            
+            metrics = []
         optimizer = 'adam'
         return khsara, optimizer, metrics
 

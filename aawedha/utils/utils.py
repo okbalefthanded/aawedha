@@ -197,4 +197,20 @@ def set_seed(seed):
     tf.random.set_seed(seed)
 
 
+def make_folders(root="aawedha"):
+    """Create additional folders where logs, trained models, checkpoints
+    and debug logs will be saved.
+
+    Parameters
+    ----------
+    root : str, optional
+        parent folder of the newly created folders, by default "aawedha"
+    """
+    folder_names = ['checkpoint', 'debug', 'logs', 'results', 'trained']
+    for name in folder_names:
+        folder = os.path.join(root, name)
+        if not os.path.isdir(folder):
+            os.mkdir(folder)
+    
+
     
