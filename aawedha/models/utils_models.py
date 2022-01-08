@@ -1,9 +1,5 @@
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
-from tensorflow.keras.models import load_model as K_load_model
-from tensorflow import keras
 import tensorflow as tf
-import numpy as np
-import yaml
 
 
 def freeze_model(model, frozen_folder, debug=False):
@@ -86,3 +82,24 @@ def create_model_from_config(config, optional):
         params = {}
     instance = getattr(mod, config['name'])(**params)    
     return instance
+
+
+def model_lib(model_type=None):
+    """Retrieve model library from its type
+
+    Parameters
+    ----------
+    model_type : str
+        model instance type, any Keras or Pytorch instance object used
+        to create models: Sequential, Functional, Custom.
+
+    Returns
+    -------
+    str
+        library name: Keras or Pytroch
+    """
+    if "keras" in model_type:
+        return "keras"
+    else:
+        return "pytorch"
+        

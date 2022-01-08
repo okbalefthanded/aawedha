@@ -1,5 +1,5 @@
 from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now, make_folders
-from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical
+from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical, metrics_by_lib
 from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.evaluation.checkpoint import CheckPoint
@@ -122,7 +122,7 @@ class Evaluation(object):
     """
 
     def __init__(self, dataset=None, model=None, partition=None, folds=None,
-                 verbose=2, lg=False, debug=False):
+                 verbose=2, lg=False, engine="keras", debug=False):
         """
         """
         self.dataset = dataset
@@ -155,6 +155,7 @@ class Evaluation(object):
         self.model_compiled = False
         self.model_config = {}
         self.initial_weights = []
+        self.engine = engine
         self.current = None
         self.debug = debug
         self.log_dir = None 
@@ -344,11 +345,14 @@ class Evaluation(object):
         prdg = self.dataset.paradigm.title
         dt = self.dataset.title
         filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt]))
-        if modelformat == 'h5' or device == 'TPU':
-            # due to cloud TPUs restrictions, we force
-            # model saving to H5 format. used for long
-            # benchmarking evaluations
-            filepath = f"{filepath}.h5"
+        if self.engine == "keras":
+            if modelformat == 'h5' or device == 'TPU':
+                # due to cloud TPUs restrictions, we force
+                # model saving to H5 format. used for long
+                # benchmarking evaluations
+                filepath = f"{filepath}.h5"
+        else:
+            filepath = f"{filepath}.pth" # pytorch model
         self.model.save(filepath)
 
     def set_model(self, model=None, model_config={}):
@@ -380,7 +384,7 @@ class Evaluation(object):
         """
         if model_config:
             self.set_config(model_config)
-
+        
         self.model = model
         self.initial_weights = self.model.get_weights()
 
@@ -497,9 +501,10 @@ class Evaluation(object):
         """reset model's weights to initial state (model's creation state)
         """
         self.model.set_weights(self.initial_weights)
-        # layer 0 : Normalization
-        # layer 1 : Reshape
-        # layer 2 : Model
+        # Keras models : 
+            # layer 0 : Normalization
+            # layer 1 : Reshape
+            # layer 2 : Model
         # self.model.layers[2].set_weights(self.initial_weights)
 
     def _equal_subjects(self):
@@ -600,13 +605,16 @@ class Evaluation(object):
             X_train, X_test, X_val = self._transpose_split(
                 [X_train, X_test, X_val])
         '''
-        if X_val is None:
-            val = None
-        else:
-            val = (X_val, Y_val)
         #
         self.reset_weights()
         self._normalize(X_train)
+
+        if X_val is None:
+            val = None
+        else:
+            if self.engine == "pytorch":
+                X_val = self.model.normalize(X_val)
+            val = (X_val, Y_val)
 
         history = {}
         spe = None
@@ -663,6 +671,8 @@ class Evaluation(object):
                                  callbacks=clbs)
         
         if isinstance(X_test, np.ndarray):
+            if self.engine == "pytorch":
+                X_test = self.model.normalize(X_test)
             probs = self.model.predict(X_test)
             perf = self.model.evaluate(X_test, Y_test, verbose=0)
         
@@ -709,7 +719,7 @@ class Evaluation(object):
         """   
 
         if 'compile' in self.model_config:
-            if 'metrics' in self.model_config['compile']: 
+            if 'metrics' in self.model_config['compile']:
                 metrics = self.model_config['compile']['metrics']
             else:
                 metrics = self._get_metrics()
@@ -740,7 +750,7 @@ class Evaluation(object):
             metrics = self._get_metrics()
         else:
             metrics = []
-        optimizer = 'adam'
+        optimizer = "adam" if self.engine == "Keras" else "Adam"
         return khsara, optimizer, metrics
 
     def _normalize(self, X_train):
@@ -750,9 +760,12 @@ class Evaluation(object):
         X_train : ndarray
             training data n_samples x channels x samples
         """
-        for layer in self.model.layers:
-            if type(layer).__name__ is "Normalization":
-                layer.adapt(X_train)
+        if self.engine ==  "keras":
+            for layer in self.model.layers:
+                if type(layer).__name__ is "Normalization":
+                    layer.adapt(X_train)
+        else:
+            X_train = self.model.set_scale(X_train)            
 
     def _get_fit_configs(self):
         """Returns fit configurations as tuple
@@ -827,6 +840,7 @@ class Evaluation(object):
         classes = self._get_classes()
         
         if classes == 2:
+            '''
             metrics = ['accuracy',
                         tf.keras.metrics.AUC(name='auc'),
                         tf.keras.metrics.TruePositives(name='tp'),
@@ -836,6 +850,8 @@ class Evaluation(object):
                         tf.keras.metrics.Precision(name='precision'),
                         tf.keras.metrics.Recall(name='recall')
                         ]
+            '''
+            metrics = metrics_by_lib(self.engine)
         else:
             metrics = ['accuracy']
 
@@ -1016,8 +1032,7 @@ class Evaluation(object):
         if 'device' in self.model_config:
             return self.model_config['device']
         else:
-            devices = [
-                dev.device_type for dev in tf.config.get_visible_devices()]
+            devices = [dev.device_type for dev in tf.config.get_visible_devices()]
             if 'GPU' not in devices:
                 device = 'CPU'
             return device

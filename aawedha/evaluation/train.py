@@ -126,7 +126,7 @@ class Train(Evaluation):
         """
         split = {}
         if selection:
-          if isinstance(self.dataset.epochs, np.ndarray):          
+          if isinstance(self.dataset.epochs, np.ndarray):
             X = self.dataset.epochs[selection]
             Y = self.dataset.y[selection]
           else:

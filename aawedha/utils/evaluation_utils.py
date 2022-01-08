@@ -1,5 +1,34 @@
 from tensorflow.keras.utils import to_categorical
+import tensorflow as tf
 import numpy as np
+
+
+def metrics_by_lib(lib):
+    """Create metrics according to the library used for evaluation.
+
+    Parameters
+    ----------
+    lib : str
+        Machine Learning library currently used for the evalatuion: Keras or Pytorch
+
+    Returns
+    -------
+    list
+        a list of metrics used for Binary classifation, in case of Keras metrics it will
+        return instances, otherwise a list of metrics names.
+    """
+    if lib == "keras":
+        return ['accuracy',
+                        tf.keras.metrics.AUC(name='auc'),
+                        tf.keras.metrics.TruePositives(name='tp'),
+                        tf.keras.metrics.FalsePositives(name='fp'),
+                        tf.keras.metrics.TrueNegatives(name='tn'),
+                        tf.keras.metrics.FalseNegatives(name='fn'),
+                        tf.keras.metrics.Precision(name='precision'),
+                        tf.keras.metrics.Recall(name='recall')
+                        ]
+    else:
+        return ['accuracy', 'precision', 'recall', 'auc']
 
 
 def class_weights(y):
