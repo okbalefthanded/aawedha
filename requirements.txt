@@ -5,6 +5,9 @@ tensorflow
 tensorflow-addons
 tf-madgrad
 torch
+torchvision
+torchmetrics
+torchsummary
 scikit-learn
 scipy
 h5py
@@ -14,3 +17,4 @@ pytest
 pynvml
 requests
 tqdm
+pkbar

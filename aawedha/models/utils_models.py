@@ -89,7 +89,7 @@ def model_lib(model_type=None):
 
     Parameters
     ----------
-    model_type : str
+    model_type : type
         model instance type, any Keras or Pytorch instance object used
         to create models: Sequential, Functional, Custom.
 
@@ -98,7 +98,7 @@ def model_lib(model_type=None):
     str
         library name: Keras or Pytroch
     """
-    if "keras" in model_type:
+    if "keras" in str(model_type):
         return "keras"
     else:
         return "pytorch"

@@ -24,27 +24,16 @@ class TorchModel(nn.Module):
         self.mu = None
         self.sigma = None        
 
-    def compile(self, optimizer='Adam', loss=None,
+    def compile(self, optimizer='adam', loss=None,
                 metrics=None, loss_weights=None):
-        """Sets the model configuration for training
-
-        Parameters
-        ----------
-        optimizer : str, optional
-            by default 'Adam'
-        loss : str, optional
-            
-        metrics : str, optional
-           
-        loss_weights : None
-        """
+        
         self.optimizer = self.get_optimizer(optimizer)
         self.loss = self.get_loss(loss)
         self.metrics_list = self.get_metrics(metrics)
 
-    def fit(self, x, y, batch_size=32, epochs=100, verbose=2, 
-            validation_data=None,  class_weight=None, 
-            steps_per_epoch=None, callbacks=None):        
+    def fit(self, x, y, batch_size=32, epochs=100, 
+            verbose=2, validation_data=None, 
+            class_weight=None, steps_per_epoch=None, callbacks=None):        
         """
         """
         history, hist = {}, {}
@@ -64,6 +53,7 @@ class TorchModel(nn.Module):
             self.loss.pos_weight = torch.tensor(class_weight[1])
 
         self.to(self.device)
+        self.loss.to(self.device)
         self.train()
         hist['loss'] = []
         for metric in self.metrics_list:
@@ -88,12 +78,13 @@ class TorchModel(nn.Module):
                 # forward + backward + optimize
                 #outputs = self.model(inputs)
                 outputs = self(inputs)
-                loss = self.loss(outputs, labels)
+                loss = self.loss(outputs, labels)                
                 loss.backward()
                 self.optimizer.step()
                 return_metrics = {'loss': loss.item()}
                 for metric in self.metrics_list:
-                    metric.update(outputs.to(self.device), labels)                    
+                    
+                    metric.update(outputs.to(self.device), labels.int())                    
                     '''
                     if isinstance(result, dict):
                         return_metrics.update(result)
@@ -155,6 +146,7 @@ class TorchModel(nn.Module):
             return_metrics = {'loss': loss.item() / len(test_loader)}
             
             for metric in self.metrics_list:
+                
                 metric.update(outputs, labels)                    
                 '''
                 if isinstance(result, dict):
@@ -198,7 +190,7 @@ class TorchModel(nn.Module):
         selected_metrics = []
         available_metrics = {'accuracy': torchmetrics.Accuracy,
                      'precision': torchmetrics.Precision,
-                     'recal': torchmetrics.Recall,
+                     'recall': torchmetrics.Recall,
                      'auc': torchmetrics.AUC}
         for metric in metrics:
             if isinstance(metric, str):
@@ -217,13 +209,13 @@ class TorchModel(nn.Module):
         self.state_dict = state_dict
 
     def get_weights(self):
-        return self.state_dict()
+        return self.state_dict
 
     def summary(self):
         """
         """
         # summary(self.model, self.input_shape, device=self.device)
-        if self.input_size:
+        if self.input_shape:
             summary(self, self.input_shape, device=self.device)
 
     def save(self, path):
@@ -251,7 +243,10 @@ class TorchModel(nn.Module):
     def make_loader(x, y, batch_size=32):
         """
         """
-        tensor_set = torch.utils.data.TensorDataset(torch.tensor(x), 
+        if np.unique(y).size== 2:
+          y = np.expand_dims(y, axis=1)
+
+        tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
                                                torch.tensor(y))
         loader = torch.utils.data.DataLoader(tensor_set, 
                                              batch_size=batch_size, 
