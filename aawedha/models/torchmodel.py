@@ -5,7 +5,6 @@ import torch.optim as optim
 import torch.nn as nn
 import numpy as np
 import torchmetrics
-import torchvision
 import torch
 import pkbar
 
@@ -57,13 +56,14 @@ class TorchModel(nn.Module):
         self.train()
         hist['loss'] = []
         for metric in self.metrics_list:
-            key = str(metric)[:-2]
+            key = str(metric).lower()[:-2]
             metric.to(self.device)
             metric.reset()
             metric.train()
             hist[key] = []
             if validation_data:
-                hist[f"val_{key}"] = []
+                hist[f"{key}_val"] = []
+        
         progress = pkbar.Kbar(target=len(train_loader), width=25)
         for epoch in range(epochs):  # loop over the dataset multiple times            
             if verbose == 2:
@@ -82,15 +82,9 @@ class TorchModel(nn.Module):
                 loss.backward()
                 self.optimizer.step()
                 return_metrics = {'loss': loss.item()}
-                for metric in self.metrics_list:
-                    
+                for metric in self.metrics_list:                    
                     metric.update(outputs.to(self.device), labels.int())                    
-                    '''
-                    if isinstance(result, dict):
-                        return_metrics.update(result)
-                    else:
-                    '''   
-                    return_metrics[str(metric)[:-2]] = metric.compute().item()
+                    return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
                 
                 if verbose == 2:
                     progress.update(i, values=[(k,return_metrics[k]) for k in return_metrics])
@@ -99,11 +93,12 @@ class TorchModel(nn.Module):
             val_metrics = None
             if validation_data:
                 val_metrics = self.evaluate(validation_data[0], validation_data[1])
-                hist[f"val_{metric}"].append(val_metrics[metric])                
+                for metric in val_metrics:
+                    hist[f"{metric}_val"].append(val_metrics[metric])
             
             if verbose == 2:
                 if val_metrics:
-                    progress.add(1, values=[(f"val_{k}", val_metrics[k]) for k in val_metrics])
+                    progress.add(1, values=[(f"{k}_val", val_metrics[k]) for k in val_metrics])
                 else:
                     progress.add(1)
 
@@ -145,18 +140,11 @@ class TorchModel(nn.Module):
             # metric.update(outputs.to(device), labels.to(device))
             return_metrics = {'loss': loss.item() / len(test_loader)}
             
-            for metric in self.metrics_list:
-                
-                metric.update(outputs, labels)                    
-                '''
-                if isinstance(result, dict):
-                    return_metrics.update(result)
-                else:
-                '''    
-                return_metrics[str(metric)[:-2]] = metric.compute().item()
+            for metric in self.metrics_list:                
+                metric.update(outputs, labels.int())                    
+                return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
             if verbose == 2:                
-                # progress.update(i, values=[("loss", loss/len(test_loader)), ("acc", metric.compute())])
-                progress.update(i, values=[(k,return_metrics[k]) for k in return_metrics])
+                progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
         
         # return_metrics = {'loss': loss / len(test_loader)}
         if verbose == 2:
@@ -191,7 +179,7 @@ class TorchModel(nn.Module):
         available_metrics = {'accuracy': torchmetrics.Accuracy,
                      'precision': torchmetrics.Precision,
                      'recall': torchmetrics.Recall,
-                     'auc': torchmetrics.AUC}
+                     'auc': torchmetrics.AUROC}
         for metric in metrics:
             if isinstance(metric, str):
                 selected_metrics.append(available_metrics[metric]())
@@ -214,7 +202,6 @@ class TorchModel(nn.Module):
     def summary(self):
         """
         """
-        # summary(self.model, self.input_shape, device=self.device)
         if self.input_shape:
             summary(self, self.input_shape, device=self.device)
 
