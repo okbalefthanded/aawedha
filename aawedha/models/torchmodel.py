@@ -23,7 +23,7 @@ class TorchModel(nn.Module):
         self.mu = None
         self.sigma = None        
 
-    def compile(self, optimizer='adam', loss=None,
+    def compile(self, optimizer='Adam', loss=None,
                 metrics=None, loss_weights=None):
         
         self.optimizer = self.get_optimizer(optimizer)
@@ -37,24 +37,18 @@ class TorchModel(nn.Module):
         """
         history, hist = {}, {}
         self.input_shape = x.shape[1:]
-        history['epoch'] = np.arange(0, epochs).tolist()
-        # dict_keys(['history', 'epoch'])
-        # history -> dict_keys(['loss', 'accuracy', 'val_loss', 'val_accuracy'])
 
         train_loader = self.make_loader(x, y, batch_size)
-        '''
-        if validation_data:
-            validation_loader = self.make_loader(validation_data[0], 
-                                                 validation_data[1], 
-                                                 batch_size)
-        '''
+        
         if class_weight:
             self.loss.pos_weight = torch.tensor(class_weight[1])
-
+        
         self.to(self.device)
         self.loss.to(self.device)
         self.train()
         hist['loss'] = []
+        if validation_data:
+          hist['val_loss'] = []
         for metric in self.metrics_list:
             key = str(metric).lower()[:-2]
             metric.to(self.device)
@@ -62,8 +56,8 @@ class TorchModel(nn.Module):
             metric.train()
             hist[key] = []
             if validation_data:
-                hist[f"{key}_val"] = []
-        
+                hist[f"val_{key}"] = []
+        total_loss = 0
         progress = pkbar.Kbar(target=len(train_loader), width=25)
         for epoch in range(epochs):  # loop over the dataset multiple times            
             if verbose == 2:
@@ -76,14 +70,16 @@ class TorchModel(nn.Module):
                 self.optimizer.zero_grad()
 
                 # forward + backward + optimize
-                #outputs = self.model(inputs)
                 outputs = self(inputs)
-                loss = self.loss(outputs, labels)                
+                loss = self.loss(outputs, labels)
+                total_loss += loss.item() / len(train_loader)                
                 loss.backward()
                 self.optimizer.step()
-                return_metrics = {'loss': loss.item()}
+                
+                # return_metrics = {'loss': loss.item()}
+                return_metrics = {'loss': total_loss}
                 for metric in self.metrics_list:                    
-                    metric.update(outputs.to(self.device), labels.int())                    
+                    metric.update(torch.nn.Sigmoid()(outputs.to(self.device)), labels.int())                  
                     return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
                 
                 if verbose == 2:
@@ -94,11 +90,11 @@ class TorchModel(nn.Module):
             if validation_data:
                 val_metrics = self.evaluate(validation_data[0], validation_data[1])
                 for metric in val_metrics:
-                    hist[f"{metric}_val"].append(val_metrics[metric])
+                    hist[f"val_{metric}"].append(val_metrics[metric])
             
             if verbose == 2:
                 if val_metrics:
-                    progress.add(1, values=[(f"{k}_val", val_metrics[k]) for k in val_metrics])
+                    progress.add(1, values=[(f"val_{k}", val_metrics[k]) for k in val_metrics])
                 else:
                     progress.add(1)
 
@@ -113,7 +109,11 @@ class TorchModel(nn.Module):
     def predict(self, x):
         # return self.model(torch.tensor(x).to(self.device))
         self.eval()
-        return self(torch.tensor(x).to(self.device)).cpu().detach().numpy()
+        pred = self(torch.tensor(x).to(self.device))
+        if self._is_binary():
+          pred = nn.Sigmoid()(pred)   
+        # return self(torch.tensor(x).to(self.device)).cpu().detach().numpy()
+        return pred.cpu().detach().numpy()
 
     def evaluate(self, x, y, batch_size=32, verbose=0):
         """
@@ -140,10 +140,11 @@ class TorchModel(nn.Module):
             # metric.update(outputs.to(device), labels.to(device))
             return_metrics = {'loss': loss.item() / len(test_loader)}
             
+            
             for metric in self.metrics_list:                
                 metric.update(outputs, labels.int())                    
                 return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
-            if verbose == 2:                
+            if verbose == 2:
                 progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
         
         # return_metrics = {'loss': loss / len(test_loader)}
@@ -167,8 +168,9 @@ class TorchModel(nn.Module):
 
     def get_loss(self, loss):
         losses = {'binary_crossentropy': nn.BCEWithLogitsLoss,
-          'sparse_categorical_crossentropy': nn.CrossEntropyLoss,
-          'categorical_crossentropy': nn.CrossEntropyLoss}
+                   'sparse_categorical_crossentropy': nn.CrossEntropyLoss,
+                   'categorical_crossentropy': nn.CrossEntropyLoss
+                  }
         if loss in list(losses.keys()):
             return losses[loss]()
         else:
@@ -226,11 +228,14 @@ class TorchModel(nn.Module):
         else:
             raise ModuleNotFoundError
 
+    def _is_binary(self):
+      return "BCE" in str(type(self.loss))    
+
     @staticmethod
     def make_loader(x, y, batch_size=32):
         """
         """
-        if np.unique(y).size== 2:
+        if np.unique(y).size == 2:   
           y = np.expand_dims(y, axis=1)
 
         tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
