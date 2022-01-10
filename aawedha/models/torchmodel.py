@@ -1,6 +1,5 @@
 from aawedha.utils.evaluation_utils import fit_scale, transform_scale
-from torchsummary import summary 
-import torch.nn.functional as F
+from torchsummary import summary
 import torch.optim as optim
 import torch.nn as nn
 import numpy as np
@@ -8,6 +7,18 @@ import torchmetrics
 import torch
 import pkbar
 
+losses = {
+    'binary_crossentropy': nn.BCEWithLogitsLoss,
+    'sparse_categorical_crossentropy': nn.CrossEntropyLoss,
+    'categorical_crossentropy': nn.CrossEntropyLoss
+            }
+
+available_metrics = {
+    'accuracy': torchmetrics.Accuracy,
+    'precision': torchmetrics.Precision,
+    'recall': torchmetrics.Recall,
+    'auc': torchmetrics.AUROC
+    }
 
 class TorchModel(nn.Module):
 
@@ -16,7 +27,7 @@ class TorchModel(nn.Module):
         self.optimizer = None
         self.loss = None
         self.metrics_list = []
-        self.name = ''
+        self.name = name
         self.history = {}
         self.device = device
         self.input_shape = None
@@ -30,9 +41,9 @@ class TorchModel(nn.Module):
         self.loss = self.get_loss(loss)
         self.metrics_list = self.get_metrics(metrics)
 
-    def fit(self, x, y, batch_size=32, epochs=100, 
-            verbose=2, validation_data=None, 
-            class_weight=None, steps_per_epoch=None, callbacks=None):        
+    def fit(self, x, y, batch_size=32, epochs=100, verbose=2, 
+            validation_data=None, class_weight=None, 
+            steps_per_epoch=None, callbacks=None):        
         """
         """
         history, hist = {}, {}
@@ -46,20 +57,23 @@ class TorchModel(nn.Module):
         self.to(self.device)
         self.loss.to(self.device)
         self.train()
+
         hist['loss'] = []
         if validation_data:
-          hist['val_loss'] = []
+            hist['val_loss'] = []
+
         for metric in self.metrics_list:
             key = str(metric).lower()[:-2]
             metric.to(self.device)
-            metric.reset()
             metric.train()
             hist[key] = []
             if validation_data:
                 hist[f"val_{key}"] = []
-        total_loss = 0
-        progress = pkbar.Kbar(target=len(train_loader), width=25)
-        for epoch in range(epochs):  # loop over the dataset multiple times            
+        
+        if verbose == 2:
+            progress = pkbar.Kbar(target=len(train_loader), width=25, always_stateful=True)
+
+        for epoch in range(epochs):  # loop over the dataset multiple times         
             if verbose == 2:
                 print("Epoch {}/{}".format(epoch+1, epochs))
                     
@@ -71,19 +85,21 @@ class TorchModel(nn.Module):
 
                 # forward + backward + optimize
                 outputs = self(inputs)
+                outputs = outputs.to(self.device)
                 loss = self.loss(outputs, labels)
-                total_loss += loss.item() / len(train_loader)                
                 loss.backward()
                 self.optimizer.step()
                 
-                # return_metrics = {'loss': loss.item()}
-                return_metrics = {'loss': total_loss}
-                for metric in self.metrics_list:                    
-                    metric.update(torch.nn.Sigmoid()(outputs.to(self.device)), labels.int())                  
-                    return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
+                return_metrics = {'loss': loss.item()}
+
+                for metric in self.metrics_list:                         
+                    if self._is_binary():
+                      outputs = torch.nn.Sigmoid()(outputs)
+                    result = metric(outputs, labels.int()).item()                  
+                    return_metrics[str(metric).lower()[:-2]] = result                    
                 
                 if verbose == 2:
-                    progress.update(i, values=[(k,return_metrics[k]) for k in return_metrics])
+                    progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
             
             # evaluate validation data
             val_metrics = None
@@ -107,12 +123,12 @@ class TorchModel(nn.Module):
         return history
 
     def predict(self, x):
-        # return self.model(torch.tensor(x).to(self.device))
+        """
+        """
         self.eval()
         pred = self(torch.tensor(x).to(self.device))
         if self._is_binary():
-          pred = nn.Sigmoid()(pred)   
-        # return self(torch.tensor(x).to(self.device)).cpu().detach().numpy()
+            pred = nn.Sigmoid()(pred)   
         return pred.cpu().detach().numpy()
 
     def evaluate(self, x, y, batch_size=32, verbose=0):
@@ -126,9 +142,11 @@ class TorchModel(nn.Module):
         for metric in self.metrics_list:
             metric.to(self.device)
             metric.eval()
-            metric.reset()        
-        
-        progress = pkbar.Kbar(target=len(test_loader), width=25)
+
+        self.reset_metrics()
+
+        if verbose == 2:
+          progress = pkbar.Kbar(target=len(test_loader), width=25, always_stateful=True)
 
         for i, data in enumerate(test_loader, 0):
             inputs, labels = data[0].to(self.device), data[1].to(self.device)
@@ -138,21 +156,21 @@ class TorchModel(nn.Module):
             loss += self.loss(outputs, labels)
             
             # metric.update(outputs.to(device), labels.to(device))
-            return_metrics = {'loss': loss.item() / len(test_loader)}
+            return_metrics = {'loss': loss.item() / len(test_loader)}            
             
-            
-            for metric in self.metrics_list:                
+            for metric in self.metrics_list:
+                if self._is_binary():
+                  outputs = nn.Sigmoid()(outputs)                
                 metric.update(outputs, labels.int())                    
                 return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
+
             if verbose == 2:
                 progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
         
-        # return_metrics = {'loss': loss / len(test_loader)}
         if verbose == 2:
             progress.add(1)
         torch.cuda.empty_cache()
-        return return_metrics
-            
+        return return_metrics            
 
     def get_optimizer(self, optimizer):
         """
@@ -166,22 +184,16 @@ class TorchModel(nn.Module):
         else:
             return optimizer
 
-    def get_loss(self, loss):
-        losses = {'binary_crossentropy': nn.BCEWithLogitsLoss,
-                   'sparse_categorical_crossentropy': nn.CrossEntropyLoss,
-                   'categorical_crossentropy': nn.CrossEntropyLoss
-                  }
+    @staticmethod
+    def get_loss(loss):
         if loss in list(losses.keys()):
             return losses[loss]()
         else:
             raise ModuleNotFoundError
 
-    def get_metrics(self, metrics):
+    @staticmethod
+    def get_metrics(metrics):
         selected_metrics = []
-        available_metrics = {'accuracy': torchmetrics.Accuracy,
-                     'precision': torchmetrics.Precision,
-                     'recall': torchmetrics.Recall,
-                     'auc': torchmetrics.AUROC}
         for metric in metrics:
             if isinstance(metric, str):
                 selected_metrics.append(available_metrics[metric]())
@@ -214,14 +226,19 @@ class TorchModel(nn.Module):
         """
         """
         x, self.mu, self.sigma = fit_scale(x)
-        return x    
+        return x
 
     def normalize(self, x):
         """
         """
-        return transform_scale(x, self.mu, self.sigma)        
+        return transform_scale(x, self.mu, self.sigma)
 
-    def _get_optim(self, opt_id, params):
+    def reset_metrics(self):
+        for metric in self.metrics_list:
+            metric.reset()        
+
+    @staticmethod
+    def _get_optim(opt_id, params):
         available = list(optim.__dict__.keys())
         if opt_id in available:
             return getattr(optim, opt_id)(**params)
@@ -229,14 +246,14 @@ class TorchModel(nn.Module):
             raise ModuleNotFoundError
 
     def _is_binary(self):
-      return "BCE" in str(type(self.loss))    
+        return "BCE" in str(type(self.loss))
 
     @staticmethod
     def make_loader(x, y, batch_size=32):
         """
         """
         if np.unique(y).size == 2:   
-          y = np.expand_dims(y, axis=1)
+            y = np.expand_dims(y, axis=1)
 
         tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
                                                torch.tensor(y))
