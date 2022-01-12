@@ -146,7 +146,7 @@ class TorchModel(nn.Module):
         self.reset_metrics()
 
         if verbose == 2:
-          progress = pkbar.Kbar(target=len(test_loader), width=25, always_stateful=True)
+            progress = pkbar.Kbar(target=len(test_loader), width=25, always_stateful=True)
 
         for i, data in enumerate(test_loader, 0):
             inputs, labels = data[0].to(self.device), data[1].to(self.device)
