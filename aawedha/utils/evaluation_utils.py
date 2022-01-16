@@ -113,8 +113,9 @@ def fit_scale(X):
     """
     mu = X.mean(axis=0)
     sigma = X.std(axis=0)
-    X = np.subtract(X, mu[None, :, :])
-    X = np.divide(X, sigma[None, :, :])
+    X = transform_scale(X, mu, sigma)
+    # X = np.subtract(X, mu[None, :, :])
+    # X = np.divide(X, sigma[None, :, :])
     return X, mu, sigma
 
 
