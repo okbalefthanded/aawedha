@@ -609,6 +609,9 @@ class Evaluation(object):
         self.reset_weights()
         self._normalize(X_train)
 
+        # if label_smoothing
+        Y_train, Y_val, Y_test = self._to_categorical(Y_train, Y_val, Y_test)
+
         if X_val is None:
             val = None
         else:
@@ -704,6 +707,7 @@ class Evaluation(object):
         if isinstance(X_test, np.ndarray):
             rets = self.measure_performance(Y_test, probs, perf)
         return rets
+        
 
     def _get_compile_configs(self):
         """Returns default model compile configurations as tuple
@@ -887,6 +891,25 @@ class Evaluation(object):
         else:
             return 0        
 
+    
+    def _to_categorical(self, Y_train, Y_val, Y_test):
+        
+        convert_label = False
+        khsara, _, _ = self._get_compile_configs()
+        
+        if self.engine == 'keras':
+            if khsara.name != 'sparse_categorical_crossentropy' and khsara.get_config()['label_smoothing'] != 0.0:
+                convert_label == True              
+                  
+        if convert_label:
+            Y_train = labels_to_categorical(Y_train)
+            if isinstance(Y_test, np.ndarray):                        
+                Y_test = labels_to_categorical(Y_test)
+            if isinstance(Y_val, np.ndarray):
+                Y_val = labels_to_categorical(Y_val)
+        else:
+            return Y_train, Y_val, Y_test
+    
     def _assert_partition(self, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
         in dataset
