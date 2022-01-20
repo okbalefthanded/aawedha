@@ -630,6 +630,7 @@ class Evaluation(object):
                 spe = X_train.shape[-1] // batch
             '''
         probs, perf = None, None
+        
         if aug:
             alpha = 0.2
             if isinstance(aug, list):
@@ -889,7 +890,7 @@ class Evaluation(object):
         if self.dataset:
             return self.dataset.get_n_classes()
         else:
-            return 0        
+            return 0      
 
     
     def _to_categorical(self, Y_train, Y_val, Y_test):
@@ -899,7 +900,7 @@ class Evaluation(object):
         
         if self.engine == 'keras':
             if khsara.name != 'sparse_categorical_crossentropy' and khsara.get_config()['label_smoothing'] != 0.0:
-                convert_label == True              
+                convert_label = True              
                   
         if convert_label:
             Y_train = labels_to_categorical(Y_train)
@@ -907,8 +908,8 @@ class Evaluation(object):
                 Y_test = labels_to_categorical(Y_test)
             if isinstance(Y_val, np.ndarray):
                 Y_val = labels_to_categorical(Y_val)
-        else:
-            return Y_train, Y_val, Y_test
+        
+        return Y_train, Y_val, Y_test
     
     def _assert_partition(self, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
