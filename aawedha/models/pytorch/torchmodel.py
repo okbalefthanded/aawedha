@@ -20,6 +20,7 @@ available_metrics = {
     'auc': torchmetrics.AUROC
     }
 
+
 class TorchModel(nn.Module):
 
     def __init__(self, device='cuda', name='torchmodel'):
@@ -50,10 +51,10 @@ class TorchModel(nn.Module):
         self.input_shape = x.shape[1:]
 
         train_loader = self.make_loader(x, y, batch_size)
-        
+
         if class_weight:
             self.loss.pos_weight = torch.tensor(class_weight[1])
-        
+
         self.to(self.device)
         self.loss.to(self.device)
         self.train()
@@ -92,11 +93,11 @@ class TorchModel(nn.Module):
                 
                 return_metrics = {'loss': loss.item()}
 
-                for metric in self.metrics_list:                         
+                for metric in self.metrics_list:
                     if self._is_binary():
                       outputs = torch.nn.Sigmoid()(outputs)
-                    result = metric(outputs, labels.int()).item()                  
-                    return_metrics[str(metric).lower()[:-2]] = result                    
+                    result = metric(outputs, labels.int()).item()
+                    return_metrics[str(metric).lower()[:-2]] = result
                 
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
@@ -122,19 +123,23 @@ class TorchModel(nn.Module):
         torch.cuda.empty_cache()
         return history
 
-    def predict(self, x):
+    def predict(self, x, normalize=False):
         """
         """
+        if normalize:
+          x = self.normalize(x)
         self.eval()
-        pred = self(torch.tensor(x).to(self.device))
+        pred = self(torch.tensor(x, dtype=torch.float32).to(self.device))
         if self._is_binary():
-            pred = nn.Sigmoid()(pred)   
+            pred = nn.Sigmoid()(pred)
         return pred.cpu().detach().numpy()
 
-    def evaluate(self, x, y, batch_size=32, verbose=0):
+    def evaluate(self, x, y, batch_size=32, verbose=0, normalize=False):
         """
         """
         loss = 0
+        if normalize:
+            x = self.normalize(x)
         test_loader = self.make_loader(x, y, batch_size)
         self.to(self.device)
         self.eval()
@@ -156,12 +161,12 @@ class TorchModel(nn.Module):
             loss += self.loss(outputs, labels)
             
             # metric.update(outputs.to(device), labels.to(device))
-            return_metrics = {'loss': loss.item() / len(test_loader)}            
+            return_metrics = {'loss': loss.item() / len(test_loader)}
             
             for metric in self.metrics_list:
                 if self._is_binary():
-                  outputs = nn.Sigmoid()(outputs)                
-                metric.update(outputs, labels.int())                    
+                  outputs = nn.Sigmoid()(outputs)
+                metric.update(outputs, labels.int())
                 return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
 
             if verbose == 2:
@@ -170,7 +175,7 @@ class TorchModel(nn.Module):
         if verbose == 2:
             progress.add(1)
         torch.cuda.empty_cache()
-        return return_metrics            
+        return return_metrics
 
     def get_optimizer(self, optimizer):
         """
@@ -235,7 +240,7 @@ class TorchModel(nn.Module):
 
     def reset_metrics(self):
         for metric in self.metrics_list:
-            metric.reset()        
+            metric.reset()
 
     @staticmethod
     def _get_optim(opt_id, params):
@@ -252,11 +257,11 @@ class TorchModel(nn.Module):
     def make_loader(x, y, batch_size=32):
         """
         """
-        if np.unique(y).size == 2:   
+        if np.unique(y).size == 2:
             y = np.expand_dims(y, axis=1)
 
-        tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
-                                               torch.tensor(y))
+        tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32),
+                                                    torch.tensor(y))
         loader = torch.utils.data.DataLoader(tensor_set, 
                                              batch_size=batch_size, 
                                              shuffle=False)

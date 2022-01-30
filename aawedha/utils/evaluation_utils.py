@@ -1,4 +1,5 @@
 from tensorflow.keras.utils import to_categorical
+from tensorflow_addons.metrics import F1Score
 import tensorflow as tf
 import numpy as np
 
@@ -25,7 +26,8 @@ def metrics_by_lib(lib):
                         tf.keras.metrics.TrueNegatives(name='tn'),
                         tf.keras.metrics.FalseNegatives(name='fn'),
                         tf.keras.metrics.Precision(name='precision'),
-                        tf.keras.metrics.Recall(name='recall')
+                        tf.keras.metrics.Recall(name='recall'),
+                        # F1Score(num_classes=2, name="f1score"),
                         ]
     else:
         return ['accuracy', 'precision', 'recall', 'auc']

@@ -122,7 +122,7 @@ class Evaluation(object):
     """
 
     def __init__(self, dataset=None, model=None, partition=None, folds=None,
-                 verbose=2, lg=False, engine="keras", debug=False):
+                 verbose=2, lg=False, engine="keras", normalize=True, debug=False):
         """
         """
         self.dataset = dataset
@@ -155,6 +155,7 @@ class Evaluation(object):
         self.model_compiled = False
         self.model_config = {}
         self.initial_weights = []
+        self.normalize = normalize
         self.engine = engine
         self.current = None
         self.debug = debug
@@ -245,7 +246,7 @@ class Evaluation(object):
             Y_test = Y_test.argmax(axis=1)
             # probs = probs[:, 1]
 
-        classes = np.unique(Y_test).size       
+        classes = np.unique(Y_test).size
 
         # self.cm.append(confusion_matrix(Y_test, preds))
 
@@ -607,15 +608,16 @@ class Evaluation(object):
         '''
         #
         self.reset_weights()
-        self._normalize(X_train)
-
+        if self.normalize:
+            X_train = self._normalize(X_train)
+            
         # if label_smoothing
         Y_train, Y_val, Y_test = self._to_categorical(Y_train, Y_val, Y_test)
 
         if X_val is None:
             val = None
         else:
-            if self.engine == "pytorch":
+            if self.engine == "pytorch" and self.normalize:
                 X_val = self.model.normalize(X_val)
             val = (X_val, Y_val)
 
@@ -675,8 +677,8 @@ class Evaluation(object):
                                  callbacks=clbs)
         
         if isinstance(X_test, np.ndarray):
-            if self.engine == "pytorch":
-                X_test = self.model.normalize(X_test)
+            if self.engine == "pytorch" and self.normalize:
+                    X_test = self.model.normalize(X_test)
             probs = self.model.predict(X_test)
             perf = self.model.evaluate(X_test, Y_test, verbose=0)
         
@@ -765,12 +767,13 @@ class Evaluation(object):
         X_train : ndarray
             training data n_samples x channels x samples
         """
-        if self.engine ==  "keras":
+        if self.engine == "keras":
             for layer in self.model.layers:
                 if type(layer).__name__ is "Normalization":
                     layer.adapt(X_train)
         else:
-            X_train = self.model.set_scale(X_train)            
+            X_train = self.model.set_scale(X_train)
+        return X_train            
 
     def _get_fit_configs(self):
         """Returns fit configurations as tuple
@@ -897,8 +900,8 @@ class Evaluation(object):
         
         convert_label = False
         khsara, _, _ = self._get_compile_configs()
-        
-        if self.engine == 'keras':
+             
+        if self.engine == 'keras' and type(khsara) != str:
             if khsara.name != 'sparse_categorical_crossentropy' and khsara.get_config()['label_smoothing'] != 0.0:
                 convert_label = True              
                   
