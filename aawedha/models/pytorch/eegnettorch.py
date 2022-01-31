@@ -46,9 +46,10 @@ class EEGNetTorch(TorchModel):
       self.conv_sep_point = nn.Conv2d(F1 * D, F2, (1, 1), bias=False, padding="valid")
       # self.bn3 = nn.BatchNorm2d(F2, momentum=0.99, eps=0.01)
       self.bn3 = nn.BatchNorm2d(F2)
-      self.pool2 = nn.AvgPool2d(kernel_size=(1, 8))  
+      self.pool2 = nn.AvgPool2d(kernel_size=(1, 8))
       self.drop2 = nn.Dropout(p=dropoutRate)
-      self.dense = nn.Linear(nb_classes * (F2 * (Samples // 32)), nb_classes)
+      # self.dense = nn.Linear(nb_classes * (F2 * (Samples // 32)), nb_classes)
+      self.dense = LineardWithConstraint(nb_classes * (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
 
 
     def forward(self, x):

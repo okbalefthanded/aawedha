@@ -734,14 +734,15 @@ class Evaluation(object):
                 khsara = self.model_config['compile']['loss']
             else:
                 khsara = self._get_loss()
-            if 'optimizer' in self.model_config['compile']: 
+            if 'optimizer' in self.model_config['compile']:
                 optimizer = self.model_config['compile']['optimizer']
                 if isinstance(optimizer, str) or isinstance(optimizer, list):
-                    opt_lib = optimizer_lib(optimizer)
-                    if opt_lib != 'builtin':
-                        optimizer = get_optimizer(optimizer, opt_lib)
+                    if self.engine is "keras":
+                        opt_lib = optimizer_lib(optimizer)
+                        if opt_lib != 'builtin':
+                            optimizer = get_optimizer(optimizer, opt_lib)
             else:
-                optimizer = 'adam'    
+                optimizer = 'adam'
         else:
             khsara, optimizer, metrics = self._default_compile()
             # set config for checkpoint use            
@@ -773,7 +774,7 @@ class Evaluation(object):
                     layer.adapt(X_train)
         else:
             X_train = self.model.set_scale(X_train)
-        return X_train            
+        return X_train
 
     def _get_fit_configs(self):
         """Returns fit configurations as tuple
