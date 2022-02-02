@@ -612,7 +612,8 @@ class Evaluation(object):
             X_train = self._normalize(X_train)
             
         # if label_smoothing
-        Y_train, Y_val, Y_test = self._to_categorical(Y_train, Y_val, Y_test)
+        if not aug:
+            Y_train, Y_val, Y_test = self._to_categorical(Y_train, Y_val, Y_test)
 
         if X_val is None:
             val = None
@@ -908,7 +909,7 @@ class Evaluation(object):
                   
         if convert_label:
             Y_train = labels_to_categorical(Y_train)
-            if isinstance(Y_test, np.ndarray):                        
+            if isinstance(Y_test, np.ndarray):
                 Y_test = labels_to_categorical(Y_test)
             if isinstance(Y_val, np.ndarray):
                 Y_val = labels_to_categorical(Y_val)
