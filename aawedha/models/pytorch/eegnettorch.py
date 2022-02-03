@@ -59,7 +59,7 @@ class EEGNetTorch(TorchModel):
         self.dense = LineardWithConstraint(
             nb_classes * (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
 
-        # TODO self.intialize_glorot()
+        self.intialize_glorot()
 
     def forward(self, x):
         n, h, w = x.shape
@@ -73,4 +73,15 @@ class EEGNetTorch(TorchModel):
         x = flatten(x, 1)
         x = self.dense(x)
         return x
+
+    def initialize_glorot(self):
+        for module in self.modules():
+            if hasattr(module, 'weight'):
+                if not("BatchNorm" in module.__class__.__name__):
+                    nn.init.xavier_uniform_(module.weight, gain=1)
+                else:
+                    nn.init.constant_(module.weight, 1)
+            if hasattr(module, "bias"):
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
 

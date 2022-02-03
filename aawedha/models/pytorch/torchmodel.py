@@ -49,7 +49,7 @@ class TorchModel(nn.Module):
         """
         history, hist = {}, {}
         self.input_shape = x.shape[1:]
-
+        
         train_loader = self.make_loader(x, y, batch_size)
 
         if class_weight:
@@ -74,7 +74,8 @@ class TorchModel(nn.Module):
         if verbose == 2:
             progress = pkbar.Kbar(target=len(train_loader), width=25, always_stateful=True)
 
-        for epoch in range(epochs):  # loop over the dataset multiple times         
+        for epoch in range(epochs):  # loop over the dataset multiple times
+            running_loss = 0
             if verbose == 2:
                 print("Epoch {}/{}".format(epoch+1, epochs))
                     
@@ -90,12 +91,13 @@ class TorchModel(nn.Module):
                 loss = self.loss(outputs, labels)
                 loss.backward()
                 self.optimizer.step()
-                
-                return_metrics = {'loss': loss.item()}
+                running_loss += loss.item() / len(train_loader)
+                return_metrics = {'loss': running_loss}
+                # return_metrics = {'loss': loss.item()}
 
                 for metric in self.metrics_list:
                     if self._is_binary():
-                      outputs = torch.nn.Sigmoid()(outputs)
+                        outputs = torch.nn.Sigmoid()(outputs)
                     result = metric(outputs, labels.int()).item()
                     return_metrics[str(metric).lower()[:-2]] = result
                 
@@ -127,7 +129,7 @@ class TorchModel(nn.Module):
         """
         """
         if normalize:
-          x = self.normalize(x)
+            x = self.normalize(x)
         self.eval()
         pred = self(torch.tensor(x, dtype=torch.float32).to(self.device))
         if self._is_binary():
@@ -165,7 +167,7 @@ class TorchModel(nn.Module):
             
             for metric in self.metrics_list:
                 if self._is_binary():
-                  outputs = nn.Sigmoid()(outputs)
+                    outputs = nn.Sigmoid()(outputs)
                 metric.update(outputs, labels.int())
                 return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
 
@@ -240,7 +242,7 @@ class TorchModel(nn.Module):
 
     def reset_metrics(self):
         for metric in self.metrics_list:
-            metric.reset()
+            metric.reset()        
 
     @staticmethod
     def _get_optim(opt_id, params):
@@ -260,7 +262,7 @@ class TorchModel(nn.Module):
         if np.unique(y).size == 2:
             y = np.expand_dims(y, axis=1)
 
-        tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32),
+        tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
                                                     torch.tensor(y))
         loader = torch.utils.data.DataLoader(tensor_set, 
                                              batch_size=batch_size, 
