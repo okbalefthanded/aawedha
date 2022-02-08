@@ -904,8 +904,10 @@ class Evaluation(object):
         khsara, _, _ = self._get_compile_configs()
              
         if self.engine == 'keras' and type(khsara) != str:
-            if khsara.name != 'sparse_categorical_crossentropy' and khsara.get_config()['label_smoothing'] != 0.0:
-                convert_label = True              
+            loss_config = khsara.get_config()
+            if khsara.name != 'sparse_categorical_crossentropy' and 'label_smoothing' in loss_config:
+                if loss_config['label_smoothing'] != 0.0:
+                    convert_label = True              
                   
         if convert_label:
             Y_train = labels_to_categorical(Y_train)
