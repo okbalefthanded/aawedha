@@ -34,6 +34,9 @@ class EPFL(DataSet):
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
+        self.phrase = []
+        self.test_phrase = []
+        self.flashes_test = []
 
     def load_raw(self, path=None, epoch=[0., .7],
                  band=[1, 10], order=2):
@@ -69,13 +72,16 @@ class EPFL(DataSet):
         sessions = range(1, 5)
         events = []
         events_test = []
-        target = []
+        
         X = []
         Y = []
         X_test = []
         Y_test = []
-
+        ph = []
+        ph_test = []
+        flashes_test = []
         for sbj in range(1, subjects + 1):
+            target = []
             if sbj == 5:
                 continue
             raw_names = ['{f}/subject{s}/session{r}/'.format(f=path, s=sbj, r=r) for r in sessions]
@@ -85,27 +91,35 @@ class EPFL(DataSet):
             # train sessions
             for session in range(len(raw_names)-1):
                 files = glob.glob(raw_names[session] + '*.mat')
-                ep, yy, trg, stm = self._load_session(files, epoch, band, order)  # subject, session, runs
+                ep, yy, trg, stm, _ = self._load_session(files, epoch, band, order)  # subject, session, runs
                 epochs.append(ep)
                 y.append(yy)
                 target.append(trg)
                 stims.append(stm)
             # test session
             test_files = glob.glob(raw_names[-1] + '*.mat')
-            test_epochs, test_y, test_target, stm = self._load_session(test_files, epoch, band, order)
+            test_epochs, test_y, test_target, stm, flashes = self._load_session(test_files, epoch, band, order)
 
             epochs = np.concatenate(epochs, axis=-1)  # subject, sessions, runs
             y = np.concatenate(y, axis=-1)
-
+            ph.append(np.concatenate(target, axis=-1))
+            # ph.append(target)
+            # ph_test.append(np.concatenate(test_target, axis=-1))
+            ph_test.append(test_target)
             X.append(epochs)
             Y.append(y)
             X_test.append(test_epochs)
             Y_test.append(test_y)
             events.append(np.concatenate(stims, axis=-1))
             events_test.append(stm)
+            flashes_test.append(flashes)
+            
         #
         self.events = events
         self.test_events = events_test
+        self.phrase = np.array(ph)
+        self.phrase_test = np.array(ph_test)
+        self.flashes_test = np.array(flashes_test)
         return X, Y, X_test, Y_test
 
     def generate_set(self, load_path=None,
@@ -188,6 +202,7 @@ class EPFL(DataSet):
         y = []
         target = []
         stims = []
+        flashes = []
         for run in range(len(files)):
             data = loadmat(files[run])
             ep, y_tmp, trg, stim = self._get_epochs(data, epoch, band, order)
@@ -195,6 +210,7 @@ class EPFL(DataSet):
             y.append(y_tmp)
             target.append(trg)
             stims.append(stim)
+            flashes.append(len(stim))
 
         # epochs = np.array(epochs)
         epochs = np.concatenate(epochs, axis=-1)
@@ -202,7 +218,7 @@ class EPFL(DataSet):
         y = np.concatenate(y, axis=-1)
         target = np.array(target)
         stims = np.concatenate(stims, axis=-1)
-        return epochs, y, target, stims
+        return epochs, y, target, stims, flashes
 
     def download_raw(self, store_path=None):
         """Download raw data from dataset repo url and stored it in a folder.
@@ -217,7 +233,7 @@ class EPFL(DataSet):
             download_file(url_f, store_path)
         # unzip files and delete
         zip_files = glob.glob(f"{store_path}/*.zip")
-        unzip_files(zip_files, store_path) 
+        unzip_files(zip_files, store_path)
 
     def _get_epochs(self, data, epoch, band, order):
         """Process a single run file for a subject.
@@ -331,7 +347,7 @@ class EPFL(DataSet):
                    break_duration=300, repetition=20,
                    stimuli=6, phrase='',
                    flashing_mode='SC',
-                   speller=[])
+                   speller=['1','2', '3','4','5','6'])
 
     def get_path(self):
         NotImplementedError
