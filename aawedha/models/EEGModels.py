@@ -68,7 +68,7 @@ def ws_reg(kernel):
 
 def EEGNet(nb_classes, Chans=64, Samples=128,
            dropoutRate=0.5, kernLength=64, F1=8,
-           D=2, F2=16, norm_rate=0.25, dropoutType='Dropout'):
+           D=2, F2=16, norm_rate=0.25, activation='elu', dropoutType='Dropout'):
     """ Keras Implementation of EEGNet
     http://iopscience.iop.org/article/10.1088/1741-2552/aace8c/meta
 
@@ -151,14 +151,14 @@ def EEGNet(nb_classes, Chans=64, Samples=128,
                              depth_multiplier=D,
                              depthwise_constraint=max_norm(1.))(block1)
     block1 = BatchNormalization(axis=1)(block1)
-    block1 = Activation('elu')(block1)
+    block1 = Activation(activation)(block1)
     block1 = AveragePooling2D((1, 4))(block1)
     block1 = dropoutType(dropoutRate)(block1)
 
     block2 = SeparableConv2D(F2, (1, 16),
                              use_bias=False, padding='same')(block1)
     block2 = BatchNormalization(axis=1)(block2)
-    block2 = Activation('elu')(block2)
+    block2 = Activation(activation)(block2)
     block2 = AveragePooling2D((1, 8))(block2)
     block2 = dropoutType(dropoutRate)(block2)
 
@@ -177,7 +177,7 @@ def EEGNet(nb_classes, Chans=64, Samples=128,
 
 def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
                  dropoutRate=0.5, kernLength=256, F1=96,
-                 D=1, F2=96, dropoutType='Dropout',
+                 D=1, F2=96, activation='elu', dropoutType='Dropout',
                  normalizer='batchnorm', regularizer=None):
     """ SSVEP Variant of EEGNet, as used in [1].
 
@@ -234,7 +234,7 @@ def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
                              depthwise_constraint=max_norm(1.),
                              kernel_regularizer=w_reg)(block1)
     block1 = norm_layer(axis=1)(block1)
-    block1 = Activation('elu')(block1)
+    block1 = Activation(activation)(block1)
     block1 = AveragePooling2D((1, 4))(block1)
     block1 = dropoutType(dropoutRate)(block1)
 
@@ -242,7 +242,7 @@ def EEGNet_SSVEP(nb_classes=12, Chans=8, Samples=256,
                              use_bias=False, padding='same',
                              kernel_regularizer=w_reg)(block1)
     block2 = norm_layer(axis=1)(block2)
-    block2 = Activation('elu')(block2)
+    block2 = Activation(activation)(block2)
     block2 = AveragePooling2D((1, 8))(block2)
     block2 = dropoutType(dropoutRate)(block2)
 
@@ -320,7 +320,7 @@ def EEGNet_old(nb_classes, Chans=64, Samples=128, regRate=0.0001,
 
 
 def DeepConvNet(nb_classes, Chans=64, Samples=256,
-                dropoutRate=0.5):
+                dropoutRate=0.5, activation='elu'):
     """ Keras implementation of the Deep Convolutional Network as described in
     Schirrmeister et. al. (2017), Human Brain Mapping.
 
@@ -358,28 +358,28 @@ def DeepConvNet(nb_classes, Chans=64, Samples=256,
     block1 = Conv2D(25, (Chans, 1),
                     kernel_constraint=max_norm(2., axis=(0, 1, 2)))(block1)
     block1 = BatchNormalization(axis=1, epsilon=1e-05, momentum=0.1)(block1)
-    block1 = Activation('elu')(block1)
+    block1 = Activation(activation)(block1)
     block1 = MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(block1)
     block1 = Dropout(dropoutRate)(block1)
 
     block2 = Conv2D(50, (1, 5),
                     kernel_constraint=max_norm(2., axis=(0, 1, 2)))(block1)
     block2 = BatchNormalization(axis=1, epsilon=1e-05, momentum=0.1)(block2)
-    block2 = Activation('elu')(block2)
+    block2 = Activation(activation)(block2)
     block2 = MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(block2)
     block2 = Dropout(dropoutRate)(block2)
 
     block3 = Conv2D(100, (1, 5),
                     kernel_constraint=max_norm(2., axis=(0, 1, 2)))(block2)
     block3 = BatchNormalization(axis=1, epsilon=1e-05, momentum=0.1)(block3)
-    block3 = Activation('elu')(block3)
+    block3 = Activation(activation)(block3)
     block3 = MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(block3)
     block3 = Dropout(dropoutRate)(block3)
 
     block4 = Conv2D(200, (1, 5),
                     kernel_constraint=max_norm(2., axis=(0, 1, 2)))(block3)
     block4 = BatchNormalization(axis=1, epsilon=1e-05, momentum=0.1)(block4)
-    block4 = Activation('elu')(block4)
+    block4 = Activation(activation)(block4)
     block4 = MaxPooling2D(pool_size=(1, 2), strides=(1, 2))(block4)
     block4 = Dropout(dropoutRate)(block4)
 

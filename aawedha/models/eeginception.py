@@ -9,18 +9,18 @@ from tensorflow.keras.layers import Concatenate
 
 
 def conv_block(tensor, conv_type="Conv2D", filters=8, kernel=(1, 64), pad="same",
-               dropout_rate=0.2):
+               activation='elu', dropout_rate=0.2):
     if conv_type == "Conv2D":
         tensor = Conv2D(filters, kernel, padding=pad)(tensor)
     else:
         tensor = DepthwiseConv2D(kernel, padding=pad, depth_multiplier=filters)(tensor)
     tensor = BatchNormalization(axis=1)(tensor)
-    tensor = Activation('elu')(tensor)
+    tensor = Activation(activation)(tensor)
     tensor = Dropout(dropout_rate)(tensor)
     return tensor
 
 
-def EEGInception(nb_classes=1, Chans=15, Samples=205):
+def EEGInception(nb_classes=1, Chans=15, Samples=205, activation='elu'):
     input1 = Input(shape=(Chans, Samples))
     ##################################################################
     norm = Normalization(axis=(1, 2))(input1)
