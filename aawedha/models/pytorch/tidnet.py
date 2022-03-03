@@ -8,7 +8,7 @@ import torch
 from torch.nn import Module, Sequential
 from torch.nn import Flatten, Linear, Dropout2d, BatchNorm2d, Conv2d
 from torch.nn import LeakyReLU, BatchNorm1d, MaxPool2d, Dropout, Conv1d
-from torch.nn import AdaptiveAvgPool1d, init
+from torch.nn import AdaptiveAvgPool1d, init, ELU
 from torch.nn.utils import weight_norm
 from math import ceil
 
@@ -274,7 +274,6 @@ class _tidnet_features(Module):
         x = self.temporal(x)
         x = self.spatial(x)
         return self.extract_features(x)
-
 
 
 class TIDNet(TorchModel):

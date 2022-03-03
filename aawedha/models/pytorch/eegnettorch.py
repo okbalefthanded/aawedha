@@ -1,21 +1,25 @@
 from aawedha.models.pytorch.torchmodel import TorchModel
 from torch.nn.functional import elu
-from torch import flatten
 from torch import nn
+from torch import flatten
 import torch.nn.functional as F
 import torch
 
+def MaxNorm(tensor, max_value):
+    eps = 1e-7
+    norms = torch.sqrt(torch.sum(torch.square(tensor), axis=0, keepdims=True))
+    desired = torch.clip(norms, 0, max_value)
+    return tensor * (desired / (norms + eps))    
 
-# braindecode
+# Adapted from braindecode
 class Conv2dWithConstraint(nn.Conv2d):
     def __init__(self, *args, max_norm=1, **kwargs):
         self.max_norm = max_norm
         super(Conv2dWithConstraint, self).__init__(*args, **kwargs)
 
     def forward(self, x):
-        self.weight.data = torch.renorm(
-            self.weight.data, p=2, dim=0, maxnorm=self.max_norm)
-        return super(Conv2dWithConstraint, self).forward(x)
+        self.weight.data = MaxNorm(self.weight.data, self.max_norm)
+        return super(Conv2dWithConstraint, self).forward(x)       
 
 
 class LineardWithConstraint(nn.Linear):
@@ -24,8 +28,7 @@ class LineardWithConstraint(nn.Linear):
         super(LineardWithConstraint, self).__init__(*args, **kwargs)
 
     def forward(self, x):
-        self.weight.data = torch.renorm(
-            self.weight.data, p=2, dim=0, maxnorm=self.max_norm)
+        self.weight.data = MaxNorm(self.weight.data, self.max_norm)
         return super(LineardWithConstraint, self).forward(x)
 
 
@@ -39,11 +42,13 @@ class EEGNetTorch(TorchModel):
         self.conv1 = nn.Conv2d(1, F1, (1, kernLength),
                                bias=False, padding='same')
         # self.bn1 = nn.BatchNorm2d(F1, momentum=0.99, eps=0.01) # same default values as TF
-        self.bn1 = nn.BatchNorm2d(F1)
+        # self.bn1 = nn.BatchNorm2d(F1)
+        self.bn1 = nn.BatchNorm2d(F1, momentum=0.01, eps=1e-3)
         self.conv2 = Conv2dWithConstraint(
             F1, F1 * D, (Chans, 1), max_norm=1, bias=False, groups=F1, padding="valid")
         # self.bn2 = nn.BatchNorm2d(F1 * D, momentum=0.99, eps=0.01) # same default values as TF
-        self.bn2 = nn.BatchNorm2d(F1 * D)
+        # self.bn2 = nn.BatchNorm2d(F1 * D)
+        self.bn2 = nn.BatchNorm2d(F1 * D, momentum=0.01, eps=1e-3) 
         self.pool1 = nn.AvgPool2d(kernel_size=(1, 4))
         self.drop1 = nn.Dropout(p=dropoutRate)
         # https://discuss.pytorch.org/t/how-to-modify-a-conv2d-to-depthwise-separable-convolution/15843/7
@@ -52,14 +57,14 @@ class EEGNetTorch(TorchModel):
         self.conv_sep_point = nn.Conv2d(
             F1 * D, F2, (1, 1), bias=False, padding="valid")
         # self.bn3 = nn.BatchNorm2d(F2, momentum=0.99, eps=0.01)
-        self.bn3 = nn.BatchNorm2d(F2)
+        # self.bn3 = nn.BatchNorm2d(F2)
+        self.bn3 = nn.BatchNorm2d(F2, momentum=0.01, eps=1e-3)
         self.pool2 = nn.AvgPool2d(kernel_size=(1, 8))
         self.drop2 = nn.Dropout(p=dropoutRate)
         # self.dense = nn.Linear(nb_classes * (F2 * (Samples // 32)), nb_classes)
-        self.dense = LineardWithConstraint(
-            nb_classes * (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
+        self.dense = LineardWithConstraint(nb_classes * (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
 
-        self.intialize_glorot()
+        self.initialize_glorot_uniform()
 
     def forward(self, x):
         n, h, w = x.shape
@@ -67,14 +72,16 @@ class EEGNetTorch(TorchModel):
         x = self.bn1(self.conv1(x))
         x = elu(self.bn2(self.conv2(x)))
         x = self.drop1(self.pool1(x))
+        
         x = self.conv_sep_point(self.conv_sep_depth(x))
         x = elu(self.bn3(x))
         x = self.drop2(self.pool2(x))
+    
         x = flatten(x, 1)
         x = self.dense(x)
         return x
 
-    def initialize_glorot(self):
+    def initialize_glorot_uniform(self):
         for module in self.modules():
             if hasattr(module, 'weight'):
                 if not("BatchNorm" in module.__class__.__name__):
@@ -84,4 +91,3 @@ class EEGNetTorch(TorchModel):
             if hasattr(module, "bias"):
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0)
-

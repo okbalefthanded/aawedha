@@ -50,11 +50,11 @@ class TorchModel(nn.Module):
         history, hist = {}, {}
         self.input_shape = x.shape[1:]
         
-        train_loader = self.make_loader(x, y, batch_size)
-
+        train_loader = self.make_loader(x, y, batch_size, shuffle=True)
+        
         if class_weight:
             self.loss.pos_weight = torch.tensor(class_weight[1])
-
+        
         self.to(self.device)
         self.loss.to(self.device)
         self.train()
@@ -107,7 +107,7 @@ class TorchModel(nn.Module):
             # evaluate validation data
             val_metrics = None
             if validation_data:
-                val_metrics = self.evaluate(validation_data[0], validation_data[1])
+                val_metrics = self.evaluate(validation_data[0], validation_data[1], batch_size, shuffle=False)
                 for metric in val_metrics:
                     hist[f"val_{metric}"].append(val_metrics[metric])
             
@@ -136,13 +136,13 @@ class TorchModel(nn.Module):
             pred = nn.Sigmoid()(pred)
         return pred.cpu().detach().numpy()
 
-    def evaluate(self, x, y, batch_size=32, verbose=0, normalize=False):
+    def evaluate(self, x, y, batch_size=32, verbose=0, normalize=False, shuffle=False):
         """
         """
         loss = 0
         if normalize:
             x = self.normalize(x)
-        test_loader = self.make_loader(x, y, batch_size)
+        test_loader = self.make_loader(x, y, batch_size, shuffle)
         self.to(self.device)
         self.eval()
         
@@ -256,7 +256,7 @@ class TorchModel(nn.Module):
         return "BCE" in str(type(self.loss))
 
     @staticmethod
-    def make_loader(x, y, batch_size=32):
+    def make_loader(x, y, batch_size=32, shuffle=True):
         """
         """
         if np.unique(y).size == 2:
@@ -266,5 +266,5 @@ class TorchModel(nn.Module):
                                                     torch.tensor(y))
         loader = torch.utils.data.DataLoader(tensor_set, 
                                              batch_size=batch_size, 
-                                             shuffle=False)
+                                             shuffle=shuffle)
         return loader
