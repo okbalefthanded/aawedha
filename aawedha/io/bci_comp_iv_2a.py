@@ -95,6 +95,9 @@ class Comp_IV_2a(DataSet):
     def get_path(self):
         NotImplementedError
 
+    def download_raw(self):
+        raise NotImplementedError
+
     def _get_epoched(self, data_file, label_file,
                      dur, band, order):
         '''

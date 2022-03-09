@@ -44,16 +44,17 @@ class TorchModel(nn.Module):
 
     def fit(self, x, y, batch_size=32, epochs=100, verbose=2, 
             validation_data=None, class_weight=None, 
-            steps_per_epoch=None, callbacks=None):        
+            steps_per_epoch=None, shuffle=True, 
+            callbacks=None):        
         """
         """
         history, hist = {}, {}
         self.input_shape = x.shape[1:]
         
-        train_loader = self.make_loader(x, y, batch_size, shuffle=True)
+        train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle)
         
-        if class_weight:
-            self.loss.pos_weight = torch.tensor(class_weight[1])
+        if class_weight and y.ndim > 1:
+            self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])
         
         self.to(self.device)
         self.loss.to(self.device)

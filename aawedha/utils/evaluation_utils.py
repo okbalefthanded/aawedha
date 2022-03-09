@@ -140,5 +140,5 @@ def transform_scale(X, mu, sigma):
         normalized data
     '''
     X = np.subtract(X, mu[None, :, :])
-    X = np.divide(X, sigma[None, :, :])
+    X = np.divide(X, sigma[None, :, :] + 1e-7)
     return X
