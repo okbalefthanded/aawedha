@@ -1,17 +1,16 @@
+from aawedha.evaluation.evaluation_utils import class_weights, labels_to_categorical, metrics_by_lib
 from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now, make_folders
-from aawedha.utils.evaluation_utils import class_weights, labels_to_categorical, metrics_by_lib
 from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
-from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.evaluation.checkpoint import CheckPoint
+from aawedha.evaluation.evaluation_utils import aggregate_results
+from aawedha.evaluation.mixup import build_mixup_dataset
+from sklearn.metrics import roc_curve, confusion_matrix
 from tensorflow.keras.models import load_model
-from aawedha.evaluation.mixup import mix_up
-from tensorflow.keras import backend as K
 from aawedha.io.base import DataSet
 import tensorflow as tf
 import pandas as pd
 import numpy as np
 import datetime
-import pickle
 import abc
 import os
 
@@ -321,7 +320,7 @@ class Evaluation(object):
                 self.predictions = np.array(self.predictions).reshape(
                     (self.n_subjects, folds, examples, dim))
 
-        res = self._aggregate_results(res)
+        res = aggregate_results(res)
         res = self._update_results(res)
         return res
 
@@ -466,7 +465,7 @@ class Evaluation(object):
         """
         chk = None
         if chkpoint:
-            chk = self._load_checkpoint()
+            chk = CheckPoint.load_checkpoint()
 
         if chk:
             self.model = load_model(chk.model_name)
@@ -635,30 +634,9 @@ class Evaluation(object):
         probs, perf = None, None
         
         if aug:
-            alpha = 0.2
-            if isinstance(aug, list):
-                alpha = aug[1]
-            X_train = X_train.astype(np.float32)
-            Y_train = labels_to_categorical(Y_train)
-            if isinstance(Y_val, np.ndarray):
-                X_val = X_val.astype(np.float32)
-                Y_val = labels_to_categorical(Y_val)
-                val = tf.data.Dataset.from_tensor_slices((X_val, Y_val)).batch(batch)
-            if isinstance(Y_test, np.ndarray):
-                X_test = X_test.astype(np.float32)
+            X_train, val = build_mixup_dataset(X_train, Y_train, X_val, Y_val, aug, batch)
+            if isinstance(Y_test, np.ndarray):      
                 Y_test = labels_to_categorical(Y_test)
-            train_ds_one = (tf.data.Dataset.from_tensor_slices((X_train, Y_train))
-                            .shuffle(batch * 100)
-                            .batch(batch)
-                            )
-            train_ds_two = (tf.data.Dataset.from_tensor_slices((X_train, Y_train))
-                            .shuffle(batch * 100)
-                            .batch(batch)
-                            )
-            train_ds = tf.data.Dataset.zip((train_ds_one, train_ds_two))
-                
-            X_train = train_ds.map(lambda ds_one, ds_two: mix_up(ds_one, ds_two, alpha=alpha),
-                                       num_parallel_calls=tf.data.AUTOTUNE)
             #
             history = self.model.fit(X_train,
                                  epochs=ep,
@@ -711,8 +689,7 @@ class Evaluation(object):
                                                            cws)
         if isinstance(X_test, np.ndarray):
             rets = self.measure_performance(Y_test, probs, perf)
-        return rets
-        
+        return rets        
 
     def _get_compile_configs(self):
         """Returns default model compile configurations as tuple
@@ -896,11 +873,29 @@ class Evaluation(object):
         if self.dataset:
             return self.dataset.get_n_classes()
         else:
-            return 0      
+            return 0    
 
-    
     def _to_categorical(self, Y_train, Y_val, Y_test):
-        
+        """Convert numerical data labels into categorical vector labels.
+
+        Parameters
+        ----------
+        Y_train : 1d array (N_training)
+            training data labels
+        Y_val : 1d array (N_validation)
+            validation data labels
+        Y_test : 1d array (N_test)
+            test data labels
+
+        Returns
+        -------
+        Y_train: ndarray (N_training, N_classes)
+            training data labels in categorical format.
+        Y_val: ndarray (N_validation, N_classes)
+            validation data labels in categorical format.
+        Y_test: ndarray (N_test, N_classes)
+            test data labels in categorical format.
+        """
         convert_label = False
         khsara, _, _ = self._get_compile_configs()
              
@@ -918,6 +913,43 @@ class Evaluation(object):
                 Y_val = labels_to_categorical(Y_val)
         
         return Y_train, Y_val, Y_test
+
+    @staticmethod
+    def _create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
+        """gather data arrays in a dict
+
+        Parameters
+        ----------
+        X_train : ndarray (N_training, channels, samples)
+            training data
+        X_val : ndarray (N_validation, channels, samples)
+            validation data
+        X_test : ndarray (N_test, channels, samples)
+            test data
+        Y_train : 1d array
+            training data labels
+        Y_val : 1d array
+            validation data labels
+        Y_test : 1d array 
+            test data labels
+
+        Returns
+        -------
+        dict
+            evaluation data split dictionary where the key is the array's name.
+        """
+        split = {}
+        split['X_test'] = None
+        split['X_val'] = None
+        split['X_train'] = X_train if X_train.dtype is np.float32 else X_train.astype(np.float32)
+        split['Y_train'] = Y_train
+        if isinstance(X_test, np.ndarray):
+            split['X_test'] = X_test if X_test.dtype is np.float32 else X_test.astype(np.float32)
+        split['Y_test'] = Y_test
+        if isinstance(X_val, np.ndarray):
+            split['X_val'] = X_val if X_val.dtype is np.float32 else X_val.astype(np.float32)
+        split['Y_val'] = Y_val
+        return split
     
     def _assert_partition(self, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
@@ -938,23 +970,6 @@ class Evaluation(object):
         prt = np.sum(self.partition)
         return subjects < prt
 
-    @staticmethod
-    def _load_checkpoint():
-        """load saved checkpoint to resume evaluation
-
-        Returns
-        -------
-        checkpoint :
-            a checkpoint of a saved evaluation
-        """
-        file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
-        if os.path.exists(file_name):
-            with open(file_name, 'rb') as f:
-                chkpoint = pickle.load(f)
-        else:
-            raise FileNotFoundError
-        return chkpoint
-
     def _has_val(self):
         """test if evaluation has partition for validation phase
 
@@ -971,55 +986,6 @@ class Evaluation(object):
             test = 1
 
         return self._get_n_subjects() - train - test
-
-    @staticmethod
-    def _transpose_split(arrays):
-        """Transpose input Data to be prepared for NCHW format
-        N : batch (assigned at fit), C: channels here refers to trials,
-        H : height here refers to EEG channels, W : width here refers to samples
-
-        Parameters
-        ----------
-        arrays: list of data arrays
-            - Training data in 1st position
-            - Test data in 2nd position
-            - if not none, Validation data
-        Returns
-        ------- 
-        list of arrays same order as input
-        """
-        for i, arr in enumerate(arrays):
-            if isinstance(arr, np.ndarray):
-                arrays[i] = arr.transpose((2, 1, 0))
-                # trials , channels, samples
-        return arrays
-
-    @staticmethod
-    def _aggregate_results(res):
-        """Aggregate subject's results from folds into a single list
-
-        Parameters
-        ----------
-        results : list of dict
-            each element in the list is a dict of performance
-            values in a fold
-
-        Returns
-        -------
-        dict of performance metrics
-        """
-        results = dict()
-        if type(res) is list:
-            metrics = res[0].keys()
-        else:
-            metrics = res.keys()
-        for metric in metrics:
-            tmp = []
-            for fold in res:
-                tmp.append(fold[metric])
-            results[metric] = tmp
-
-        return results
 
     def _update_results(self, res):
         """Add metrics results mean to results dict.

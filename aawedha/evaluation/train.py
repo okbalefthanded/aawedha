@@ -54,7 +54,7 @@ class Train(Evaluation):
         if new_labels:
             self._select_trials(new_labels, events)
 
-        rets = self._train(selection, val_size)
+        self.results = self._train(selection, val_size)
 
         # save model in HDF5 format or SavedModel
         if save_model:
@@ -123,8 +123,7 @@ class Train(Evaluation):
             X_train, Y_train, X_Val, Y_Val, X_test, Y_test
             train/validation/test EEG data and labels
             classes : array of values used to denote class labels
-        """
-        split = {}
+        """        
         if selection:
           if isinstance(self.dataset.epochs, np.ndarray):
             X = self.dataset.epochs[selection]
@@ -145,12 +144,7 @@ class Train(Evaluation):
             Y_train -= 1
             Y_val -= 1
 
-        split['X_train'] = X_train
-        split['X_val'] = X_val
-        split['Y_train'] = Y_train
-        split['Y_val'] = Y_val
-        split['X_test'] = None
-        split['Y_test'] = None
+        split = self._create_split(X_train, X_val, None, Y_train, Y_val, None)
         return split
 
     def _cat_lists(self, X, Y):

@@ -255,7 +255,6 @@ class CrossSubject(Evaluation):
             train/validation/test EEG data and labels
             classes : array of values used to denote class labels
         """
-        split = {}
         '''
         shape = (1, 0, 2)
         _, _, _, channels_format = self._get_fit_configs()
@@ -280,12 +279,7 @@ class CrossSubject(Evaluation):
             if Y_val is not None:
                 Y_val -= 1
 
-        split['X_train'] = X_train
-        split['X_val'] = X_val
-        split['X_test'] = X_test
-        split['Y_train'] = Y_train
-        split['Y_val'] = Y_val
-        split['Y_test'] = Y_test
+        split = self._create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test)
         return split
 
     def _cat_lists(self, fold=0, phase=0):

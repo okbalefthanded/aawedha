@@ -168,4 +168,21 @@ class CheckPoint(object):
         print(f'Saving Checkpoint to destination: {fname}')
         with open(fname, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    @staticmethod
+    def load_checkpoint():
+        """load saved checkpoint to resume evaluation
+
+        Returns
+        -------
+        checkpoint :
+            a checkpoint of a saved evaluation
+        """
+        file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
+        if os.path.exists(file_name):
+            with open(file_name, 'rb') as f:
+                chkpoint = pickle.load(f)
+        else:
+            raise FileNotFoundError
+        return chkpoint
 

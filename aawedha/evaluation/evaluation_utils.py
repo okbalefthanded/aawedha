@@ -142,3 +142,52 @@ def transform_scale(X, mu, sigma):
     X = np.subtract(X, mu[None, :, :])
     X = np.divide(X, sigma[None, :, :] + 1e-7)
     return X
+
+def transpose_split(arrays):
+        """Transpose input Data to be prepared for NCHW format
+        N : batch (assigned at fit), C: channels here refers to trials,
+        H : height here refers to EEG channels, W : width here refers to samples
+
+        Parameters
+        ----------
+        arrays: list of data arrays
+            - Training data in 1st position
+            - Test data in 2nd position
+            - if not none, Validation data
+        Returns
+        ------- 
+        list of arrays same order as input
+        """
+        for i, arr in enumerate(arrays):
+            if isinstance(arr, np.ndarray):
+                arrays[i] = arr.transpose((2, 1, 0))
+                # trials , channels, samples
+        return arrays
+
+
+def aggregate_results(res):
+    """Aggregate subject's results from folds into a single list
+
+    Parameters
+    ----------
+    results : list of dict
+            each element in the list is a dict of performance
+            values in a fold
+
+    Returns
+    -------
+    dict of performance metrics
+    """
+    results = dict()
+    if type(res) is list:
+        metrics = res[0].keys()
+    else:
+        metrics = res.keys()
+    for metric in metrics:
+        tmp = []
+        for fold in res:
+            tmp.append(fold[metric])
+        results[metric] = tmp
+
+    return results
+

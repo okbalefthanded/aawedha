@@ -381,12 +381,7 @@ class SingleSubject(Evaluation):
             if Y_val is not None:
                 Y_val -= 1
 
-        split['X_train'] = X_train
-        split['Y_train'] = Y_train
-        split['X_test'] = X_test
-        split['Y_test'] = Y_test
-        split['X_val'] = X_val
-        split['Y_val'] = Y_val
+        split = self._create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test)
         return split
 
     def _get_data_pair(self, subj=0):
