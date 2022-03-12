@@ -137,7 +137,8 @@ class TorchModel(nn.Module):
             pred = nn.Sigmoid()(pred)
         return pred.cpu().detach().numpy()
 
-    def evaluate(self, x, y, batch_size=32, verbose=0, normalize=False, shuffle=False):
+    def evaluate(self, x, y, batch_size=32, verbose=0, normalize=False, 
+                 shuffle=False, return_dict=True):
         """
         """
         loss = 0

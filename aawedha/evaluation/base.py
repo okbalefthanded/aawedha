@@ -249,7 +249,7 @@ class Evaluation(object):
         classes = np.unique(Y_test).size
 
         # self.cm.append(confusion_matrix(Y_test, preds))
-
+        
         for metric, value in zip(self.model.metrics_names, perf):
             results[metric] = value
 
@@ -681,7 +681,8 @@ class Evaluation(object):
             if self.engine == "pytorch" and self.normalize:
                     X_test = self.model.normalize(X_test)
             probs = self.model.predict(X_test)
-            perf = self.model.evaluate(X_test, Y_test, verbose=0)
+            perf = self.model.evaluate(X_test, Y_test, batch_size=batch, 
+                                        return_dict=True, verbose=0)
         
         return history, probs, perf
 
