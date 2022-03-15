@@ -1,5 +1,6 @@
 from aawedha.utils.evaluation_utils import fit_scale, transform_scale
 from torchsummary import summary
+from ranger21 import Ranger21
 import torch.optim as optim
 import torch.nn as nn
 import numpy as np
@@ -19,6 +20,11 @@ available_metrics = {
     'recall': torchmetrics.Recall,
     'auc': torchmetrics.AUROC
     }
+
+
+custom_opt = {
+    'Ranger': Ranger21,
+}
 
 
 class TorchModel(nn.Module):
@@ -251,6 +257,8 @@ class TorchModel(nn.Module):
         available = list(optim.__dict__.keys())
         if opt_id in available:
             return getattr(optim, opt_id)(**params)
+        elif opt_id in custom_opt:
+            return custom_opt[opt_id](**params)
         else:
             raise ModuleNotFoundError
 
