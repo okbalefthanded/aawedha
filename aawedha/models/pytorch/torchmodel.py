@@ -48,16 +48,19 @@ class TorchModel(nn.Module):
         self.loss = self.get_loss(loss)
         self.metrics_list = self.get_metrics(metrics)
 
-    def fit(self, x, y, batch_size=32, epochs=100, verbose=2, 
+    def fit(self, x, y=None, batch_size=32, epochs=100, verbose=2, 
             validation_data=None, class_weight=None, 
             steps_per_epoch=None, shuffle=True, 
             callbacks=None):        
         """
         """
         history, hist = {}, {}
-        self.input_shape = x.shape[1:]
         
-        train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle)
+        if isinstance(x, torch.utils.data.DataLoader):
+            train_loader = x
+        else:
+            self.input_shape = x.shape[1:]
+            train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle)
         
         if class_weight and y.ndim > 1:
             self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])
@@ -68,6 +71,8 @@ class TorchModel(nn.Module):
 
         hist['loss'] = []
         if validation_data:
+            if not isinstance(validation_data, torch.utils.data.DataLoader):
+                validation_data = self.make_loader(validation_data[0], validation_data[1], batch_size, shuffle)
             hist['val_loss'] = []
 
         for metric in self.metrics_list:
@@ -114,7 +119,7 @@ class TorchModel(nn.Module):
             # evaluate validation data
             val_metrics = None
             if validation_data:
-                val_metrics = self.evaluate(validation_data[0], validation_data[1], batch_size, shuffle=False)
+                val_metrics = self.evaluate(validation_data, batch_size=batch_size, shuffle=False)
                 for metric in val_metrics:
                     hist[f"val_{metric}"].append(val_metrics[metric])
             
@@ -138,19 +143,26 @@ class TorchModel(nn.Module):
         if normalize:
             x = self.normalize(x)
         self.eval()
-        pred = self(torch.tensor(x, dtype=torch.float32).to(self.device))
+        if isinstance(x, torch.Tensor):
+            x_tensor = x.to(self.device)
+        else:
+            x_tensor = torch.tensor(x, dtype=torch.float32).to(self.device)
+        pred = self(x_tensor)
         if self._is_binary():
             pred = nn.Sigmoid()(pred)
         return pred.cpu().detach().numpy()
 
-    def evaluate(self, x, y, batch_size=32, verbose=0, normalize=False, 
+    def evaluate(self, x, y=None, batch_size=32, verbose=0, normalize=False, 
                  shuffle=False, return_dict=True):
         """
         """
         loss = 0
         if normalize:
             x = self.normalize(x)
-        test_loader = self.make_loader(x, y, batch_size, shuffle)
+        if isinstance(x, torch.utils.data.DataLoader):
+            test_loader = x
+        else:        
+            test_loader = self.make_loader(x, y, batch_size, shuffle)
         self.to(self.device)
         self.eval()
         
@@ -269,7 +281,7 @@ class TorchModel(nn.Module):
     def make_loader(x, y, batch_size=32, shuffle=True):
         """
         """
-        if np.unique(y).size == 2:
+        if np.unique(y).size == 2 and y.ndim < 2:
             y = np.expand_dims(y, axis=1)
 
         tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 

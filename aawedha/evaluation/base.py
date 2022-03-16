@@ -634,7 +634,7 @@ class Evaluation(object):
         probs, perf = None, None
         
         if aug:
-            X_train, val = build_mixup_dataset(X_train, Y_train, X_val, Y_val, aug, batch)
+            X_train, val = build_mixup_dataset(X_train, Y_train, X_val, Y_val, aug, batch, self.engine)
             if isinstance(Y_test, np.ndarray):      
                 Y_test = labels_to_categorical(Y_test)
             #
