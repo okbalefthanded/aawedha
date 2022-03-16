@@ -62,8 +62,10 @@ class TorchModel(nn.Module):
             self.input_shape = x.shape[1:]
             train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle)
         
-        if class_weight and y.ndim > 1:
-            self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])
+        if class_weight: 
+            if isinstance(y, np.ndarray):
+                if y.ndim > 1:
+                    self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])
         
         self.to(self.device)
         self.loss.to(self.device)
@@ -262,8 +264,15 @@ class TorchModel(nn.Module):
 
     def reset_metrics(self):
         for metric in self.metrics_list:
-            metric.reset()        
+            metric.reset()      
 
+    
+    def is_categorical(self):
+        if self.metrics_list[0].mode == 'multi-class':
+            return False
+        else:
+            return True
+    
     @staticmethod
     def _get_optim(opt_id, params):
         available = list(optim.__dict__.keys())

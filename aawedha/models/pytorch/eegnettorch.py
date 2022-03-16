@@ -62,7 +62,8 @@ class EEGNetTorch(TorchModel):
         self.pool2 = nn.AvgPool2d(kernel_size=(1, 8))
         self.drop2 = nn.Dropout(p=dropoutRate)
         # self.dense = nn.Linear(nb_classes * (F2 * (Samples // 32)), nb_classes)
-        self.dense = LineardWithConstraint(nb_classes * (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
+        # self.dense = LineardWithConstraint(nb_classes * (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
+        self.dense = LineardWithConstraint( (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
 
         self.initialize_glorot_uniform()
 
