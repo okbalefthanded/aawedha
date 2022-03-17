@@ -58,18 +58,16 @@ class TorchModel(nn.Module):
         history, hist = {}, {}
         
         if isinstance(x, torch.utils.data.DataLoader):
+            self.input_shape = x.dataset.tensors[0].shape[1:]
             train_loader = x
+            y_size = x.dataset.tensors[1].ndim 
+            if y_size > 1:
+                self._set_auroc_classes()
         else:
             self.input_shape = x.shape[1:]
+            train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle) 
             if y.ndim > 1:
-                self.is_categorical = True
-                # set AUROC num_classes to 2
-                for metric in self.metrics_list:
-                    metric_name = str(metric).lower()[:-2]
-                    print(metric, metric_name)
-                    if metric_name == 'auroc':
-                        metric.num_classes = 2
-            train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle)             
+                self._set_auroc_classes()                        
         
         if class_weight: 
             if isinstance(y, np.ndarray):
@@ -99,6 +97,8 @@ class TorchModel(nn.Module):
 
         for epoch in range(epochs):  # loop over the dataset multiple times
             running_loss = 0
+            self.reset_metrics()
+            
             if verbose == 2:
                 print("Epoch {}/{}".format(epoch+1, epochs))
                     
@@ -115,21 +115,10 @@ class TorchModel(nn.Module):
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item() / len(train_loader)
-                return_metrics = {'loss': running_loss}
-                # return_metrics = {'loss': loss.item()}
-
-                for metric in self.metrics_list:
-                    metric_name = str(metric).lower()[:-2]
-                    if self._is_binary():
-                        outputs = torch.nn.Sigmoid()(outputs)
-                    # if categorical
-                    if self.is_categorical and metric_name == 'auroc':
-                        labels = labels.argmax(axis=1).int()
-                    else:
-                        labels = labels.int()
-                    result = metric(outputs, labels).item()
-                    return_metrics[metric_name] = result
                 
+                return_metrics = {'loss': running_loss}
+                return_metrics = self._compute_metrics(return_metrics, outputs, labels)
+
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
             
@@ -199,14 +188,8 @@ class TorchModel(nn.Module):
             outputs = outputs.to(self.device)
             loss += self.loss(outputs, labels)
             
-            # metric.update(outputs.to(device), labels.to(device))
             return_metrics = {'loss': loss.item() / len(test_loader)}
-            
-            for metric in self.metrics_list:
-                if self._is_binary():
-                    outputs = nn.Sigmoid()(outputs)
-                metric.update(outputs, labels.int())
-                return_metrics[str(metric).lower()[:-2]] = metric.compute().item()
+            return_metrics = self._compute_metrics(return_metrics, outputs, labels)
 
             if verbose == 2:
                 progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
@@ -291,8 +274,34 @@ class TorchModel(nn.Module):
         else:
             raise ModuleNotFoundError
 
+    def _compute_metrics(self, return_metrics, outputs, labels):
+        for metric in self.metrics_list:
+            metric_name = str(metric).lower()[:-2]
+            if self._is_binary():
+                outputs = nn.Sigmoid()(outputs)
+            labels = self._labels_to_int(metric_name, labels)                                    
+            metric.update(outputs, labels)
+            return_metrics[metric_name] = metric.compute().item()
+        return return_metrics
+    
     def _is_binary(self):
         return "BCE" in str(type(self.loss))
+
+    def _set_auroc_classes(self):
+        self.is_categorical = True
+        # set AUROC num_classes to 2
+        for metric in self.metrics_list:
+            metric_name = str(metric).lower()[:-2]
+            print(metric, metric_name)
+            if metric_name == 'auroc':
+                metric.num_classes = 2
+
+    def _labels_to_int(self, metric, labels):
+        # if categorical
+        if self.is_categorical and metric == 'auroc':
+            return labels.argmax(axis=1).int()
+        else:
+            return labels.int()
 
     @staticmethod
     def make_loader(x, y, batch_size=32, shuffle=True):
