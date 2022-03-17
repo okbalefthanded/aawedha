@@ -2,7 +2,7 @@
 # https://keras.io/examples/vision/mixup/
 # [1] Zhang, H., Cisse, M., Dauphin, Y. N., & Lopez-Paz, D. (2017). mixup: Beyond Empirical Risk Minimization,
 #  1–11. Retrieved from http://arxiv.org/abs/1710.09412
-from aawedha.utils.evaluation_utils import labels_to_categorical
+from aawedha.evaluation.evaluation_utils import labels_to_categorical
 from torch.utils.data import TensorDataset
 import tensorflow as tf
 import numpy as np    

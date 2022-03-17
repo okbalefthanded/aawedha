@@ -1,4 +1,4 @@
-from aawedha.utils.evaluation_utils import fit_scale, transform_scale
+from aawedha.evaluation.evaluation_utils import fit_scale, transform_scale
 from torchsummary import summary
 from ranger21 import Ranger21
 import torch.optim as optim
@@ -39,7 +39,8 @@ class TorchModel(nn.Module):
         self.device = device
         self.input_shape = None
         self.mu = None
-        self.sigma = None        
+        self.sigma = None  
+        self.is_categorical = False      
 
     def compile(self, optimizer='Adam', loss=None,
                 metrics=None, loss_weights=None):
@@ -60,7 +61,15 @@ class TorchModel(nn.Module):
             train_loader = x
         else:
             self.input_shape = x.shape[1:]
-            train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle)
+            if y.ndim > 1:
+                self.is_categorical = True
+                # set AUROC num_classes to 2
+                for metric in self.metrics_list:
+                    metric_name = str(metric).lower()[:-2]
+                    print(metric, metric_name)
+                    if metric_name == 'auroc':
+                        metric.num_classes = 2
+            train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle)             
         
         if class_weight: 
             if isinstance(y, np.ndarray):
@@ -110,10 +119,16 @@ class TorchModel(nn.Module):
                 # return_metrics = {'loss': loss.item()}
 
                 for metric in self.metrics_list:
+                    metric_name = str(metric).lower()[:-2]
                     if self._is_binary():
                         outputs = torch.nn.Sigmoid()(outputs)
-                    result = metric(outputs, labels.int()).item()
-                    return_metrics[str(metric).lower()[:-2]] = result
+                    # if categorical
+                    if self.is_categorical and metric_name == 'auroc':
+                        labels = labels.argmax(axis=1).int()
+                    else:
+                        labels = labels.int()
+                    result = metric(outputs, labels).item()
+                    return_metrics[metric_name] = result
                 
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
@@ -264,14 +279,7 @@ class TorchModel(nn.Module):
 
     def reset_metrics(self):
         for metric in self.metrics_list:
-            metric.reset()      
-
-    
-    def is_categorical(self):
-        if self.metrics_list[0].mode == 'multi-class':
-            return False
-        else:
-            return True
+            metric.reset()   
     
     @staticmethod
     def _get_optim(opt_id, params):
