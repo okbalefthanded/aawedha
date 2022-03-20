@@ -49,6 +49,25 @@ class TorchModel(nn.Module):
         self.loss = self.get_loss(loss)
         self.metrics_list = self.get_metrics(metrics)
 
+    def train_step(self, data):
+        """
+        """
+        # get the inputs; data is a list of [inputs, labels]
+        inputs, labels = data[0].to(self.device), data[1].to(self.device)
+        # zero the parameter gradients
+        self.optimizer.zero_grad()
+
+        # forward + backward + optimize
+        outputs = self(inputs)
+        outputs = outputs.to(self.device)
+        loss = self.loss(outputs, labels)
+        loss.backward()
+        self.optimizer.step()
+                
+        return_metrics = {'loss': loss.item()}
+        return_metrics = self._compute_metrics(return_metrics, outputs, labels)
+        return return_metrics
+
     def fit(self, x, y=None, batch_size=32, epochs=100, verbose=2, 
             validation_data=None, class_weight=None, 
             steps_per_epoch=None, shuffle=True, 
@@ -105,21 +124,11 @@ class TorchModel(nn.Module):
                 print("Epoch {}/{}".format(epoch+1, epochs))
                     
             for i, data in enumerate(train_loader, 0):
-                # get the inputs; data is a list of [inputs, labels]
-                inputs, labels = data[0].to(self.device), data[1].to(self.device)
-                # zero the parameter gradients
-                self.optimizer.zero_grad()
-
-                # forward + backward + optimize
-                outputs = self(inputs)
-                outputs = outputs.to(self.device)
-                loss = self.loss(outputs, labels)
-                loss.backward()
-                self.optimizer.step()
-                running_loss += loss.item() / len(train_loader)
                 
-                return_metrics = {'loss': running_loss}
-                return_metrics = self._compute_metrics(return_metrics, outputs, labels)
+                return_metrics = self.train_step(data)
+                
+                running_loss += return_metrics['loss'] / len(train_loader)
+                return_metrics['loss'] = running_loss
 
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
