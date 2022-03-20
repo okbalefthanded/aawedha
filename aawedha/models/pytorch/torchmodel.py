@@ -86,6 +86,8 @@ class TorchModel(nn.Module):
 
         for metric in self.metrics_list:
             key = str(metric).lower()[:-2]
+            if key == 'auroc':
+                key = 'auc'
             metric.to(self.device)
             metric.train()
             hist[key] = []
@@ -281,6 +283,8 @@ class TorchModel(nn.Module):
                 outputs = nn.Sigmoid()(outputs)
             labels = self._labels_to_int(metric_name, labels)                                    
             metric.update(outputs, labels)
+            if metric_name == 'auroc':
+                metric_name = 'auc'
             return_metrics[metric_name] = metric.compute().item()
         return return_metrics
     
@@ -292,7 +296,6 @@ class TorchModel(nn.Module):
         # set AUROC num_classes to 2
         for metric in self.metrics_list:
             metric_name = str(metric).lower()[:-2]
-            print(metric, metric_name)
             if metric_name == 'auroc':
                 metric.num_classes = 2
 
