@@ -48,6 +48,12 @@ class TorchModel(nn.Module):
         self.optimizer = self.get_optimizer(optimizer)
         self.loss = self.get_loss(loss)
         self.metrics_list = self.get_metrics(metrics)
+        
+        # transfer to device
+        self.to(self.device)
+        self.loss.to(self.device)
+        for metric in self.metrics_list:
+            metric.to(self.device)
 
     def train_step(self, data):
         """
@@ -59,7 +65,6 @@ class TorchModel(nn.Module):
 
         # forward + backward + optimize
         outputs = self(inputs)
-        outputs = outputs.to(self.device)
         loss = self.loss(outputs, labels)
         loss.backward()
         self.optimizer.step()
@@ -92,9 +97,7 @@ class TorchModel(nn.Module):
             if isinstance(y, np.ndarray):
                 if y.ndim > 1:
                     self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])
-        
-        self.to(self.device)
-        self.loss.to(self.device)
+
         self.train()
 
         hist['loss'] = []
@@ -107,7 +110,6 @@ class TorchModel(nn.Module):
             key = str(metric).lower()[:-2]
             if key == 'auroc':
                 key = 'auc'
-            metric.to(self.device)
             metric.train()
             hist[key] = []
             if validation_data:
@@ -180,11 +182,10 @@ class TorchModel(nn.Module):
             test_loader = x
         else:        
             test_loader = self.make_loader(x, y, batch_size, shuffle)
-        self.to(self.device)
+
         self.eval()
         
         for metric in self.metrics_list:
-            metric.to(self.device)
             metric.eval()
 
         self.reset_metrics()
@@ -196,7 +197,6 @@ class TorchModel(nn.Module):
             inputs, labels = data[0].to(self.device), data[1].to(self.device)
             # calculate outputs by running inputs through the network
             outputs = self(inputs)
-            outputs = outputs.to(self.device)
             loss += self.loss(outputs, labels)
             
             return_metrics = {'loss': loss.item() / len(test_loader)}
