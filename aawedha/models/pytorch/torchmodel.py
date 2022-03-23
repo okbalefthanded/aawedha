@@ -82,16 +82,25 @@ class TorchModel(nn.Module):
         history, hist = {}, {}
         
         if isinstance(x, torch.utils.data.DataLoader):
-            self.input_shape = x.dataset.tensors[0].shape[1:]
             train_loader = x
-            y_size = x.dataset.tensors[1].ndim 
+            if hasattr(x.dataset, 'tensors'):
+                self.input_shape = x.dataset.tensors[0].shape[1:]                
+                y_size = x.dataset.tensors[1].ndim
+            else: 
+                if hasattr(x.dataset, 'data'):
+                    self.input_shape = x.dataset.data.shape[1:]
+                if isinstance(x.dataset.targets, list):
+                    y_size = np.array(x.dataset.targets).ndim
+                else:
+                    y_size = x.dataset.targets.ndim
+
             if y_size > 1:
                 self._set_auroc_classes()
         else:
             self.input_shape = x.shape[1:]
             train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle) 
             if y.ndim > 1:
-                self._set_auroc_classes()                        
+                self._set_auroc_classes()                
         
         if class_weight: 
             if isinstance(y, np.ndarray):
@@ -125,10 +134,8 @@ class TorchModel(nn.Module):
             if verbose == 2:
                 print("Epoch {}/{}".format(epoch+1, epochs))
                     
-            for i, data in enumerate(train_loader, 0):
-                
-                return_metrics = self.train_step(data)
-                
+            for i, data in enumerate(train_loader, 0):                
+                return_metrics = self.train_step(data)                
                 running_loss += return_metrics['loss'] / len(train_loader)
                 return_metrics['loss'] = running_loss
 
@@ -184,7 +191,7 @@ class TorchModel(nn.Module):
             test_loader = self.make_loader(x, y, batch_size, shuffle)
 
         self.eval()
-        
+        self.loss.eval()        
         for metric in self.metrics_list:
             metric.eval()
 
@@ -193,17 +200,19 @@ class TorchModel(nn.Module):
         if verbose == 2:
             progress = pkbar.Kbar(target=len(test_loader), width=25, always_stateful=True)
 
-        for i, data in enumerate(test_loader, 0):
-            inputs, labels = data[0].to(self.device), data[1].to(self.device)
-            # calculate outputs by running inputs through the network
-            outputs = self(inputs)
-            loss += self.loss(outputs, labels)
+        with torch.no_grad():
+            for i, data in enumerate(test_loader, 0):
+                inputs, labels = data[0].to(self.device), data[1].to(self.device)
+                # calculate outputs by running inputs through the network
+                outputs = self(inputs)
+                loss += self.loss(outputs, labels).item()
             
-            return_metrics = {'loss': loss.item() / len(test_loader)}
-            return_metrics = self._compute_metrics(return_metrics, outputs, labels)
+                # return_metrics = {'loss': loss.item() / len(test_loader)}
+                return_metrics = {'loss': loss / len(test_loader)}
+                return_metrics = self._compute_metrics(return_metrics, outputs, labels)
 
-            if verbose == 2:
-                progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
+                if verbose == 2:
+                    progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
         
         if verbose == 2:
             progress.add(1)
@@ -286,15 +295,17 @@ class TorchModel(nn.Module):
             raise ModuleNotFoundError
 
     def _compute_metrics(self, return_metrics, outputs, labels):
-        for metric in self.metrics_list:
-            metric_name = str(metric).lower()[:-2]
-            if self._is_binary():
-                outputs = nn.Sigmoid()(outputs)
-            labels = self._labels_to_int(metric_name, labels)                                    
-            metric.update(outputs, labels)
-            if metric_name == 'auroc':
-                metric_name = 'auc'
-            return_metrics[metric_name] = metric.compute().item()
+        
+        with torch.no_grad():
+            for metric in self.metrics_list:
+                metric_name = str(metric).lower()[:-2]
+                if self._is_binary():
+                    outputs = nn.Sigmoid()(outputs)
+                labels = self._labels_to_int(metric_name, labels)                                    
+                metric.update(outputs, labels)
+                if metric_name == 'auroc':
+                    metric_name = 'auc'
+                return_metrics[metric_name] = metric.compute().item()
         return return_metrics
     
     def _is_binary(self):
