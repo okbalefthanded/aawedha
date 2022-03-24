@@ -1,3 +1,4 @@
+from aawedha.models.pytorch.samtorch import enable_running_stats, disable_running_stats
 from aawedha.evaluation.evaluation_utils import fit_scale, transform_scale
 from torchsummary import summary
 from ranger21 import Ranger21
@@ -105,14 +106,14 @@ class TorchModel(nn.Module):
         if class_weight: 
             if isinstance(y, np.ndarray):
                 if y.ndim > 1:
-                    self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])
-
-        self.train()
+                    self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
 
         hist['loss'] = []
         if validation_data:
             if not isinstance(validation_data, torch.utils.data.DataLoader):
-                validation_data = self.make_loader(validation_data[0], validation_data[1], batch_size, shuffle)
+                validation_data = self.make_loader(validation_data[0], 
+                                                   validation_data[1], 
+                                                   batch_size, shuffle)
             hist['val_loss'] = []
 
         for metric in self.metrics_list:
@@ -130,6 +131,7 @@ class TorchModel(nn.Module):
         for epoch in range(epochs):  # loop over the dataset multiple times
             running_loss = 0
             self.reset_metrics()
+            self.train()
             
             if verbose == 2:
                 print("Epoch {}/{}".format(epoch+1, epochs))
@@ -199,7 +201,7 @@ class TorchModel(nn.Module):
 
         if verbose == 2:
             progress = pkbar.Kbar(target=len(test_loader), width=25, always_stateful=True)
-
+        
         with torch.no_grad():
             for i, data in enumerate(test_loader, 0):
                 inputs, labels = data[0].to(self.device), data[1].to(self.device)
@@ -295,7 +297,6 @@ class TorchModel(nn.Module):
             raise ModuleNotFoundError
 
     def _compute_metrics(self, return_metrics, outputs, labels):
-        
         with torch.no_grad():
             for metric in self.metrics_list:
                 metric_name = str(metric).lower()[:-2]
@@ -306,6 +307,8 @@ class TorchModel(nn.Module):
                 if metric_name == 'auroc':
                     metric_name = 'auc'
                 return_metrics[metric_name] = metric.compute().item()
+            return_metrics[metric_name] = metric.compute().item()
+        
         return return_metrics
     
     def _is_binary(self):
@@ -339,3 +342,27 @@ class TorchModel(nn.Module):
                                              batch_size=batch_size, 
                                              shuffle=shuffle)
         return loader
+
+
+class SAMTorch(TorchModel):
+
+    def train_step(self, data):
+        inputs, labels = data[0].to(self.device), data[1].to(self.device)
+        
+        # first forward-backward step
+        enable_running_stats(self)
+        outputs = self(inputs)
+                
+        loss = self.loss(outputs, labels)
+        loss.backward()
+        self.optimizer.first_step(zero_grad=True)
+
+        # second forward-backward step
+        disable_running_stats(self)
+        self.loss(self(inputs), labels).backward()
+        self.optimizer.second_step(zero_grad=True)
+        
+        return_metrics = {'loss': loss.item()}        
+        return_metrics = self._compute_metrics(return_metrics, outputs, labels)
+    
+        return return_metrics
