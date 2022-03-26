@@ -1,3 +1,4 @@
+from aawedha.evaluation.evaluation_utils import aggregate_results
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -231,7 +232,8 @@ class SingleSubject(Evaluation):
                 print(f'Evaluating Subject: {subj+1}/{self.n_subjects}...')
 
             rets = self._single_subject(subj, independent_test)
-            subj_results = self._aggregate_results(rets)
+            # subj_results = self._aggregate_results(rets)
+            subj_results = aggregate_results(rets)
 
             if self.log:
                 self._log_operation_results(subj, subj_results)

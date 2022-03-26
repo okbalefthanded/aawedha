@@ -22,7 +22,6 @@ available_metrics = {
     'auc': torchmetrics.AUROC
     }
 
-
 custom_opt = {
     'Ranger': Ranger21,
 }
@@ -35,6 +34,7 @@ class TorchModel(nn.Module):
         self.optimizer = None
         self.loss = None
         self.metrics_list = []
+        self.metrics_names = []
         self.name = name
         self.history = {}
         self.device = device
@@ -49,7 +49,7 @@ class TorchModel(nn.Module):
         self.optimizer = self.get_optimizer(optimizer)
         self.loss = self.get_loss(loss)
         self.metrics_list = self.get_metrics(metrics)
-        
+                
         # transfer to device
         self.to(self.device)
         self.loss.to(self.device)
@@ -81,7 +81,10 @@ class TorchModel(nn.Module):
         """
         """
         history, hist = {}, {}
-        
+        has_validation = False
+        if validation_data:
+            has_validation = True
+
         if isinstance(x, torch.utils.data.DataLoader):
             train_loader = x
             if hasattr(x.dataset, 'tensors'):
@@ -107,24 +110,32 @@ class TorchModel(nn.Module):
             if isinstance(y, np.ndarray):
                 if y.ndim > 1:
                     self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
-
+        
+        [metric.train() for metric in self.metrics_list]
+        self.set_metrics_names(has_validation)
+        hist = {metric:[] for metric in self.metrics_names}
         hist['loss'] = []
-        if validation_data:
+        if has_validation:
             if not isinstance(validation_data, torch.utils.data.DataLoader):
                 validation_data = self.make_loader(validation_data[0], 
                                                    validation_data[1], 
                                                    batch_size, shuffle)
-            hist['val_loss'] = []
-
+            hist['val_loss'] = []   
+        '''
         for metric in self.metrics_list:
+            metric.train()
             key = str(metric).lower()[:-2]
             if key == 'auroc':
-                key = 'auc'
-            metric.train()
+                key = 'auc'            
             hist[key] = []
-            if validation_data:
+            if has_validation:
                 hist[f"val_{key}"] = []
         
+        for metric in self.metrics_names:
+            hist[metric] = []
+            if has_validation:
+                hist[f"val_{metric}"] = []
+        '''
         if verbose == 2:
             progress = pkbar.Kbar(target=len(train_loader), width=25, always_stateful=True)
 
@@ -146,13 +157,13 @@ class TorchModel(nn.Module):
             
             # evaluate validation data
             val_metrics = None
-            if validation_data:
+            if has_validation:
                 val_metrics = self.evaluate(validation_data, batch_size=batch_size, shuffle=False)
                 for metric in val_metrics:
                     hist[f"val_{metric}"].append(val_metrics[metric])
             
             if verbose == 2:
-                if val_metrics:
+                if has_validation:
                     progress.add(1, values=[(f"val_{k}", val_metrics[k]) for k in val_metrics])
                 else:
                     progress.add(1)
@@ -250,6 +261,17 @@ class TorchModel(nn.Module):
                 selected_metrics.append(metric)
         return selected_metrics
 
+    def set_metrics_names(self, has_validation):
+        """
+        """
+        for metric in self.metrics_list:
+            key = str(metric).lower()[:-2]
+            if key == 'auroc':
+                key = 'auc'
+            self.metrics_names.append(key)            
+            if has_validation:
+                self.metrics_names.append(f"val_{key}")
+
     def set_device(self, device=None):
         if device:
             self.device = device
@@ -307,7 +329,7 @@ class TorchModel(nn.Module):
                 if metric_name == 'auroc':
                     metric_name = 'auc'
                 return_metrics[metric_name] = metric.compute().item()
-            return_metrics[metric_name] = metric.compute().item()
+            # return_metrics[metric_name] = metric.compute().item()
         
         return return_metrics
     

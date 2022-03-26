@@ -657,7 +657,7 @@ class Evaluation(object):
         
         if isinstance(X_test, np.ndarray):
             if self.engine == "pytorch" and self.normalize:
-                    X_test = self.model.normalize(X_test)
+                X_test = self.model.normalize(X_test)
             probs = self.model.predict(X_test)
             perf = self.model.evaluate(X_test, Y_test, batch_size=batch, 
                                         return_dict=True, verbose=0)
