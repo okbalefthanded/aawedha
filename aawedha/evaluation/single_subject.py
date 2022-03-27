@@ -232,7 +232,6 @@ class SingleSubject(Evaluation):
                 print(f'Evaluating Subject: {subj+1}/{self.n_subjects}...')
 
             rets = self._single_subject(subj, independent_test)
-            # subj_results = self._aggregate_results(rets)
             subj_results = aggregate_results(rets)
 
             if self.log:

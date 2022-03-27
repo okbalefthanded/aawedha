@@ -211,8 +211,7 @@ def make_folders(root="aawedha"):
     folder_names = ['checkpoint', 'debug', 'logs', 'results', 'trained']
     for name in folder_names:
         folder = os.path.join(root, name)
+        if ':' in folder:
+            folder = folder.replace(':', '_')
         if not os.path.isdir(folder):
             os.mkdir(folder)
-    
-
-    

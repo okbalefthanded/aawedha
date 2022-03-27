@@ -143,7 +143,7 @@ class Evaluation(object):
             if not os.path.isdir("aawedha/logs"):
                 make_folders()
             dataset_folder = f"aawedha/logs/{title}/"
-            now = datetime.datetime.now().strftime('%c').replace(' ', '_')
+            now = datetime.datetime.now().strftime('%c').replace(' ', '_').replace(':', '_')
             if not os.path.isdir(dataset_folder):
                 os.mkdir(dataset_folder)
             f = dataset_folder + '_'.join([self.__class__.__name__,
@@ -239,7 +239,7 @@ class Evaluation(object):
             dict of performance metrics : {metric : value}
         """
         self.predictions.append(probs)  # ()
-        results = dict()        
+        results  = {}      
         # classes = Y_test.max()
         if Y_test.ndim == 2:
             Y_test = Y_test.argmax(axis=1)
@@ -247,10 +247,10 @@ class Evaluation(object):
 
         classes = np.unique(Y_test).size
 
-        # self.cm.append(confusion_matrix(Y_test, preds))
-        
-        for metric, value in zip(self.model.metrics_names, perf):
-            results[metric] = value
+        if isinstance(perf, dict):
+            results = {metric:value for metric, value in perf.items()}
+        elif isinstance(perf, list):
+            results = {metric:value for metric, value in zip(self.model.metrics_names, perf)}
 
         if classes == 2:
             if probs.shape[1] > 1:            
@@ -432,13 +432,13 @@ class Evaluation(object):
         if device == 'GPU':
             compute_engine = get_gpu_name()
         else:
-            compute_engine = 'TPU'
-        
+            compute_engine = device
+
         mode = ''
         if hasattr(self, 'mode'):
             mode = f"Cross Set Mode: {self.mode}"
 
-        exp_info = ' '.join([data, duration, data_shape, prt, model,
+        exp_info = ' '.join([data, duration, data_shape, prt, self.engine, model,
                              model_config, compute_engine, mode])
         self.logger.debug(exp_info)
 
@@ -609,7 +609,7 @@ class Evaluation(object):
         self.reset_weights()
         if self.normalize:
             X_train = self._normalize(X_train)
-            
+ 
         # if label_smoothing
         if not aug:
             Y_train, Y_val, Y_test = self._to_categorical(Y_train, Y_val, Y_test)
@@ -828,17 +828,6 @@ class Evaluation(object):
         classes = self._get_classes()
         
         if classes == 2:
-            '''
-            metrics = ['accuracy',
-                        tf.keras.metrics.AUC(name='auc'),
-                        tf.keras.metrics.TruePositives(name='tp'),
-                        tf.keras.metrics.FalsePositives(name='fp'),
-                        tf.keras.metrics.TrueNegatives(name='tn'),
-                        tf.keras.metrics.FalseNegatives(name='fn'),
-                        tf.keras.metrics.Precision(name='precision'),
-                        tf.keras.metrics.Recall(name='recall')
-                        ]
-            '''
             metrics = metrics_by_lib(self.engine)
         else:
             metrics = ['accuracy']
@@ -1050,7 +1039,7 @@ class Evaluation(object):
         msg = f" Subj : {op_ind+1} ACC: {np.array(op_results['accuracy'])*100}"
         if 'auc' in op_results:
             msg += f" AUC: {np.array(op_results['auc'])*100}"
-        msg += f' Training stopped at epoch: {self.model_history.epoch[-1]}'
+        msg += f" Training stopped at epoch: {len(self.model_history['history']['loss'])}"
         self.logger.debug(msg)        
     
     def _log_results(self):
