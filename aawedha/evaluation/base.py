@@ -1,11 +1,12 @@
 from aawedha.evaluation.evaluation_utils import class_weights, labels_to_categorical, metrics_by_lib
 from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now, make_folders
 from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
-from aawedha.evaluation.checkpoint import CheckPoint
 from aawedha.evaluation.evaluation_utils import aggregate_results
+from aawedha.evaluation.checkpoint import CheckPoint
+from aawedha.models.utils_models import load_model
 from aawedha.evaluation.mixup import build_mixup_dataset
 from sklearn.metrics import roc_curve, confusion_matrix
-from tensorflow.keras.models import load_model
+# from tensorflow.keras.models import load_model
 from aawedha.io.base import DataSet
 import tensorflow as tf
 import pandas as pd
@@ -482,6 +483,7 @@ class Evaluation(object):
             self.logger = log(fname=chk.logger, logger_name='eval_log')
             self.verbose = chk.verbose
             self.initial_weights = chk.initial_weights
+            self.engine = chk.engine
             if hasattr(chk, 'mode'):
                 self.mode = chk.mode
                 self.best_kept = chk.best_kept

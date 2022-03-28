@@ -119,6 +119,7 @@ class CheckPoint(object):
             self.logger = evl.logger.handlers[0].baseFilename
         self.verbose = evl.verbose
         self.rets = []
+        self.engine = evl.engine
         if hasattr(evl, 'mode'):
             self.mode = evl.mode
             self.best_kept = evl.best_kept
@@ -156,8 +157,11 @@ class CheckPoint(object):
         # save model using built-in save_model, to avoid pickle error
         # HOTFIX FIXME
         # rolling back to h5 format due to TPU restrictions
-        self.model_name = 'aawedha/trained/current_model.h5'
-        # self.model_name = 'aawedha/trained/current_model'
+        if self.engine == 'keras':
+            self.model_name = 'aawedha/trained/current_model.h5'
+            # self.model_name = 'aawedha/trained/current_model'
+        elif self.engine == 'pytorch':
+            self.model_name = 'aawedha/trained/current_model.pth'
         model.save(self.model_name)
         # save evaluation as object?
         save_folder = 'aawedha/checkpoints'

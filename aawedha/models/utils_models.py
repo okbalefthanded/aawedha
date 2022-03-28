@@ -1,5 +1,6 @@
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 import tensorflow as tf
+import torch
 
 
 def freeze_model(model, frozen_folder, debug=False):
@@ -83,7 +84,6 @@ def create_model_from_config(config, optional):
     instance = getattr(mod, config['name'])(**params)    
     return instance
 
-
 def model_lib(model_type=None):
     """Retrieve model library from its type
 
@@ -102,4 +102,29 @@ def model_lib(model_type=None):
         return "keras"
     else:
         return "pytorch"
+
+def load_model(filepath):
+    """load classifier saved in filepath, a model can be either a H5 Keras model or
+    a Pytorch model.
+    
+    Parameters
+    ----------
+    filepath : str
+        model's path
+    
+    Returns
+    -------
+        - Keras H5 saved model object OR
+        - Pytorch model
+    """   
+            
+    if 'h5' in filepath:
+        # regular Keras model
+        model = tf.keras.models.load_model(filepath)
+    elif 'pth' in filepath:
+        # device = available_device()
+        # PyTorch Model
+        model = torch.load(filepath) #, map_location=torch.device(device))
+        # model.set_device(device)
+    return model
 
