@@ -1,5 +1,9 @@
+from aawedha.models.utils_models import model_lib
 from tensorflow.keras.utils import to_categorical
 from tensorflow_addons.metrics import F1Score
+from pyLpov.utils.utils import select_target
+from sklearn.metrics import accuracy_score
+from pyLpov.utils.utils import itr
 import tensorflow as tf
 import numpy as np
 
@@ -31,7 +35,6 @@ def metrics_by_lib(lib):
                         ]
     else:
         return ['accuracy', 'precision', 'recall', 'auc']
-
 
 def class_weights(y):
     """Calculates inverse of ratio of class' examples in train dataset
@@ -72,7 +75,6 @@ def class_weights(y):
 
     return cl_weights
 
-
 def labels_to_categorical(y):
     '''Convert numerical labels to categorical
 
@@ -92,7 +94,6 @@ def labels_to_categorical(y):
     else:
         y = to_categorical(y - 1)
     return y
-
 
 def fit_scale(X):
     """Estimate mean and standard deviation from train set
@@ -119,7 +120,6 @@ def fit_scale(X):
     # X = np.subtract(X, mu[None, :, :])
     # X = np.divide(X, sigma[None, :, :])
     return X, mu, sigma
-
 
 def transform_scale(X, mu, sigma):
     '''Apply normalization on validation/test data using estimated
@@ -164,7 +164,6 @@ def transpose_split(arrays):
                 # trials , channels, samples
         return arrays
 
-
 def aggregate_results(res):
     """Aggregate subject's results from folds into a single list
 
@@ -191,3 +190,121 @@ def aggregate_results(res):
 
     return results
 
+def predict_trial(epochs, y, desc, model, n_char, commands):
+    """Calculate character recognition rate
+    for a single subject session.
+
+    Parameters
+    ----------
+    epochs : ndarray (trials x channels x samples)
+        epoched EEG session_
+    y : 1d array (trials) or 2d array (categorical labels) (trials x 2)
+        labels 1/0 :  1 target, 0 non target
+    desc : 1d array (trials)
+        events in order of flashing
+    model : trained Keras/Pytorch model
+        trained model for prediction.
+    n_char : int
+        count of characters spelled in session
+    commands : int
+        speller characters
+
+    Returns
+    -------
+    int
+        percentage of characters correctly detected.
+    """
+    k = 0
+    n_epochs = epochs.shape[0]
+
+    trials = n_epochs // n_char
+    iterations = range(0, n_epochs, trials) 
+    
+    labels = []
+    cmds = []
+    model_type = model_lib(type(model))
+    for j in iterations:
+        idx = range(j, j+trials)
+        one_trial = epochs[idx, :, :]
+        if model_type == "keras":
+            scores = model.predict(one_trial)
+        else:
+            norm = True
+            if not isinstance(model.mu, np.ndarray):
+                norm = False
+            scores = model.predict(one_trial, normalize=norm)
+        one_desc = desc[idx]
+        if y.ndim == 1:
+            target_idx = np.where(y[idx] == 1)
+        else:
+            target_idx = np.where(y[idx, 1] == 1)
+            scores = scores[:, 1]
+        labels.append(one_desc[target_idx[0][0]])
+        command, _ = select_target(scores, one_desc, commands)
+        if command == '#':
+            command = 0
+        cmds.append(int(command))
+        k += 1
+    
+    return accuracy_score(labels, cmds)*100
+
+def char_rate_epoch(epochs, y, desc, model, phrase, n_char, paradigm, flashes=None):  
+    if flashes:
+        trials = flashes // n_char # repetition per char
+        scores, y, desc, max_step = predict_flexible_trials(epochs, y, desc, model, paradigm, trials)
+        repetitions = np.min(trials)         
+    else:
+        scores, max_step = predict_fixed_trials(epochs, model)
+        repetitions = paradigm.repetition
+        max_step = repetitions * paradigm.stimuli 
+
+    acc_per_rep = np.zeros((repetitions))
+    commands = paradigm.speller
+
+    for rep in range(1, repetitions+1):
+        cmds = []
+        for i in range(0, scores.size, max_step):
+            args = np.arange(i, i+(rep*n_char))
+            command, _ = select_target(scores[args], desc[args], commands)
+            if command == '#':
+                command = 0
+            cmds.append(int(command))
+        acc_per_rep[rep-1] = accuracy_score(phrase, cmds) * 100
+    
+    return acc_per_rep
+
+def predict_fixed_trials(epochs, model):
+    model_type = model_lib(type(model))
+    if model_type == "keras":
+        scores = model.predict(epochs)
+    else:
+        norm = True
+        if not isinstance(model.mu, np.ndarray):
+            norm = False
+        scores = model.predict(epochs, normalize=norm)
+        if scores.ndim > 1:
+            scores = scores[:, 1]
+    return scores
+
+def predict_flexible_trials(epochs, y, desc, model, paradigm, trials):    
+    step = 0
+    k = 0
+    scores = []
+    y_flat = []
+    desc_flat = []
+    repetitions = np.min(trials)
+    max_step = repetitions * paradigm.stimuli 
+    model_type = model_lib(type(model))
+    for tr in np.nditer(trials):    
+        step = (paradigm.stimuli * tr) + k
+        args = np.arange(k, step)
+        # TODO : y is categoricals
+        scores.append(model.predict(epochs[args, :, :])[:max_step])
+        y_flat.append(y.squeeze()[args][:max_step])
+        desc_flat.append(desc.squeeze()[args][:max_step])
+        k = step
+
+    scores = np.concatenate(scores).squeeze()
+    y_flat = np.concatenate(y_flat).squeeze()
+    desc_flat = np.concatenate(desc_flat).squeeze()
+    return scores, y_flat, desc_flat, max_step

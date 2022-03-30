@@ -207,3 +207,11 @@ def plot_subjects_perf(results={}):
     fig.tight_layout()
     plt.show()
     return fig, ax
+
+def plot_character_per_repetition(repetitions, acc_per_rep):
+    plt.plot(np.arange(1, repetitions+1), acc_per_rep)
+    plt.xlabel("repetitions")
+    plt.ylabel("Correct character rate")
+    plt.title("Character recognition rate per repetition")
+    plt.show()
+        
