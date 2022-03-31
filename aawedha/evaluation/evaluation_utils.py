@@ -197,7 +197,7 @@ def predict_trial(epochs, y, desc, model, n_char, commands):
     Parameters
     ----------
     epochs : ndarray (trials x channels x samples)
-        epoched EEG session_
+        epoched EEG session
     y : 1d array (trials) or 2d array (categorical labels) (trials x 2)
         labels 1/0 :  1 target, 0 non target
     desc : 1d array (trials)
@@ -248,13 +248,37 @@ def predict_trial(epochs, y, desc, model, n_char, commands):
     
     return accuracy_score(labels, cmds)*100
 
-def char_rate_epoch(epochs, y, desc, model, phrase, n_char, paradigm, flashes=None):  
-    if flashes:
+def char_rate_epoch(epochs, desc, model, phrase, n_char, paradigm, flashes=None):
+    """_summary_
+
+    Parameters
+    ----------
+    epochs : ndarray (trials x channels x samples)
+        epoched EEG session
+    desc : 1d array (trials)
+        events in order of flashing
+    model : trained Keras/Pytorch model
+        trained model for prediction.
+    phrase : 1d array of int 
+        correct phrase to spell by subject
+    n_char : int
+        count of characters spelled in session
+    paradigm : paradigm instance
+        experiment information
+    flashes : 1darray of int, optional
+        number of total flashes for the spelling of each character, by default None
+        if None: a fixed number of flashes across all dataset.
+    Returns
+    -------
+    acc_per_rep: 1d array of float (trials_repetition)
+        percentage of correct character recognition per trial repetition.
+    """
+    if isinstance(flashes, np.ndarray):
         trials = flashes // n_char # repetition per char
-        scores, y, desc, max_step = predict_flexible_trials(epochs, y, desc, model, paradigm, trials)
+        scores, desc, max_step = predict_flexible_trials(epochs, desc, model, paradigm, trials)
         repetitions = np.min(trials)         
     else:
-        scores, max_step = predict_fixed_trials(epochs, model)
+        scores = predict_fixed_trials(epochs, model)
         repetitions = paradigm.repetition
         max_step = repetitions * paradigm.stimuli 
 
@@ -268,12 +292,27 @@ def char_rate_epoch(epochs, y, desc, model, phrase, n_char, paradigm, flashes=No
             command, _ = select_target(scores[args], desc[args], commands)
             if command == '#':
                 command = 0
-            cmds.append(int(command))
+            cmds.append(int(command))        
         acc_per_rep[rep-1] = accuracy_score(phrase, cmds) * 100
     
     return acc_per_rep
 
 def predict_fixed_trials(epochs, model):
+    """Calculate prediction scores on epoches with fixed number
+    of trial repetitions across all dataset.
+
+    Parameters
+    ----------
+    epochs : ndarray (trials x channels x samples)
+        epoched EEG session
+    model : trained Keras/Pytorch model
+        trained model for prediction.
+
+    Returns
+    -------
+    scores : 1d array (trials)
+        probability score for class target 1.
+    """
     model_type = model_lib(type(model))
     if model_type == "keras":
         scores = model.predict(epochs)
@@ -286,11 +325,40 @@ def predict_fixed_trials(epochs, model):
             scores = scores[:, 1]
     return scores
 
-def predict_flexible_trials(epochs, y, desc, model, paradigm, trials):    
+def predict_flexible_trials(epochs, desc, model, paradigm, trials):    
+    """Calculate prediction scores on epoches with flexible number
+    of trial repetitions for each subject's session.
+    a fixed number of trials is selected after prediction, this number
+    equals the minimum of trial repitition in the session.
+
+    Parameters
+    ----------
+    epochs : ndarray (trials x channels x samples)
+        epoched EEG session
+    desc : 1d array (trials)
+        events in order of flashing
+    model : trained Keras/Pytorch model
+        trained model for prediction.
+    paradigm : paradigm instance
+        experiment information
+    trials : 1darray
+        number of trial repetition for the spelling of each character.
+
+    Returns
+    -------
+    scores : 1d array (fixed_trials)
+        probability score for class target 1.
+    
+    desc_flat : 1darray
+        selected events
+    
+    max_step : int
+        fixed total number of trial repetition for spelling of
+        a single character.    
+    """
     step = 0
     k = 0
     scores = []
-    y_flat = []
     desc_flat = []
     repetitions = np.min(trials)
     max_step = repetitions * paradigm.stimuli 
@@ -298,13 +366,17 @@ def predict_flexible_trials(epochs, y, desc, model, paradigm, trials):
     for tr in np.nditer(trials):    
         step = (paradigm.stimuli * tr) + k
         args = np.arange(k, step)
-        # TODO : y is categoricals
-        scores.append(model.predict(epochs[args, :, :])[:max_step])
-        y_flat.append(y.squeeze()[args][:max_step])
+        if model_type == "keras":
+            sc = model.predict(epochs[args, :, :])[:max_step]
+        else:
+            norm = True
+            if not isinstance(model.mu, np.ndarray):
+                norm = False
+            sc = model.predict(epochs[args, :, :], normalize=norm)[:max_step]        
+        scores.append(sc)        
         desc_flat.append(desc.squeeze()[args][:max_step])
         k = step
 
     scores = np.concatenate(scores).squeeze()
-    y_flat = np.concatenate(y_flat).squeeze()
     desc_flat = np.concatenate(desc_flat).squeeze()
-    return scores, y_flat, desc_flat, max_step
+    return scores, desc_flat, max_step
