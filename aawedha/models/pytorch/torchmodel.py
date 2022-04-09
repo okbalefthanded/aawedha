@@ -354,6 +354,17 @@ class TorchModel(nn.Module):
                                              shuffle=shuffle)
         return loader
 
+    def initialize_glorot_uniform(self):
+        for module in self.modules():
+            if hasattr(module, 'weight'):
+                if not("BatchNorm" in module.__class__.__name__):
+                    nn.init.xavier_uniform_(module.weight, gain=1)
+                else:
+                    nn.init.constant_(module.weight, 1)
+            if hasattr(module, "bias"):
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+
 
 class SAMTorch(TorchModel):
 

@@ -640,6 +640,8 @@ class Evaluation(object):
             if isinstance(Y_test, np.ndarray):      
                 Y_test = labels_to_categorical(Y_test)
             #
+            Y_train = None
+            '''
             history = self.model.fit(X_train,
                                  epochs=ep,
                                  steps_per_epoch=spe,
@@ -647,8 +649,11 @@ class Evaluation(object):
                                  validation_data=val,
                                  class_weight=cws,
                                  callbacks=clbs)
+            
         else:
-            history = self.model.fit(x=X_train, y=Y_train,
+        '''
+
+        history = self.model.fit(x=X_train, y=Y_train,
                                  batch_size=batch,
                                  epochs=ep,
                                  steps_per_epoch=spe,
@@ -1041,7 +1046,11 @@ class Evaluation(object):
         msg = f" Subj : {op_ind+1} ACC: {np.array(op_results['accuracy'])*100}"
         if 'auc' in op_results:
             msg += f" AUC: {np.array(op_results['auc'])*100}"
-        msg += f" Training stopped at epoch: {len(self.model_history['history']['loss'])}"
+        if isinstance(self.model_history, dict):
+            epochs = len(self.model_history['history']['loss']) 
+        else:
+            epochs = self.model_history.params['epochs'] # Keras History object
+        msg += f" Training stopped at epoch: {epochs}"
         self.logger.debug(msg)        
     
     def _log_results(self):
