@@ -87,14 +87,14 @@ class EEGNetTorch(EEGNetTorchBase):
         super().__init__(device=device, name=name)
         self.conv1 = nn.Conv2d(1, F1, (1, kernLength),
                                bias=False, padding='same')
-        # self.bn1 = nn.BatchNorm2d(F1, momentum=0.99, eps=0.01) # same default values as TF
+        self.bn1 = nn.BatchNorm2d(F1, momentum=0.99, eps=0.01) # same default values as TF
         # self.bn1 = nn.BatchNorm2d(F1)
-        self.bn1 = nn.BatchNorm2d(F1, momentum=0.01, eps=1e-3)
+        # self.bn1 = nn.BatchNorm2d(F1, momentum=0.01, eps=1e-3)
         self.conv2 = Conv2dWithConstraint(
             F1, F1 * D, (Chans, 1), max_norm=1, bias=False, groups=F1, padding="valid")
-        # self.bn2 = nn.BatchNorm2d(F1 * D, momentum=0.99, eps=0.01) # same default values as TF
+        self.bn2 = nn.BatchNorm2d(F1 * D, momentum=0.99, eps=0.01) # same default values as TF
         # self.bn2 = nn.BatchNorm2d(F1 * D)
-        self.bn2 = nn.BatchNorm2d(F1 * D, momentum=0.01, eps=1e-3) 
+        # self.bn2 = nn.BatchNorm2d(F1 * D, momentum=0.01, eps=1e-3) 
         self.pool1 = nn.AvgPool2d(kernel_size=(1, 4))
         self.drop1 = nn.Dropout(p=dropoutRate)
         # https://discuss.pytorch.org/t/how-to-modify-a-conv2d-to-depthwise-separable-convolution/15843/7
@@ -102,9 +102,9 @@ class EEGNetTorch(EEGNetTorchBase):
             F1 * D, F1 * D, (1, 16), bias=False, groups=F1 * D, padding="same")
         self.conv_sep_point = nn.Conv2d(
             F1 * D, F2, (1, 1), bias=False, padding="valid")
-        # self.bn3 = nn.BatchNorm2d(F2, momentum=0.99, eps=0.01)
+        self.bn3 = nn.BatchNorm2d(F2, momentum=0.99, eps=0.01)
         # self.bn3 = nn.BatchNorm2d(F2)
-        self.bn3 = nn.BatchNorm2d(F2, momentum=0.01, eps=1e-3)
+        # self.bn3 = nn.BatchNorm2d(F2, momentum=0.01, eps=1e-3)
         self.pool2 = nn.AvgPool2d(kernel_size=(1, 8))
         self.drop2 = nn.Dropout(p=dropoutRate)
         # self.dense = nn.Linear(nb_classes * (F2 * (Samples // 32)), nb_classes)

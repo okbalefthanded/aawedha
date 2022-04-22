@@ -138,7 +138,10 @@ class Train(Evaluation):
         shape = (2, 1, 0)
         X, Y = self._cat_lists(X, Y)
         X = X.transpose(shape)
-        X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=val_size)
+        if val_size == 0:
+            X_train, X_val, Y_train, Y_val = X, None, Y, None
+        else:
+            X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=val_size)
 
         if Y_train.min() != 0:
             Y_train -= 1

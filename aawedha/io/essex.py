@@ -33,6 +33,7 @@ class Essex(DataSet):
                          doi='http://dx.doi.org/10.1088/1741-2560/7/5/056006',
                          url="https://archive.physionet.org/pn4/erpbci"
                          )
+        self.phrase = []
 
     def generate_set(self, load_path=None, download=False, channels=None, epoch=[0., .7], 
                      band=[1.0, 10.0], order=2,  downsample=None, 
@@ -78,7 +79,7 @@ class Essex(DataSet):
         if download:
             self.download_raw(load_path)
 
-        self.epochs, self.y, events = self.load_raw(load_path, channels,
+        self.epochs, self.y, events, phrase = self.load_raw(load_path, channels,
                                                     epoch, band, order, 
                                                     downsample
                                                     )
@@ -88,6 +89,7 @@ class Essex(DataSet):
         self.subjects = self._get_subjects()
         self.paradigm = self._get_paradigm()
         self.events = events
+        self.phrase = phrase
         if save:
             self.save_set(save_folder, fname)
         
@@ -127,7 +129,8 @@ class Essex(DataSet):
         """
         set_log_level(verbose=False)
         subjects = range(1, 13)
-        X, Y , ev = [], [], []
+        X, Y , ev, phrase = [], [], [], []
+        flashes = []
         ev_id = {'AGMSY5': 1, 'BHNTZ6': 2, 'CIOU17': 3, 'DJPV28': 4,
                  'EKQW39': 5, 'FLRX4_': 6, 'ABCDEF': 7, 'GHIJKL': 8,
                  'MNOPQR': 9, 'STUVWX': 10, 'YZ1234':11, '56789_': 12
@@ -140,18 +143,30 @@ class Essex(DataSet):
             raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_names])
             s = pd.Series(raw.annotations.description)            
             targets = s[s.str.startswith("#Tgt")]           
-            targets = [tar[4] for tar in targets]            
+            targets = [tar[4] for tar in targets]   
+            # FROM SUBJECT 3, ANNOTATIONS DON'T CONTAIN #start
+            # THE DATE OF RECORDING REPLACES #start
+            # AND CONTAIN A NEW count: #counted20of20         
             #starts = s[s.str.startswith("#start")]            
             # targets = s[s.str.startswith("#Tgt")].str.split("_")
             # targets = [tar[0][-1] for tar in targets]            
             # starts = s[s.str.startswith("#start")]
             #if starts.size == 0:
             starts = s[s.str.startswith("#Tgt")]
-            ends = s[s.str.startswith("#end")]           
+            ends = s[s.str.startswith("#end")]
+            counts = s[s.str.startswith("#counted")]
+            if counts.empty:
+                start_index = np.where("#start" == raw.annotations.description)
+                end_index = np.where("#end" == raw.annotations.description)
+                diff = (end_index[0]- start_index[0] -1) / 6
+                counts = diff.tolist()
+            else:
+                counts = [int(c[12:14]) for c in counts]           
             desc = list(np.unique(raw.annotations.description))
             desc = [dc for dc in desc if len(dc)==6 and dc != '#start']
             event_keys = list(ev_id.keys())
             if sorted(desc) != sorted(event_keys):
+                # subjects : 6 to 12, character '_' is replace by '#'
                 old_keys = sorted(list(set(event_keys).difference(desc))) 
                 new_keys = sorted(list(set(desc).difference(event_keys)))
                 evs = ev_id.copy()
@@ -159,6 +174,7 @@ class Essex(DataSet):
                     evs[key] = evs.pop(old_keys[idx])
                 events, _ = events_from_annotations(raw, event_id=evs) 
             else:
+                # subjects: 1 to 5
                 events, _ = events_from_annotations(raw, event_id=ev_id)            
             r = [ev_id[key] if key in ev_id else key for key in raw.annotations.description]
             ss = pd.Series(r)
@@ -184,13 +200,15 @@ class Essex(DataSet):
             X.append(epos*1e6)
             Y.append(y)
             ev.append(events[:, -1])
-            del raw, epos, y, events
+            phrase.append(targets)
+            flashes.append(counts)
+            del raw, epos, y, events, targets, counts, s, ss, picks
         
         #X = np.array(X)
         #Y = np.array(Y).squeeze()
         #ev = np.array(ev).squeeze()
-
-        return X, Y, ev
+        self.flashes = flashes
+        return X, Y, ev, phrase
 
     def download_raw(self, store_path=None):
         """Download raw data from dataset repo url and stored it in a folder.

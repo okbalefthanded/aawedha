@@ -161,7 +161,7 @@ class TorchModel(nn.Module):
                 hist[metric].append(return_metrics[metric])                
         
         history['history'] = hist
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         return history
 
     def predict(self, x, normalize=False):
@@ -217,7 +217,7 @@ class TorchModel(nn.Module):
         
         if verbose == 2:
             progress.add(1)
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         return return_metrics
 
     def get_optimizer(self, optimizer):

@@ -1,6 +1,8 @@
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+from copy import deepcopy
 import tensorflow as tf
 import torch
+
 
 
 def freeze_model(model, frozen_folder, debug=False):
@@ -70,18 +72,19 @@ def create_model_from_config(config, optional):
     -------
     Keras Model instance
     """
+    cfg = deepcopy(config)
     missing_keys = ["Chans", "Samples"]
     for key in missing_keys:
-        if key not in config["parameters"]:
-            config["parameters"][key] = optional[key]
+        if key not in cfg["parameters"]:
+            cfg["parameters"][key] = optional[key]
 
-    mod = __import__(config['from'], fromlist=[config['name']])        
+    mod = __import__(cfg['from'], fromlist=[cfg['name']])        
     # create the instance
-    if 'parameters' in config.keys():
-        params = config['parameters']
+    if 'parameters' in cfg.keys():
+        params = cfg['parameters']
     else:
         params = {}
-    instance = getattr(mod, config['name'])(**params)    
+    instance = getattr(mod, cfg['name'])(**params)    
     return instance
 
 def model_lib(model_type=None):

@@ -19,3 +19,4 @@ pynvml
 requests
 tqdm
 pkbar
+antialiased-cnns
