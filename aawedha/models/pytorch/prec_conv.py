@@ -187,7 +187,7 @@ class PreConv(_ConvNd):
             out_sizex_end = self.kernel_size[0] - 1 - self.padding[0]
             out_sizey_start = self.kernel_size[1] - 1 - self.padding[1]
             out_sizey_end = self.kernel_size[1] - 1 - self.padding[1]
-        print("size need to crop,", out_sizex_start,out_sizex_end,out_sizey_start,out_sizey_end)
+        # print("size need to crop,", out_sizex_start,out_sizex_end,out_sizey_start,out_sizey_end)
         if out_sizex_start != 0 and out_sizey_start != 0:
             out = out[:, :, out_sizex_start: -out_sizex_end, out_sizey_start:-out_sizey_end]
         elif out_sizex_start == 0:
@@ -221,7 +221,7 @@ class PreConv(_ConvNd):
                         padd, self.dilation, self.groups)
     
     def preconditioning(self, cout, kernel):
-        print("cout shape,", cout.shape)
+        # print("cout shape,", cout.shape)
         #if (self.kernel_size[0]==1) or (self.kernel_size[1] ==1):
         if (self.kernel_size[0]==1) and (self.kernel_size[1] ==1):
             V = kernel ** 2
@@ -253,7 +253,7 @@ class PreConv(_ConvNd):
     def forward(self, input):
         c_out = self.conv2d_forward(input, self.weight)
         p_out = self.preconditioning(c_out, self.weight.data.detach())
-        print("out after prec size,", p_out.shape)
+        # print("out after prec size,", p_out.shape)
         # Truncate the preconditioning result for desired spatial size and stride
         p_out = self._truncate_circ_to_cross(p_out)
         # Affine part

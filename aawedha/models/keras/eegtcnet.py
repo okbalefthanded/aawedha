@@ -94,6 +94,7 @@ def TCN_block(input_layer, input_dimension, depth, kernel_size, filters,
     block = BatchNormalization()(block)
     block = Activation(activation)(block)
     block = Dropout(dropout)(block)
+    # residual
     if(input_dimension != filters):
         conv = Conv1D(filters,kernel_size=1, padding='same', 
                       data_format='channels_first',)(input_layer)

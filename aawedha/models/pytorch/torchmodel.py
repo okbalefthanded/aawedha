@@ -35,6 +35,7 @@ class TorchModel(nn.Module):
         self.loss = None
         self.metrics_list = []
         self.metrics_names = []
+        self.optimizer_state = None
         self.name = name
         self.history = {}
         self.device = device
@@ -55,6 +56,8 @@ class TorchModel(nn.Module):
         self.loss.to(self.device)
         for metric in self.metrics_list:
             metric.to(self.device)
+        # 
+        self.optimizer_state = self.optimizer.state_dict()
 
     def train_step(self, data):
         """
@@ -85,6 +88,8 @@ class TorchModel(nn.Module):
         if validation_data:
             has_validation = True
 
+        labels_type = self._labels_type()        
+
         if isinstance(x, torch.utils.data.DataLoader):
             train_loader = x
             if hasattr(x.dataset, 'tensors'):
@@ -102,7 +107,8 @@ class TorchModel(nn.Module):
                 self._set_auroc_classes()
         else:
             self.input_shape = x.shape[1:]
-            train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle) 
+            train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle, 
+                                            labels_type=labels_type) 
             if y.ndim > 1:
                 self._set_auroc_classes()                
         
@@ -118,7 +124,8 @@ class TorchModel(nn.Module):
             if not isinstance(validation_data, torch.utils.data.DataLoader):
                 validation_data = self.make_loader(validation_data[0], 
                                                    validation_data[1],
-                                                   batch_size, shuffle)
+                                                   batch_size, shuffle,
+                                                   labels_type)
         for metric in self.metrics_names:
             hist[metric] = []
             if has_validation:
@@ -134,7 +141,7 @@ class TorchModel(nn.Module):
             
             if verbose == 2:
                 print("Epoch {}/{}".format(epoch+1, epochs))
-                    
+            # train step
             for i, data in enumerate(train_loader, 0):
                 return_metrics = self.train_step(data)
                 running_loss += return_metrics['loss'] / len(train_loader)
@@ -188,8 +195,9 @@ class TorchModel(nn.Module):
             x = self.normalize(x)
         if isinstance(x, torch.utils.data.DataLoader):
             test_loader = x
-        else:        
-            test_loader = self.make_loader(x, y, batch_size, shuffle)
+        else:
+            labels_type = self._labels_type()
+            test_loader = self.make_loader(x, y, batch_size, shuffle, labels_type)
 
         self.eval()
         self.loss.eval()        
@@ -269,10 +277,15 @@ class TorchModel(nn.Module):
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     def set_weights(self, state_dict):
-        self.state_dict = state_dict
+        with torch.no_grad():
+            for layer in self.state_dict():
+                self.state_dict()[layer] = state_dict[layer]
+            for st in self.optimizer_state:
+                self.optimizer.state_dict()[st] = self.optimizer_state[st]
+        # self.state_dict = state_dict
 
     def get_weights(self):
-        return self.state_dict
+        return self.state_dict()
 
     def summary(self):
         """
@@ -340,15 +353,25 @@ class TorchModel(nn.Module):
         else:
             return labels.int()
 
+    def _labels_type(self):
+        labels_type = torch.long
+        if type(self.loss) is nn.BCEWithLogitsLoss:
+            labels_type = torch.float32
+        return labels_type
+
+    def _reshape_input(self, x):
+        n, h, w = x.shape
+        return x.reshape(n, 1, h, w)
+    
     @staticmethod
-    def make_loader(x, y, batch_size=32, shuffle=True):
+    def make_loader(x, y, batch_size=32, shuffle=True, labels_type=torch.long):
         """
         """
         if np.unique(y).size == 2 and y.ndim < 2:
             y = np.expand_dims(y, axis=1)
 
         tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
-                                                    torch.tensor(y))
+                                                    torch.tensor(y, dtype=labels_type))
         loader = torch.utils.data.DataLoader(tensor_set, 
                                              batch_size=batch_size, 
                                              shuffle=shuffle)
