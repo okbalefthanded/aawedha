@@ -4,7 +4,7 @@ import tensorflow_addons.optimizers as tfaopt
 from madgrad import MadGrad
 
 all_classes_tfa = {'adabelief': tfaopt.AdaBelief,
-                    'adamw': tfaopt.AdamW,                 
+                    'adamw': tfaopt.AdamW,
                   'cocob': tfaopt.COCOB,
                   'conditional_gradient': tfaopt.ConditionalGradient,
                   'lamb' : tfaopt.LAMB,
@@ -31,12 +31,14 @@ def optimizer_lib(identifier):
         opt_id = identifier[0]
     
     lib = 'custom'
-    try: 
+    try:
         _ = get(opt_id)
         return 'builtin'
     except ValueError:
         if opt_id.lower() in list(all_classes_tfa.keys()):
             return 'TFA' # tfa : tensorflow_addons
+        else:
+            NotImplementedError
     return lib
 
 
@@ -60,11 +62,13 @@ def get_optimizer(identifier, opt_lib=None):
     else:
         opt_id = identifier
         conf = {}
-    config = {'class_name': str(opt_id), 'config': conf}
-    if opt_lib is 'builtin':
+    
+    config = {'class_name': str(opt_id).lower(), 'config': conf}
+
+    if opt_lib == 'builtin':
         opt = get(identifier)
         return opt
-    elif opt_lib is 'TFA':
+    elif opt_lib == 'TFA':
         opt = deserialize_keras_object(config, module_objects=all_classes_tfa,
                           custom_objects=None, printable_module_name='optimizer')
         return opt

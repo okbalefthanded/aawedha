@@ -325,7 +325,7 @@ class Evaluation(object):
         res = self._update_results(res)
         return res
 
-    def save_model(self, folderpath=None, modelformat='TF'):
+    def save_model(self, folderpath=None, filepath=None, modelformat='TF'):
         """Save trained model in HDF5 format or SavedModel TF format
         Uses the built-in save method in Keras Model object.
         model name will be: folderpath/modelname_paradigm_dataset.h5
@@ -342,10 +342,11 @@ class Evaluation(object):
         if not folderpath:
             folderpath = 'trained/'
 
-        # filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])
-        prdg = self.dataset.paradigm.title
-        dt = self.dataset.title
-        filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt]))
+        # filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])        
+        if not filepath:
+            prdg = self.dataset.paradigm.title
+            dt = self.dataset.title
+            filepath = os.path.join(folderpath, '_'.join([self.model.name, prdg, dt]))
         if self.engine == "keras":
             if modelformat == 'h5' or device == 'TPU':
                 # due to cloud TPUs restrictions, we force
@@ -723,7 +724,7 @@ class Evaluation(object):
             if 'optimizer' in self.model_config['compile']:
                 optimizer = self.model_config['compile']['optimizer']
                 if isinstance(optimizer, str) or isinstance(optimizer, list):
-                    if self.engine is "keras":
+                    if self.engine == "keras":
                         opt_lib = optimizer_lib(optimizer)
                         if opt_lib != 'builtin':
                             optimizer = get_optimizer(optimizer, opt_lib)

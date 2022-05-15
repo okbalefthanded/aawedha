@@ -4,7 +4,6 @@ import tensorflow as tf
 import torch
 
 
-
 def freeze_model(model, frozen_folder, debug=False):
     """Convert Keras model to a TensorFlow frozen graph
     Parameters
@@ -78,7 +77,7 @@ def create_model_from_config(config, optional):
         if key not in cfg["parameters"]:
             cfg["parameters"][key] = optional[key]
 
-    mod = __import__(cfg['from'], fromlist=[cfg['name']])        
+    mod = __import__(cfg['from'], fromlist=[cfg['name']])
     # create the instance
     if 'parameters' in cfg.keys():
         params = cfg['parameters']
