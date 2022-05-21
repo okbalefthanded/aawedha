@@ -29,7 +29,8 @@ def EEGTCNet(nb_classes, Chans=64, Samples=128, layers=3, kernel_s=10, filt=10,
                      kernel_size=kernel_s, filters=filt, dropout=dropout,
                      activation=activation)
     # out = Lambda(lambda x: x[:,-1,:])(outs)
-    out = outs[:,-1,:]
+    # out = outs[:,-1,:]
+    out = outs[:,:,-1]
     dense  = Dense(nb_classes, name = 'dense', 
                    kernel_constraint = max_norm(regRate))(out)
     if nb_classes == 1:

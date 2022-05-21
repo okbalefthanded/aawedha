@@ -757,7 +757,7 @@ class Evaluation(object):
         """
         if self.engine == "keras":
             for layer in self.model.layers:
-                if type(layer).__name__ is "Normalization":
+                if type(layer).__name__ == "Normalization":
                     layer.adapt(X_train)
         else:
             X_train = self.model.set_scale(X_train)

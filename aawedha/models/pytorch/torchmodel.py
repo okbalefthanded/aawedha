@@ -215,7 +215,7 @@ class TorchModel(nn.Module):
                 # calculate outputs by running inputs through the network
                 outputs = self(inputs)
                 loss += self.loss(outputs, labels).item()
-            
+
                 # return_metrics = {'loss': loss.item() / len(test_loader)}
                 return_metrics = {'loss': loss / len(test_loader)}
                 return_metrics = self._compute_metrics(return_metrics, outputs, labels)
