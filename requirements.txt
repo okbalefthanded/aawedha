@@ -20,6 +20,7 @@ requests
 tqdm
 pkbar
 antialiased-cnns
+yaml
 git+https://github.com/lessw2020/Ranger21.git
 git+https://github.com/artemmavrin/focal-loss.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git

@@ -1,11 +1,14 @@
-from aawedha.io.base import DataSet
+from aawedha.analysis.preprocess import bandpass, eeg_epoch
 from aawedha.paradigms.motor_imagery import MotorImagery
 from aawedha.paradigms.subject import Subject
-from aawedha.analysis.preprocess import bandpass, eeg_epoch
+from aawedha.utils.network import download_file
+from aawedha.io.base import DataSet
 from mne import set_log_level
 from scipy.io import loadmat
 import numpy as np
 import glob
+
+
 from mne.io.edf.edf import read_raw_edf
 
 
@@ -28,13 +31,40 @@ class Comp_IV_2a(DataSet):
                                    'C2', 'C4', 'C6', 'CP3', 'CP1', 'CPz',
                                    'CP2', 'CP4', 'P1', 'Pz', 'P2', 'POz'],
                          fs=250,
-                         doi='https://doi.org/10.3389/fnins.2012.00055'
+                         doi='https://doi.org/10.3389/fnins.2012.00055',
+                         url="http://bnci-horizon-2020.eu/database/data-sets/001-2014"
                          )
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
 
     def load_raw(self, path=None, mode='',
+                 epoch_duration=2,
+                 band=[4.0, 40.0],
+                 order=3):
+        '''
+        '''        
+        epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
+        data_mode = {'train':'T', 'test':'E'}        
+        data_files = glob.glob(path + f"/*{data_mode[mode]}.mat")              
+        data_files.sort()      
+        subjects = range(len(data_files))
+        X = []
+        Y = []
+
+        for subj in subjects:
+            x, y = self._get_epoched(data_files[subj],
+                                     epoch_duration,
+                                     band,
+                                     order)
+            X.append(x)
+            Y.append(y)
+        
+        X = np.array(X)
+        Y = np.array(Y)
+        return X, Y
+    
+    def load_raw_legacy(self, path=None, mode='',
                  epoch_duration=2,
                  band=[4.0, 40.0],
                  order=3):
@@ -76,9 +106,15 @@ class Comp_IV_2a(DataSet):
     def generate_set(self, load_path=None, epoch=2,
                      band=[4., 40.],
                      order=3,
+                     download=False,
+                     save=True,
+                     fname=None,
                      save_folder=None):
         '''
         '''
+        if download:
+            self.download_raw(load_path)
+            
         self.epochs, self.y = self.load_raw(load_path, 'train',
                                             epoch, band,
                                             order
@@ -90,15 +126,55 @@ class Comp_IV_2a(DataSet):
                                                       )
 
         self.paradigm = self._get_paradigm()
-        self.save_set(save_folder)
+        if save:
+            self.save_set(save_folder, fname)        
 
     def get_path(self):
         NotImplementedError
 
-    def download_raw(self):
-        raise NotImplementedError
+    def download_raw(self, store_path=None):
+        mode = ['train', 'test']
+        for m in mode:
+            links = self._files_link(m)
+            [download_file(l, store_path) for l in links]        
 
-    def _get_epoched(self, data_file, label_file,
+    def _get_epoched(self, data_file, dur, band, order):
+        '''
+        '''
+        raw = loadmat(data_file)
+        raw = raw['data']
+        epochs, ys = [], []
+
+        subj_gender 	= raw[0,0][0,0][6].squeeze()
+        subj_age 		= raw[0,0][0,0][7].squeeze()
+        subj_id = data_file.split('/')[-1].split('.mat')[0].split('A')[1][:2]
+        mode = data_file.split('/')[-1].split('.mat')[0].split('A')[1][-1]
+        valid_sessions = 3         
+        if subj_id == '04' and mode == 'T':
+            valid_sessions = 1
+        for ii in range(valid_sessions, raw.shape[1]):
+            raw_signal 		= raw[0,ii][0,0][0][:,:22]
+            raw_pos 	    = raw[0,ii][0,0][1].squeeze()
+            y 		        = raw[0,ii][0,0][2].squeeze()
+            # classes 		= raw[0,ii][0,0][4].squeeze()
+            signal = bandpass(raw_signal, band, self.fs, order)
+            ys.append(y)
+            epochs.append(eeg_epoch(signal, dur, raw_pos))        
+
+        raw_subject_info = {
+            'id': subj_id,
+            'gender': subj_gender,
+            'age': subj_age,
+            'handedness': '',
+            'medication': '',
+        }
+
+        self.subjects.append(self._get_subjects(raw_subject_info))
+        epochs = np.concatenate(epochs, axis=-1)
+        ys = np.concatenate(ys)        
+        return epochs, ys
+    
+    def _get_epoched_legacy(self, data_file, label_file,
                      dur, band, order):
         '''
         '''
@@ -129,16 +205,15 @@ class Comp_IV_2a(DataSet):
             raw._raw_extras[0]['subject_info']))
         return epochs, y
 
-    def _get_labels(self):
-        '''
-        '''
-        pass
+    def _files_link(self, mode='train'):
+        data_mode = {'train':'T', 'test':'E'}
+        return [f"{self.url}/A0{n}{data_mode[mode]}.mat" for n in range(1,10)]      
 
     def _get_subjects(self, raw_subject_info):
         '''
         '''
         return Subject(id=raw_subject_info['id'],
-                       gender=raw_subject_info['sex'],
+                       gender=raw_subject_info['gender'],
                        age=raw_subject_info['age'],
                        handedness=raw_subject_info['handedness'],
                        condition=raw_subject_info['medication']
