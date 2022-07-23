@@ -110,7 +110,7 @@ class Train(Evaluation):
 
         Parameters
         ----------
-         selection : list, optional
+        selection : list, optional
             subjects data to be kept for training, by default None
 
         val_size : float, optional

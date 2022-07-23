@@ -1,30 +1,14 @@
 from aawedha.models.pytorch.samtorch import enable_running_stats, disable_running_stats
+from aawedha.models.pytorch.torch_builders import get_metrics, build_scheduler
 from aawedha.evaluation.evaluation_utils import fit_scale, transform_scale
+from aawedha.models.pytorch.torch_builders import get_optimizer, get_loss
 from torchsummary import summary
-from ranger21 import Ranger21
 import torch.optim as optim
 import torch.nn as nn
 import numpy as np
 import torchmetrics
 import torch
 import pkbar
-
-losses = {
-    'binary_crossentropy': nn.BCEWithLogitsLoss,
-    'sparse_categorical_crossentropy': nn.CrossEntropyLoss,
-    'categorical_crossentropy': nn.CrossEntropyLoss
-            }
-
-available_metrics = {
-    'accuracy': torchmetrics.Accuracy,
-    'precision': torchmetrics.Precision,
-    'recall': torchmetrics.Recall,
-    'auc': torchmetrics.AUROC
-    }
-
-custom_opt = {
-    'Ranger': Ranger21,
-}
 
 
 class TorchModel(nn.Module):
@@ -35,6 +19,7 @@ class TorchModel(nn.Module):
         self.loss = None
         self.metrics_list = []
         self.metrics_names = []
+        self.scheduler = None
         self.optimizer_state = None
         self.name = name
         self.history = {}
@@ -45,11 +30,12 @@ class TorchModel(nn.Module):
         self.is_categorical = False      
 
     def compile(self, optimizer='Adam', loss=None,
-                metrics=None, loss_weights=None):
+                metrics=None, loss_weights=None,
+                scheduler=None):
         
-        self.optimizer = self.get_optimizer(optimizer)
-        self.loss = self.get_loss(loss)
-        self.metrics_list = self.get_metrics(metrics)
+        self.optimizer = get_optimizer(optimizer, self.parameters())
+        self.loss = get_loss(loss)
+        self.metrics_list = get_metrics(metrics)
 
         # transfer to device
         self.to(self.device)
@@ -58,6 +44,7 @@ class TorchModel(nn.Module):
             metric.to(self.device)
         # 
         self.optimizer_state = self.optimizer.state_dict()
+        self.scheduler = scheduler
 
     def train_step(self, data):
         """
@@ -72,7 +59,10 @@ class TorchModel(nn.Module):
         loss = self.loss(outputs, labels)
         loss.backward()
         self.optimizer.step()
-                
+        
+        if self._is_one_cycle():
+            self.update_scheduler()
+
         return_metrics = {'loss': loss.item()}
         return_metrics = self._compute_metrics(return_metrics, outputs, labels)
         return return_metrics
@@ -92,17 +82,7 @@ class TorchModel(nn.Module):
 
         if isinstance(x, torch.utils.data.DataLoader):
             train_loader = x
-            if hasattr(x.dataset, 'tensors'):
-                self.input_shape = x.dataset.tensors[0].shape[1:]                
-                y_size = x.dataset.tensors[1].ndim
-            else: 
-                if hasattr(x.dataset, 'data'):
-                    self.input_shape = x.dataset.data.shape[1:]
-                if isinstance(x.dataset.targets, list):
-                    y_size = np.array(x.dataset.targets).ndim
-                else:
-                    y_size = x.dataset.targets.ndim
-
+            self.input_shape, y_size = self._data_shapes(x)
             if y_size > 1:
                 self._set_auroc_classes()
         else:
@@ -119,6 +99,9 @@ class TorchModel(nn.Module):
         
         [metric.train() for metric in self.metrics_list]
         self.set_metrics_names()
+
+        if self.scheduler:
+            self.scheduler = build_scheduler(train_loader, self.optimizer, self.scheduler)
 
         if has_validation:
             if not isinstance(validation_data, torch.utils.data.DataLoader):
@@ -143,7 +126,7 @@ class TorchModel(nn.Module):
                 print("Epoch {}/{}".format(epoch+1, epochs))
             # train step
             for i, data in enumerate(train_loader, 0):
-                return_metrics = self.train_step(data)
+                return_metrics = self.train_step(data)              
                 running_loss += return_metrics['loss'] / len(train_loader)
                 return_metrics['loss'] = running_loss
 
@@ -156,6 +139,10 @@ class TorchModel(nn.Module):
                 val_metrics = self.evaluate(validation_data, batch_size=batch_size, shuffle=False)
                 for metric in val_metrics:
                     hist[f"val_{metric}"].append(val_metrics[metric])
+
+            # update scheduler 
+            if not self._is_one_cycle():
+                self.update_scheduler()
             
             if verbose == 2:
                 if has_validation:
@@ -168,7 +155,6 @@ class TorchModel(nn.Module):
                 hist[metric].append(return_metrics[metric])                
         
         history['history'] = hist
-        # torch.cuda.empty_cache()
         return history
 
     def predict(self, x, normalize=False):
@@ -228,35 +214,6 @@ class TorchModel(nn.Module):
         # torch.cuda.empty_cache()
         return return_metrics
 
-    def get_optimizer(self, optimizer):
-        """
-        """
-        params = {'params': self.parameters()}
-        if isinstance(optimizer, str):
-            return self._get_optim(optimizer, params)
-        elif isinstance(optimizer, list):
-            params = {**params, **optimizer[1]}
-            return self._get_optim(optimizer[0], params)
-        else:
-            return optimizer
-
-    @staticmethod
-    def get_loss(loss):
-        if loss in list(losses.keys()):
-            return losses[loss]()
-        else:
-            raise ModuleNotFoundError
-
-    @staticmethod
-    def get_metrics(metrics):
-        selected_metrics = []
-        for metric in metrics:
-            if isinstance(metric, str):
-                selected_metrics.append(available_metrics[metric]())
-            else:
-                selected_metrics.append(metric)
-        return selected_metrics
-
     def set_metrics_names(self):
         """
         """
@@ -311,15 +268,9 @@ class TorchModel(nn.Module):
         for metric in self.metrics_list:
             metric.reset()   
     
-    @staticmethod
-    def _get_optim(opt_id, params):
-        available = list(optim.__dict__.keys())
-        if opt_id in available:
-            return getattr(optim, opt_id)(**params)
-        elif opt_id in custom_opt:
-            return custom_opt[opt_id](**params)
-        else:
-            raise ModuleNotFoundError
+    def update_scheduler(self):
+        if self.scheduler:
+            self.scheduler.step()
 
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():
@@ -338,6 +289,9 @@ class TorchModel(nn.Module):
     def _is_binary(self):
         return "BCE" in str(type(self.loss))
 
+    def _is_one_cycle(self):
+        return type(self.scheduler) is torch.optim.lr_scheduler.OneCycleLR
+    
     def _set_auroc_classes(self):
         self.is_categorical = True
         # set AUROC num_classes to 2
@@ -362,6 +316,20 @@ class TorchModel(nn.Module):
     def _reshape_input(self, x):
         n, h, w = x.shape
         return x.reshape(n, 1, h, w)
+
+    @staticmethod
+    def _data_shapes(x):
+        if hasattr(x.dataset, 'tensors'):
+            input_shape = x.dataset.tensors[0].shape[1:]                
+            y_size = x.dataset.tensors[1].ndim
+        else: 
+            if hasattr(x.dataset, 'data'):
+                input_shape = x.dataset.data.shape[1:]
+            if isinstance(x.dataset.targets, list):
+                y_size = np.array(x.dataset.targets).ndim
+            else:
+                y_size = x.dataset.targets.ndim
+        return input_shape, y_size
     
     @staticmethod
     def make_loader(x, y, batch_size=32, shuffle=True, labels_type=torch.long):

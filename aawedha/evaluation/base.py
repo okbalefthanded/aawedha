@@ -550,13 +550,21 @@ class Evaluation(object):
             compilation
         """
         device = self._get_device()
-        khsara, optimizer, metrics = self._get_compile_configs()
+        khsara, optimizer, metrics, schedule = self._get_compile_configs()
 
         if device != 'TPU':
-            self.model.compile(loss=khsara,
+            if self.engine == 'keras':
+                self.model.compile(loss=khsara,
                                optimizer=optimizer,
                                metrics=metrics
                                )
+            else:
+                self.model.compile(loss=khsara,
+                               optimizer=optimizer,
+                               metrics=metrics,
+                               scheduler=schedule
+                               )
+
         else:
             strategy = init_TPU()
             with strategy.scope():
@@ -730,11 +738,15 @@ class Evaluation(object):
                             optimizer = get_optimizer(optimizer, opt_lib)
             else:
                 optimizer = 'adam'
+            if 'scheduler' in self.model_config['compile']:
+                schedule = self.model_config['compile']['schedule']
+            else:
+                schedule = None
         else:
             khsara, optimizer, metrics = self._default_compile()
             # set config for checkpoint use            
 
-        return khsara, optimizer, metrics
+        return khsara, optimizer, metrics, schedule
 
     def _default_compile(self):
         """Default model compile configuration, used when no compile
@@ -812,7 +824,7 @@ class Evaluation(object):
         model_config : str
             model's configuration
         """
-        khsara, opt, mets = self._get_compile_configs()
+        khsara, opt, mets, schedule = self._get_compile_configs()
         batch, ep, clbs, aug = self._get_fit_configs()
         model_config = f' Loss: {khsara} | Optimizer: {opt} | \
                             metrics: {mets} | batch_size: {batch} | \
@@ -894,7 +906,7 @@ class Evaluation(object):
             test data labels in categorical format.
         """
         convert_label = False
-        khsara, _, _ = self._get_compile_configs()
+        khsara, _, _, _ = self._get_compile_configs()
              
         if self.engine == 'keras' and type(khsara) != str:
             loss_config = khsara.get_config()
