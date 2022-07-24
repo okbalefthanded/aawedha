@@ -12,7 +12,7 @@ def create_dataset():
     # BCI COMP IV 2a
     data_folder = 'data/Comp_IV_Data_Set_IIa'
     save_path = 'data/Comp_IV_Data_Set_IIa/epoched'
-    os.path.mkdir(data_folder)
+    os.mkdir(data_folder)
     t = [0.5 , 2.5]
 
     ds = Comp_IV_2a()
@@ -57,7 +57,7 @@ def test_single_subject():
     # set seeds
     set_seed(42)
     # load data
-    data = make_data()
+    data = create_dataset()
     subjects, samples, channels, n_classes = data.epochs.shape
     # define en evaluation
     evl = Train(dataset=data, verbose=0, engine='pytorch')
@@ -68,7 +68,7 @@ def test_single_subject():
     y_test = data.test_y[0].squeeze() - 1
     performance = evl.model.evaluate(x_test, y_test)
     # test value
-    assert np.testing.assert_allclose(performance['accuracy'], 0.26, rtol=0.2)
+    np.testing.assert_allclose(performance['accuracy'], 0.26, rtol=0.2)
 
 
 if __name__ == '__main__':
