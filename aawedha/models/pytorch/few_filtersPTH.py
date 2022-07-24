@@ -29,11 +29,14 @@ class SepConv1DPTH(TorchModel):
     def __init__(self, nb_classes=1, Chans=6, Samples=206, Filters=32, 
                  device="cuda", name="SepCon1DPTH"):
         super().__init__(device=device, name=name)
-        self.pad = nn.ZeroPad2d(padding=(0,0,8,9))
-        # self.conv_sep_depth = nn.Conv1d(Chans+8, Filters, 16, bias=True, stride=8, groups=1, padding='valid')
-        self.conv_sep_depth = nn.Conv1d(Filters, Filters, 16, bias=True, stride=8, groups=Filters)
+        # self.pad = nn.ZeroPad2d(padding=(0,0,8,9))
+        self.pad = nn.ZeroPad2d(padding=(0,0,5,4))
+        self.conv_sep_depth = nn.Conv1d(Chans+9, Filters, 16, bias=True, stride=8, groups=1)
+        # self.conv_sep_depth = nn.Conv1d(Filters, Filters, 16, bias=True, stride=8, groups=Filters)
         self.conv_sep_point = nn.Conv1d(Filters, Filters, 1, bias=True)
         self.dense = nn.Linear((Filters * ((Samples // 8)-1)), nb_classes)
+
+        self.initialize_glorot_uniform()
         
     def forward(self, x):
         x = self.pad(x)

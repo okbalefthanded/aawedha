@@ -1,3 +1,4 @@
+from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.models.utils_models import model_lib
 from tensorflow.keras.utils import to_categorical
 from tensorflow_addons.metrics import F1Score
@@ -163,6 +164,86 @@ def transpose_split(arrays):
                 arrays[i] = arr.transpose((2, 1, 0))
                 # trials , channels, samples
         return arrays
+
+def create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
+    """gather data arrays in a dict
+
+    Parameters
+    ----------
+    X_train : ndarray (N_training, channels, samples)
+        training data
+    X_val : ndarray (N_validation, channels, samples)
+        validation data
+    X_test : ndarray (N_test, channels, samples)
+        test data
+    Y_train : 1d array
+        training data labels
+    Y_val : 1d array
+        validation data labels
+    Y_test : 1d array 
+        test data labels
+
+    Returns
+    -------
+    dict
+        evaluation data split dictionary where the key is the array's name.
+    """
+    split = {}
+    split['X_test'] = None
+    split['X_val'] = None
+    split['X_train'] = X_train if X_train.dtype is np.float32 else X_train.astype(np.float32)
+    split['Y_train'] = Y_train
+    if isinstance(X_test, np.ndarray):
+        split['X_test'] = X_test if X_test.dtype is np.float32 else X_test.astype(np.float32)
+    split['Y_test'] = Y_test
+    if isinstance(X_val, np.ndarray):
+        split['X_val'] = X_val if X_val.dtype is np.float32 else X_val.astype(np.float32)
+    split['Y_val'] = Y_val
+    return split
+
+def measure_performance(Y_test, probs, perf, metrics_names):
+    """Measure model performance on a dataset
+
+    Calculates model performance on metrics and sets Confusion Matrix for
+    each fold
+
+    Parameters
+    ----------
+    Y_test : 2d array (n_examples x n_classes)
+        true class labels in Tensorflow format
+
+    probs : 2d array (n_examples x n_classes)
+        model output predictions as probability of belonging to a class
+
+    Returns
+    -------
+        dict of performance metrics : {metric : value}
+    """
+    results  = {}      
+    # classes = Y_test.max()
+    if Y_test.ndim == 2:
+        Y_test = Y_test.argmax(axis=1)
+        # probs = probs[:, 1]
+
+    classes = np.unique(Y_test).size
+
+    if isinstance(perf, dict):
+        results = {metric:value for metric, value in perf.items()}
+    elif isinstance(perf, list):
+        results = {metric:value for metric, value in zip(metrics_names, perf)}
+
+    if classes == 2:
+        if probs.shape[1] > 1:            
+            probs = probs[:, 1]
+        fp_rate, tp_rate, thresholds = roc_curve(Y_test, probs)
+        viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
+        results['viz'] = viz
+        preds = np.zeros(len(probs))
+        preds[probs.squeeze() > .5] = 1.
+    else:
+        preds = probs.argmax(axis=-1)
+
+    return results, confusion_matrix(Y_test, preds)
 
 def aggregate_results(res):
     """Aggregate subject's results from folds into a single list

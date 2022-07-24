@@ -14,7 +14,7 @@ def conv_block(in_channels, conv_type="Conv2D", filters=8, kernel=(1, 64), pad="
         # DepthWiseConv2D
         out = in_channels * filters
         conv = Conv2dWithConstraint(in_channels, out, kernel, padding=pad, 
-                                    groups=filters, bias=False, max_norm=1)   
+                                    groups=2, bias=False, max_norm=1)   
     
     return nn.Sequential(
                 conv,
@@ -47,6 +47,8 @@ class EEGInceptionPTH(TorchModel):
         self.c8 = conv_block(12, "Conv2D", 6, (1, 4), "same", bias=False)
         self.p4 = nn.AvgPool2d(kernel_size=(1, 2), stride=(1, 2))
         self.dense = nn.Linear(6 * (Samples // division_rate)*(Chans-7), nb_classes)    
+
+        
 
     def forward(self, x):
         x = self._reshape_input(x)

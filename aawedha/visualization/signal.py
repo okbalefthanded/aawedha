@@ -1,12 +1,22 @@
 from aawedha.analysis.time_frequency import spectral_power
 from aawedha.analysis.time_frequency import wavelet
-from aawedha.analysis.time_frequency import snr
 from aawedha.analysis.stats import r_square_signed
+from aawedha.analysis.time_frequency import snr
 from typing import Iterable
 import matplotlib.pyplot as plt
 import numpy as np
 import mne
 import os
+
+
+def harmonics_idx(freqs, event, h):
+    if event == 'idle':
+        ff = np.zeros((3))
+    else:
+        event = float(event)
+        ff = np.array([event*ev for ev in range(1, h+1)])
+    f_idx = np.logical_or.reduce([freqs == f for f in ff.tolist()])
+    return f_idx
 
 
 def plot_grand_average(data=None, subject=None, channel=['Cz']):
@@ -95,8 +105,8 @@ def plot_grand_average(data=None, subject=None, channel=['Cz']):
     plt.show()
 
 
-def plot_spectral_power(data, subject=0, channel='POz', harmonics=2, flim=50, ylim=2,
-                        save=False, savefolder=None):
+def plot_spectral_power(data, subject=0, channel='POz', harmonics=2, 
+                        flim=50, ylim=2, save=False, savefolder=None):
     """Plot spectral power for a given subject in a dataset at
     a specified electrode.
     Parameters
@@ -121,9 +131,11 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2, flim=50, yl
         figure saving folder path, default None.
     """
     pwr, frequencies = spectral_power(data, subject, channel)
-
-    if data.paradigm.title == 'ERP':
-        stimuli = data.events[subject]
+    is_erp = False
+    if data.paradigm.__class__.__name__ == 'ERP':
+        # stimuli = data.events[subject]
+        is_erp = True
+        stimuli = ['Non_Target', 'Target']
     else:
         stimuli = data.paradigm.frequencies
     if channel == 'all':
@@ -135,16 +147,13 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2, flim=50, yl
         if len(stimuli) == 1:
             for ch in range(len(pwr[0])):
                 event = stimuli[0]
-                if event == 'idle':
-                    ff = np.zeros((3))
-                else:
-                    event = float(event)
-                    ff = np.array([event*ev for ev in range(1, harmonics+1)])
-                f_idx = np.logical_or.reduce([frequencies == f for f in ff.tolist()])
+                if not is_erp:
+                    f_idx = harmonics_idx(frequencies, event, harmonics)
 
                 plt.figure()
                 plt.plot(frequencies, pwr[0][ch])
-                plt.plot(frequencies[f_idx], pwr[0][ch][f_idx], 'ro')
+                if not is_erp:
+                    plt.plot(frequencies[f_idx], pwr[0][ch][f_idx], 'ro')
                 plt.xlim(0, flim)
                 plt.ylim(0, ylim)
                 plt.xlabel('Frequnecy [HZ]')
@@ -157,18 +166,13 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2, flim=50, yl
                 subject = subject + 1
         for fr in range(len(pwr)):
             event = stimuli[fr]
-
-            if event == 'idle':
-                ff = np.zeros((3))
-            else:
-                event = float(event)
-                # ff = np.array([event, 2*event, 3*event, 4*event])
-                ff = np.array([event*ev for ev in range(1, harmonics+1)])
-            f_idx = np.logical_or.reduce([frequencies == f for f in ff.tolist()])
-
+            if not is_erp:
+                f_idx = harmonics_idx(frequencies, event, harmonics)
+            
             plt.figure()
             plt.plot(frequencies, pwr[fr])
-            plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
+            if not is_erp:
+                plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
             plt.xlim(0, flim)
             plt.ylim(0, ylim)
             plt.xlabel('Frequnecy [HZ]')
@@ -212,8 +216,7 @@ def plot_time_frequency(data, subject=0, channel='POz', w=4.):
         ax.set_ylim(0, 50)
         ax.set_xlabel('Time ms')
         ax.set_ylabel('Frequency (Hz)')
-        ax.set_title(
-            f'Subject: {subject + 1} Frequency: {stimuli[ev]}, at {channel}')
+        ax.set_title(f'Subject: {subject + 1} Frequency: {stimuli[ev]}, at {channel}')
         fig.colorbar(im, ax=ax)
 
         plt.show()

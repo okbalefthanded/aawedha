@@ -1,4 +1,5 @@
 from scipy.fft import fft
+from copy import deepcopy
 from scipy import signal
 import numpy as np
 
@@ -36,38 +37,46 @@ def spectral_power(data, subject=0, channel='POz'):
             ev_count = np.unique(np.concatenate([ev for ev in data.events])).size
         else:
             samples, _, trials = data.epochs[subject].shape
-            y = data.y[subject]
+            y = deepcopy(data.y[subject])
             ev_count = np.unique(data.events[subject]).size
             epochs = data.epochs[subject]
     else:
         samples, _, trials = data.epochs.shape
-        y = data.y
+        y = deepcopy(data.y)
         ev_count = np.unique(data.events).size
         epochs = data.epochs
+
+    if data.paradigm.__class__.__name__ == 'ERP':
+        ev_count = 2
+    else:
+        y -= 1
 
     nyquist = data.fs / 2
     # frequencies = np.linspace(0, nyquist, np.floor(samples/2).astype(int)+1)
     frequencies = np.arange(0, nyquist, data.fs/samples)
 
-    trials_per_class = np.round(trials / ev_count).astype(int)
+    # trials_per_class = np.round(trials / ev_count).astype(int)
+    # power = np.zeros((len(frequencies), trials_per_class))
+    power = []
     pwr = []
     if channel == 'all':
         ch = range(len(data.ch_names))
     else:
-        ch = [data.ch_names.index(channel)]
-    power = np.zeros((len(frequencies), trials_per_class))
+        ch = [data.ch_names.index(channel)]    
 
     for fr in range(ev_count):
         tmp = []
         for c in ch:
-            epo_frq = epochs[:, c, y == fr+1].squeeze()
-            tr_per_class = np.sum(y == fr+1)
+            epo_frq = epochs[:, c, y == fr].squeeze()
+            tr_per_class = np.sum(y == fr)
             for tr in range(tr_per_class):
                 f = fft(epo_frq[:, tr]) / samples
                 f = 2*np.abs(f)
                 f = f[0:len(frequencies)]
-                power[:, tr] = f
-            tmp.append(power.mean(axis=-1))
+                # power[:, tr] = f
+                power.append(f)
+            # tmp.append(power.mean(axis=-1))
+            tmp.append(np.mean(power, axis=0))
         # pwr.append(power.mean(axis=-1))
         pwr.append(tmp)
 
@@ -166,11 +175,11 @@ def snr(power, freqs, fs, neighbor=2):
     if freqs[0] == 'idle':
         power = power[1:]
         freqs = freqs[1:]
-    snr = []
+    snr_ = []
     for i, f in enumerate(freqs):
         idx = np.where(np.isclose(frequencies, float(f)))[0][0]
         adj = [idx + r for r in range(-neighbor, neighbor) if r != 0]        
         # idx = np.logical_or.reduce([frequencies == float(freqs[i])+r for r in range(-4,4) if r !=0])
         s = power[i][idx] / np.mean(power[i][adj])
-        snr.append(s.item())
-    return np.array(snr)
+        snr_.append(s.item())
+    return np.array(snr_)

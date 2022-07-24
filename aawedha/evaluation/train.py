@@ -1,3 +1,4 @@
+from aawedha.evaluation.evaluation_utils import create_split
 from sklearn.model_selection import train_test_split
 from aawedha.evaluation.base import Evaluation
 from aawedha.utils.utils import time_now
@@ -148,7 +149,7 @@ class Train(Evaluation):
             if isinstance(Y_val, np.ndarray):
                 Y_val -= 1
 
-        split = self._create_split(X_train, X_val, None, Y_train, Y_val, None)
+        split = create_split(X_train, X_val, None, Y_train, Y_val, None)
         return split
 
     def _cat_lists(self, X, Y):

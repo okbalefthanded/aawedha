@@ -1,4 +1,5 @@
 from aawedha.evaluation.evaluation_utils import aggregate_results
+from aawedha.evaluation.evaluation_utils import create_split
 from aawedha.evaluation.base import Evaluation
 from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -382,7 +383,7 @@ class SingleSubject(Evaluation):
             if Y_val is not None:
                 Y_val -= 1
 
-        split = self._create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test)
+        split = create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test)
         return split
 
     def _get_data_pair(self, subj=0):

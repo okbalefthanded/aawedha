@@ -1,12 +1,12 @@
-from aawedha.evaluation.evaluation_utils import class_weights, labels_to_categorical, metrics_by_lib
 from aawedha.utils.utils import log, get_gpu_name, init_TPU, time_now, make_folders
+from aawedha.evaluation.evaluation_utils import class_weights, metrics_by_lib
 from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
+from aawedha.evaluation.evaluation_utils import labels_to_categorical
+from aawedha.evaluation.evaluation_utils import measure_performance
 from aawedha.evaluation.evaluation_utils import aggregate_results
 from aawedha.evaluation.checkpoint import CheckPoint
 from aawedha.models.utils_models import load_model
 from aawedha.evaluation.mixup import build_mixup_dataset
-from sklearn.metrics import roc_curve, confusion_matrix
-# from tensorflow.keras.models import load_model
 from aawedha.io.base import DataSet
 import tensorflow as tf
 import pandas as pd
@@ -220,53 +220,6 @@ class Evaluation(object):
             a dataset object
         """
         self.dataset = dt
-
-    def measure_performance(self, Y_test, probs, perf):
-        """Measure model performance on a dataset
-
-        Calculates model performance on metrics and sets Confusion Matrix for
-        each fold
-
-        Parameters
-        ----------
-        Y_test : 2d array (n_examples x n_classes)
-            true class labels in Tensorflow format
-
-        probs : 2d array (n_examples x n_classes)
-            model output predictions as probability of belonging to a class
-
-        Returns
-        -------
-            dict of performance metrics : {metric : value}
-        """
-        self.predictions.append(probs)  # ()
-        results  = {}      
-        # classes = Y_test.max()
-        if Y_test.ndim == 2:
-            Y_test = Y_test.argmax(axis=1)
-            # probs = probs[:, 1]
-
-        classes = np.unique(Y_test).size
-
-        if isinstance(perf, dict):
-            results = {metric:value for metric, value in perf.items()}
-        elif isinstance(perf, list):
-            results = {metric:value for metric, value in zip(self.model.metrics_names, perf)}
-
-        if classes == 2:
-            if probs.shape[1] > 1:            
-                probs = probs[:, 1]
-            fp_rate, tp_rate, thresholds = roc_curve(Y_test, probs)
-            viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
-            results['viz'] = viz
-            preds = np.zeros(len(probs))
-            preds[probs.squeeze() > .5] = 1.
-        else:
-            preds = probs.argmax(axis=-1)
-        
-        self.cm.append(confusion_matrix(Y_test, preds))
-
-        return results
 
     def results_reports(self, res):
         """Collects evaluation results on a single dict
@@ -650,17 +603,6 @@ class Evaluation(object):
                 Y_test = labels_to_categorical(Y_test)
             #
             Y_train = None
-            '''
-            history = self.model.fit(X_train,
-                                 epochs=ep,
-                                 steps_per_epoch=spe,
-                                 verbose=self.verbose,
-                                 validation_data=val,
-                                 class_weight=cws,
-                                 callbacks=clbs)
-            
-        else:
-        '''
 
         history = self.model.fit(x=X_train, y=Y_train,
                                  batch_size=batch,
@@ -703,8 +645,11 @@ class Evaluation(object):
                                                            X_val, Y_val,
                                                            X_test, Y_test,
                                                            cws)
+        
         if isinstance(X_test, np.ndarray):
-            rets = self.measure_performance(Y_test, probs, perf)
+            self.predictions.append(probs)  # ()
+            rets, cm = measure_performance(Y_test, probs, perf, self.model.metrics_names)
+            self.cm.append(cm)
         return rets        
 
     def _get_compile_configs(self):
@@ -922,43 +867,6 @@ class Evaluation(object):
                 Y_val = labels_to_categorical(Y_val)
         
         return Y_train, Y_val, Y_test
-
-    @staticmethod
-    def _create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
-        """gather data arrays in a dict
-
-        Parameters
-        ----------
-        X_train : ndarray (N_training, channels, samples)
-            training data
-        X_val : ndarray (N_validation, channels, samples)
-            validation data
-        X_test : ndarray (N_test, channels, samples)
-            test data
-        Y_train : 1d array
-            training data labels
-        Y_val : 1d array
-            validation data labels
-        Y_test : 1d array 
-            test data labels
-
-        Returns
-        -------
-        dict
-            evaluation data split dictionary where the key is the array's name.
-        """
-        split = {}
-        split['X_test'] = None
-        split['X_val'] = None
-        split['X_train'] = X_train if X_train.dtype is np.float32 else X_train.astype(np.float32)
-        split['Y_train'] = Y_train
-        if isinstance(X_test, np.ndarray):
-            split['X_test'] = X_test if X_test.dtype is np.float32 else X_test.astype(np.float32)
-        split['Y_test'] = Y_test
-        if isinstance(X_val, np.ndarray):
-            split['X_val'] = X_val if X_val.dtype is np.float32 else X_val.astype(np.float32)
-        split['Y_val'] = Y_val
-        return split
     
     def _assert_partition(self, excl=False):
         """Assert if partition to be used do not surpass number of subjects available
