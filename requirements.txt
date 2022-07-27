@@ -21,6 +21,7 @@ tqdm
 pkbar
 antialiased-cnns
 pyyaml
+thop
 git+https://github.com/lessw2020/Ranger21.git
 git+https://github.com/artemmavrin/focal-loss.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git
