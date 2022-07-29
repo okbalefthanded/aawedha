@@ -1,4 +1,6 @@
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+from timeit import default_timer as timer
+from datetime import timedelta
 from copy import deepcopy
 import tensorflow as tf
 import torch
@@ -130,3 +132,28 @@ def load_model(filepath):
         # model.set_device(device)
     return model
 
+
+def inference_time(model, device):
+    """
+    """
+    model_type = model_lib(type(model)) 
+    if model_type == 'keras':
+        it =  it_tf(model)
+    elif model_type == 'pytorch':
+        it = it_pth(model, device)
+    return it.total_seconds()
+
+def it_tf(model):
+    tensor = tf.ones((1, *model.inputs[0].shape[1:]))    
+    return elapsed_time(model, tensor)
+
+def it_pth(model, device):
+    model.to(device)
+    tensor = torch.ones(1, *model.input_shape, device=device)    
+    return elapsed_time(model, tensor)
+
+def elapsed_time(model, tensor):
+    start = timer()
+    pred = model.predict(tensor)
+    end = timer()
+    return timedelta(seconds=end-start)

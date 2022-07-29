@@ -929,8 +929,7 @@ class Evaluation(object):
             res[metric + '_mean'] = np.array(res[metric]).mean()
             res[metric + '_mean_per_fold'] = np.array(res[metric]).mean(axis=0)
             if np.array(res[metric]).ndim == 2:
-                res[metric +
-                    '_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
+                res[metric +'_mean_per_subj'] = np.array(res[metric]).mean(axis=1)
         
         return res
 

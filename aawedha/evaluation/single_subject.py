@@ -97,8 +97,6 @@ class SingleSubject(Evaluation):
 
         if not pointer and check:
             pointer = CheckPoint(self)
-        #
-        # res = []
 
         independent_test = False
 
