@@ -2,6 +2,7 @@ from tensorflow.keras.layers.experimental.preprocessing import Normalization
 from tensorflow.keras.layers import ZeroPadding1D, SeparableConv1D, Input
 from tensorflow.keras.layers import Activation, Flatten, Dense
 from tensorflow.keras.models import Model
+from tensorflow import transpose
 
 """adapted from author's code available at: https://github.com/gibranfp/P300-CNNT
 """
@@ -30,8 +31,9 @@ def SepConv1D(nb_classes=1, Chans=6, Samples=206, Filters=32):
     """
     eeg_input    = Input(shape=(Chans, Samples))
     norm         = Normalization(axis=(1, 2))(eeg_input)
-
+    norm         = transpose(norm, perm=[0, 2, 1])
     padded       = ZeroPadding1D(padding=4)(norm)
+    padded       = transpose(padded, perm=[0,2,1])
     block1       = SeparableConv1D(Filters, 16, strides=8,
                                  padding='valid',
                                  kernel_initializer='glorot_uniform',
