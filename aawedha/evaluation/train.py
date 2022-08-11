@@ -45,10 +45,10 @@ class Train(Evaluation):
         events : array of str, optional
             stimulation events to keep, by default None
         """
-        if not self.model_compiled:
+        if not self.learner.compiled:
             self._compile_model()
 
-        if self.verbose == 0:
+        if self.settings.verbose == 0:
               print(f"Training on DataSet: {self.dataset.title}...")
 
         # select a subset of trials
@@ -190,7 +190,7 @@ class Train(Evaluation):
             if not os.path.isdir('trained/history'):
                 os.mkdir('trained/history')
             folder = 'trained/history'
-        fname = os.path.join(folder, '_'.join([self.model.name, date]))
-        df = pd.DataFrame(self.model_history.history)
+        fname = os.path.join(folder, '_'.join([self.learner.model.name, date]))
+        df = pd.DataFrame(self.learner.history[-1])
         df.to_csv(fname, encoding='utf-8')
         

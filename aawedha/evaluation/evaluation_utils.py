@@ -220,6 +220,7 @@ def measure_performance(Y_test, probs, perf, metrics_names):
         dict of performance metrics : {metric : value}
     """
     results  = {}      
+    
     # classes = Y_test.max()
     if Y_test.ndim == 2:
         Y_test = Y_test.argmax(axis=1)
@@ -242,8 +243,9 @@ def measure_performance(Y_test, probs, perf, metrics_names):
         preds[probs.squeeze() > .5] = 1.
     else:
         preds = probs.argmax(axis=-1)
-
-    return results, confusion_matrix(Y_test, preds)
+    results['probs'] = probs
+    results['confusion'] = confusion_matrix(Y_test, preds) 
+    return results 
 
 def aggregate_results(res):
     """Aggregate subject's results from folds into a single list

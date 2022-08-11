@@ -7,6 +7,7 @@ import torch.optim as optim
 import torch.nn as nn
 import numpy as np
 import torchmetrics
+import collections
 import torch
 import pkbar
 
@@ -20,7 +21,7 @@ class TorchModel(nn.Module):
         self.metrics_list = []
         self.metrics_names = []
         self.scheduler = None
-        self.optimizer_state = None
+        # self.optimizer_state = None
         self.name = name
         self.history = {}
         self.device = device
@@ -43,7 +44,8 @@ class TorchModel(nn.Module):
         for metric in self.metrics_list:
             metric.to(self.device)
         # 
-        self.optimizer_state = self.optimizer.state_dict()
+        # self.optimizer_state = self.optimizer.state_dict()
+        # self.optimizer_state = optimizer
         self.scheduler = scheduler
 
     def train_step(self, data):
@@ -211,7 +213,7 @@ class TorchModel(nn.Module):
         
         if verbose == 2:
             progress.add(1)
-        # torch.cuda.empty_cache()
+        
         return return_metrics
 
     def set_metrics_names(self):
@@ -234,11 +236,22 @@ class TorchModel(nn.Module):
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     def set_weights(self, state_dict):
+        '''
         with torch.no_grad():
             for layer in self.state_dict():
                 self.state_dict()[layer] = state_dict[layer]
-            for st in self.optimizer_state:
-                self.optimizer.state_dict()[st] = self.optimizer_state[st]
+        '''
+        # TODO: for custom modules 
+        for layer in self.children():
+            if hasattr(layer, 'reset_parameters'):
+                layer.reset_parameters()
+        # self.optimizer = get_optimizer(self.optimizer, self.parameters())
+        # print(self.optimizer.state_dict())
+        if self.optimizer:
+            self.optimizer.state = collections.defaultdict(dict) # Reset state     
+            # for st in self.optimizer_state:
+            #    self.optimizer.state_dict()[st] = self.optimizer_state[st]
+        
         # self.state_dict = state_dict
 
     def get_weights(self):

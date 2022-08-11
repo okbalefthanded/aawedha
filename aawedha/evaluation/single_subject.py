@@ -1,8 +1,9 @@
 from aawedha.evaluation.evaluation_utils import aggregate_results
 from aawedha.evaluation.evaluation_utils import create_split
-from aawedha.evaluation.base import Evaluation
-from aawedha.evaluation.checkpoint import CheckPoint
 from sklearn.model_selection import KFold, StratifiedKFold
+from aawedha.evaluation.checkpoint import CheckPoint
+from aawedha.evaluation.base import Evaluation
+from aawedha.io.base import DataSet
 import numpy as np
 
 
@@ -36,8 +37,8 @@ class SingleSubject(Evaluation):
             cross-validation strategy
             default : 'Kfold'
         """
-        n_phase = len(self.partition)
-        train_phase = self.partition[0]
+        n_phase = len(self.settings.partition)
+        train_phase = self.settings.partition[0]
         #
         if isinstance(self.dataset.y, list):
             #
@@ -48,24 +49,24 @@ class SingleSubject(Evaluation):
         #
         if n_phase == 2:
             if hasattr(self.dataset, 'test_epochs'):
-                val_phase, test_phase = self.partition[1], 0
+                val_phase, test_phase = self.settings.partition[1], 0
             else:
-                val_phase, test_phase = 0, self.partition[1]
+                val_phase, test_phase = 0, self.settings.partition[1]
             # independent test set available
         elif n_phase == 3:
             # generate a set set from the dataset
-            val_phase, test_phase = self.partition[1], self.partition[2]
+            val_phase, test_phase = self.settings.partition[1], self.settings.partition[2]
         else:
-            # error : wrong partition
-            raise AssertionError('Wrong partition scheme', self.partition)
+            # error : wrong settings.partition
+            raise AssertionError('Wrong partition scheme', self.settings.partition)
         #
-        part = np.round(n_trials / np.sum(self.partition)).astype(int)
+        part = np.round(n_trials / np.sum(self.settings.partition)).astype(int)
         #
         train_phase = train_phase * part
         val_phase = val_phase * part
         test_phase = test_phase * part
 
-        self.folds = self.get_folds(nfolds, n_trials, train_phase,
+        self.settings.folds = self.get_folds(nfolds, n_trials, train_phase,
                                     val_phase, test_phase, strategy)
 
     def run_evaluation(self, subject=None, pointer=None, check=False, savecsv=False, csvfolder=None):
@@ -92,7 +93,7 @@ class SingleSubject(Evaluation):
             if savecsv is True, the results files in csv will be saved inside this folder
         """
         # generate folds if folds are empty
-        if not self.folds:
+        if not self.settings.folds:
             self.generate_split(nfolds=30)
 
         if not pointer and check:
@@ -111,25 +112,27 @@ class SingleSubject(Evaluation):
         #
         operations = self.get_operations(subject)
 
-        if not self.model_compiled:
+        if not self.learner.compiled:
             self._compile_model()
 
         if self.log:
-            print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
+            print(f'Logging to file : {self.logger.name()}')
             self.log_experiment()
 
-        res = self.execute(operations, independent_test, check, pointer)
-        #
+        eval_results = self.execute(operations, independent_test, check, pointer)
+        
         if (not isinstance(self.dataset.epochs, list) and
                 self.dataset.epochs.ndim == 3):
             self.dataset.recover_dim()
 
-        if len(operations) == self._get_n_subjects():
-            self.results = self.results_reports(res)
-        elif check:
-            res = [perf for subj in pointer.rets for perf in subj]
-            self.results = self.results_reports(res)
+        if isinstance(self.dataset, DataSet):
+            classes = self.dataset.get_n_classes()
+        else:
+            # for experimental CrossSet evaluation
+            classes = self.target.get_n_classes()
 
+        self.score.results_reports(eval_results, classes, {'subjects': list(operations)})
+        
         self._post_operations(savecsv, csvfolder)
 
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
@@ -191,8 +194,8 @@ class SingleSubject(Evaluation):
             selection of subjects to evaluate, from all subjects available to a
             defined subset
         """
-        if self.current and not subject:
-            operations = range(self.current, self.n_subjects)
+        if self.settings.current and not subject:
+            operations = range(self.settings.current, self.n_subjects)
         elif type(subject) is list:
             operations = subject
         elif type(subject) is int:
@@ -225,23 +228,23 @@ class SingleSubject(Evaluation):
         list
             list of each subject performance following the metrics specified in the model config.
         """
-        res = []
+        eval_results = []
         for subj in operations:
-            if self.verbose == 0:
+            if self.settings.verbose == 0:
                 print(f'Evaluating Subject: {subj+1}/{self.n_subjects}...')
 
             rets = self._single_subject(subj, independent_test)
-            subj_results = aggregate_results(rets)
+            subj_results = aggregate_results(rets)            
 
             if self.log:
                 self._log_operation_results(subj, subj_results)
 
-            res.append(subj_results)
+            eval_results.append(subj_results)
 
             if check:
-                pointer.set_checkpoint(subj+1, self.model, rets)
+                pointer.set_checkpoint(subj+1, self.learner.model, subj_results)
         
-        return res
+        return eval_results
     
     def _single_subject(self, subj, indie=False):
         """Evaluate a subject on each fold
@@ -262,18 +265,18 @@ class SingleSubject(Evaluation):
             contains subject's performance on each folds
         """
         x, y = self._get_data_pair(subj)
-        rets = []
+        subj_results = []
         # get in the fold!!!
         if isinstance(self.dataset.epochs, list):
-            folds_range = range(len(self.folds[0]))
+            folds_range = range(len(self.settings.folds[0]))
         else:
-            folds_range = range(len(self.folds))
+            folds_range = range(len(self.settings.folds))
 
         for fold in folds_range:
-            #
             split = self._split_set(x, y, subj, fold, indie)
-            rets.append(self._eval_split(split))
-        return rets
+            subj_results.append(self._eval_split(split))
+
+        return subj_results
 
     def _fuse_data(self):
         """Concatenate train and test dataset in a single dataset
@@ -336,9 +339,9 @@ class SingleSubject(Evaluation):
         split = {}
         #
         if isinstance(self.dataset.epochs, list):
-            f = self.folds[subj][fold][:]  # subject, fold, phase
+            f = self.settings.folds[subj][fold][:]  # subject, fold, phase
         else:
-            f = self.folds[fold][:]
+            f = self.settings.folds[fold][:]
         '''
         if x.ndim == 4:
             trials, kernels, channels, samples = x.shape
@@ -361,12 +364,12 @@ class SingleSubject(Evaluation):
                 shape = (1, 0)
             X_test = X_test.transpose(shape)
             # validation data
-            if len(self.partition) == 2:
+            if len(self.settings.partition) == 2:
                 X_val = x[f[1]]
                 Y_val = y[f[1]]
             Y_test = self.dataset.test_y[subj][:].astype(int)
         else:
-            if len(self.partition) == 2:
+            if len(self.settings.partition) == 2:
                 X_test = x[f[1]]
                 Y_test = y[f[1]]
             else:
@@ -456,10 +459,10 @@ class SingleSubject(Evaluation):
         
         # for train, test in cv.split(t):
         for train, test in cv:
-            if len(self.partition) == 2:
+            if len(self.settings.partition) == 2:
                 # independent test set
                 folds.append([train, test])
-            elif len(self.partition) == 3:
+            elif len(self.settings.partition) == 3:
                 # generate test set from the entire set
                 if stg == 'Stratified':
                     if np.sum(np.diff(y) == 0) > np.sum(np.diff(y) == 1):

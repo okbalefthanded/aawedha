@@ -1,6 +1,7 @@
 from aawedha.evaluation.evaluation_utils import create_split
 from aawedha.evaluation.checkpoint import CheckPoint
 from aawedha.evaluation.base import Evaluation
+from aawedha.io.base import DataSet
 import numpy as np
 
 
@@ -46,20 +47,21 @@ class CrossSubject(Evaluation):
             raise Exception(
                 f'Parition exceeds subjects count, use a different parition')
 
-        n_phase = len(self.partition)
-        train_phase, val_phase = self.partition[0], self.partition[1]
+        n_phase = len(self.settings.partition)
+        train_phase, val_phase = self.settings.partition[0], self.settings.partition[1]
 
         if n_phase == 2:
             # independent test set available
             test_phase = 0
         elif n_phase == 3:
             # generate a set set from the dataset
-            test_phase = self.partition[2]
+            test_phase = self.settings.partition[2]
         else:
-            # error : wrong partition
-            raise AssertionError('Wrong partition scheme', self.partition)
+            # error : wrong settings.partition
+            raise AssertionError('Wrong settings.partition scheme', self.settings.partition)
 
-        self.folds = self.get_folds(nfolds, train_phase, val_phase, test_phase, exclude_subj=excl)
+        self.settings.folds = self.get_folds(nfolds, train_phase, val_phase, 
+                                             test_phase, exclude_subj=excl)
 
     def run_evaluation(self, folds=None, pointer=None, check=False, savecsv=False, csvfolder=None):
         """Perform evaluation on subsets of subjects
@@ -84,18 +86,18 @@ class CrossSubject(Evaluation):
             if savecsv is True, the results files in csv will be saved inside this folder
         """
         # generate folds if folds are empty
-        if not self.folds:
+        if not self.settings.folds:
             self.generate_split(nfolds=30)
 
         if not pointer and check:
             pointer = CheckPoint(self)
 
         res = []
-        if not self.model_compiled:
+        if not self.learner.compiled:
             self._compile_model()
 
         if self.log:
-            print(f'Logging to file : {self.logger.handlers[0].baseFilename}')
+            print(f'Logging to file : {self.logger.name()}')
             self.log_experiment()
 
         operations = self.get_operations(folds)
@@ -107,11 +109,20 @@ class CrossSubject(Evaluation):
                 self.dataset.epochs.ndim == 3):
             #
             self.dataset.recover_dim()
+        
+        if isinstance(self.dataset, DataSet):
+            classes = self.dataset.get_n_classes()
+        else:
+            # for experimental CrossSet evaluation
+            classes = self.target.get_n_classes()
 
-        if len(self.folds) == len(self.predictions):
-            self.results = self.results_reports(res)
-        elif check:
-            self.results = self.results_reports(pointer.rets)
+        # if len(self.settings.folds) == len(self.predictions):
+            # self.results = self.results_reports(res)
+        self.score.results_reports(res, classes, {'folds': list(operations)})
+        # elif check:
+        if check:
+            # self.results = self.results_reports(pointer.rets)
+            self.score.results_reports(pointer.rets, classes, {'folds': list(operations)})
 
         self._post_operations(savecsv, csvfolder)
 
@@ -153,7 +164,6 @@ class CrossSubject(Evaluation):
                               np.array(selection[tr:tr + vl]),
                               np.array([subj])
                               ])
-        #
         return folds
 
     def execute(self, operations, check, pointer):
@@ -180,8 +190,8 @@ class CrossSubject(Evaluation):
         res = []
         for fold in operations:
             #
-            if self.verbose == 0:
-                print(f'Evaluating fold: {fold+1}/{len(self.folds)}...')
+            if self.settings.verbose == 0:
+                print(f'Evaluating fold: {fold+1}/{len(self.settings.folds)}...')
 
             rets = self._cross_subject(fold)
 
@@ -191,7 +201,7 @@ class CrossSubject(Evaluation):
             res.append(rets)
 
             if check:
-                pointer.set_checkpoint(fold + 1, self.model, rets)
+                pointer.set_checkpoint(fold + 1, self.learner.model, rets)
 
         return res
 
@@ -212,14 +222,14 @@ class CrossSubject(Evaluation):
             selection of folds to evaluate, from all folds available to a
             defined subset
         """
-        if self.current and not folds:
-            operations = range(self.current, len(self.folds))
+        if self.settings.current and not folds:
+            operations = range(self.settings.current, len(self.settings.folds))
         elif type(folds) is list:
             operations = folds
         elif type(folds) is int:
             operations = [folds]
         else:
-            operations = range(len(self.folds))
+            operations = range(len(self.settings.folds))
 
         return operations
 
@@ -304,13 +314,13 @@ class CrossSubject(Evaluation):
         """
         if phase == 2:  # test phase
             if hasattr(self.dataset, 'test_epochs'):
-                X = np.concatenate([self.dataset.test_epochs[idx]
-                                    for idx in self.folds[fold][phase]], axis=-1)
-                Y = np.concatenate([self.dataset.test_y[idx]
-                                    for idx in self.folds[fold][phase]], axis=-1)
+                X = np.concatenate([self.dataset.test_epochs[idx] 
+                                    for idx in self.settings.folds[fold][phase]], axis=-1)
+                Y = np.concatenate([self.dataset.test_y[idx] 
+                                    for idx in self.settings.folds[fold][phase]], axis=-1)
                 return X, Y
-        X = np.concatenate([self.dataset.epochs[idx]
-                            for idx in self.folds[fold][phase]], axis=-1)
-        Y = np.concatenate([self.dataset.y[idx]
-                            for idx in self.folds[fold][phase]], axis=-1)
+        X = np.concatenate([self.dataset.epochs[idx] 
+                            for idx in self.settings.folds[fold][phase]], axis=-1)
+        Y = np.concatenate([self.dataset.y[idx] 
+                            for idx in self.settings.folds[fold][phase]], axis=-1)
         return X, Y

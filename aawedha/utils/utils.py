@@ -4,7 +4,6 @@ import tensorflow as tf
 import pandas as pd
 import numpy as np
 import datetime
-import logging
 import zipfile
 import tarfile
 import random
@@ -12,44 +11,23 @@ import torch
 import os
 
 
-def log(fname='logger.log', logger_name='eval_log'):
-    """define a logger instance
+def get_device(config):
+        """Returns compute settings.engine : GPU / TPU
 
-    Parameters
-    ----------
-    fname : str
-        logger file path
-    logger_name : str
-        logger name
-
-    Returns
-    -------
-    logger
-        logger instance
-    """
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.DEBUG)
-    # Create handlers
-    f_handler = logging.FileHandler(fname, mode='a')
-    f_handler.setLevel(logging.DEBUG)
-    # Create formatters and add it to handlers
-    f_format = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    f_handler.setFormatter(f_format)
-    # Add handlers to the logger
-    
-    if len(logger.handlers) > 0:
-        for hdl in logger.handlers:
-            logger.removeHandler(hdl)
-
-    logger.addHandler(f_handler)
-    # c_handler = logging.StreamHandler()
-    # c_handler.setLevel(logging.WARNING)
-    # c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    # c_handler.setFormatter(c_format)
-    # logger.addHandler(c_handler)
-    return logger
-
+        Returns
+        -------
+        str
+            computer settings.engine for training
+        """
+        # test if env got GPU
+        device = 'GPU'  # default
+        if 'device' in config:
+            return config['device']
+        else:
+            devices = [dev.device_type for dev in tf.config.get_visible_devices()]
+            if 'GPU' not in devices:
+                device = 'CPU'
+            return device
 
 def get_gpu_name():
     """Returns the device (GPU) name

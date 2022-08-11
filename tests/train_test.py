@@ -12,14 +12,19 @@ def create_dataset():
     # BCI COMP IV 2a
     data_folder = 'data/Comp_IV_Data_Set_IIa'
     save_path = 'data/Comp_IV_Data_Set_IIa/epoched'
-    os.mkdir(data_folder)
+    if os.path.exists(save_path):
+        download = False
+    else:
+        os.mkdir(data_folder)
+        download = True
+
     t = [0.5 , 2.5]
 
     ds = Comp_IV_2a()
     ds.generate_set(load_path=data_folder, 
                 epoch=t, 
                 save_folder=save_path,
-                download=True,
+                download=download,
                 fname='Comp_IV_2a'
                 )
 
@@ -47,7 +52,7 @@ def process_evaluation(evl, model=None):
     config['compile'] = compile
     config['fit'] = fit
 
-    config['device'] = 'GPU'
+    config['device'] = 'cpu'
 
     evl.set_model(model=model, model_config=config)
     evl.run_evaluation(selection=0)    
@@ -66,7 +71,7 @@ def test_single_subject():
     process_evaluation(evl, model=model)
     x_test = data.test_epochs[0].squeeze().transpose((2,1,0))
     y_test = data.test_y[0].squeeze() - 1
-    performance = evl.model.evaluate(x_test, y_test)
+    performance = evl.learner.evaluate(x_test, y_test)
     # test value
     np.testing.assert_allclose(performance['accuracy'], 0.26, rtol=0.2)
 

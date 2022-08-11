@@ -449,7 +449,6 @@ class DataSet(metaclass=ABCMeta):
                 subjects, samples, trials = self.test_epochs.shape
                 self.test_epochs = self.test_epochs.reshape(
                     (subjects, samples / channels, channels, trials))
-
     
     def trials_count(self):
         """Get the total number of trials in the training epochs.
@@ -488,7 +487,27 @@ class DataSet(metaclass=ABCMeta):
         attrs = ['test_epochs', 'test_y', 'test_events']
         if hasattr(self, 'test_epochs'):
             for att in attrs:
-                delattr(self, att)            
+                delattr(self, att)
+
+    def info(self):
+        """Collect informations on evaluation dataset, which will be used in logging.
+        Returns
+        -------
+        data : str
+            dataset title
+        duration : str
+            epoch length in seconds
+        data_shape : str
+            dimension of data : subjects x samples x channels x trials
+        """        
+        data = f' Dataset: {self.title}'
+        if isinstance(self.epochs, list):
+            duration = f' epoch duration:{self.epochs[0].shape[0] / self.fs} sec'
+            data_shape = f'{len(self.epochs), self.epochs[0].shape} list'
+        else:
+            duration = f' epoch duration:{self.epochs.shape[1] / self.fs} sec'
+            data_shape = f'{self.epochs.shape}'
+        return data, duration, data_shape            
     
     def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, slide=0.1, method='divide'):
         """Segment continuous EEG data using an augmentation method
@@ -730,7 +749,6 @@ class DataSet(metaclass=ABCMeta):
                 setattr(self, k, tmp)
             else:
                 setattr(self, k, np.array(tmp))
-
 
     def _rearrange(self, inevents, attrs=[]):
         """Keeps trials that correspond to inevents in dataset.

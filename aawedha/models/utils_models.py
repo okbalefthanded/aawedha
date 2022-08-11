@@ -133,23 +133,23 @@ def load_model(filepath):
     return model
 
 
-def inference_time(model, device):
+def inference_time(model, device, batch=1):
     """
     """
     model_type = model_lib(type(model)) 
     if model_type == 'keras':
-        it =  it_tf(model)
+        it =  it_tf(model, batch)
     elif model_type == 'pytorch':
-        it = it_pth(model, device)
+        it = it_pth(model, device, batch)
     return it.total_seconds()
 
-def it_tf(model):
-    tensor = tf.ones((1, *model.inputs[0].shape[1:]))    
+def it_tf(model, batch=1):
+    tensor = tf.ones((batch, *model.inputs[0].shape[1:]))    
     return elapsed_time(model, tensor)
 
-def it_pth(model, device):
+def it_pth(model, device, batch=1):
     model.to(device)
-    tensor = torch.ones(1, *model.input_shape, device=device)    
+    tensor = torch.ones(batch, *model.input_shape, device=device)    
     return elapsed_time(model, tensor)
 
 def elapsed_time(model, tensor):

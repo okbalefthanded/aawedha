@@ -2,7 +2,7 @@ import pickle
 import os
 
 
-class CheckPoint(object):
+class CheckPoint:
     """Checkpoint class used to save evaluation state for future
     resume after interruption
 
@@ -104,22 +104,14 @@ class CheckPoint(object):
         """Constructor
         """
         self.current = None
-        self.partition = evl.partition
-        self.folds = evl.folds
-        self.model_name = ''
-        self.model_history = evl.model_history
-        self.model_config = evl.model_config
-        self.initial_weights = evl.initial_weights
-        # self.normalizer = evl.normalizer
-        self.predictions = evl.predictions
-        self.cm = evl.cm
-        self.results = evl.results
-        self.log = evl.log
+        self.check_path = None
+        self.learner = evl.learner
+        self.settings = evl.settings        
+        self.score = evl.score
+        self.log = evl.log        
         if evl.logger:
-            self.logger = evl.logger.handlers[0].baseFilename
-        self.verbose = evl.verbose
+            self.logger = evl.logger.name()
         self.rets = []
-        self.engine = evl.engine
         if hasattr(evl, 'mode'):
             self.mode = evl.mode
             self.best_kept = evl.best_kept
@@ -157,12 +149,15 @@ class CheckPoint(object):
         # save model using built-in save_model, to avoid pickle error
         # HOTFIX FIXME
         # rolling back to h5 format due to TPU restrictions
-        if self.engine == 'keras':
-            self.model_name = 'aawedha/trained/current_model.h5'
+        if self.settings.engine == 'keras':
+            self.check_path = 'aawedha/trained/current_model.h5'
+            # self.learner.name = 'aawedha/trained/current_model.h5'
             # self.model_name = 'aawedha/trained/current_model'
-        elif self.engine == 'pytorch':
-            self.model_name = 'aawedha/trained/current_model.pth'
-        model.save(self.model_name)
+        elif self.settings.engine == 'pytorch':
+            # self.model_name = 'aawedha/trained/current_model.pth'
+            self.check_path = 'aawedha/trained/current_model.pth' 
+        # model.save(self.model_name)
+        model.save(self.check_path)
         # save evaluation as object?
         save_folder = 'aawedha/checkpoints'
         if not os.path.isdir(save_folder):
