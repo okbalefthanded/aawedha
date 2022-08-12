@@ -188,6 +188,13 @@ def create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
     dict
         evaluation data split dictionary where the key is the array's name.
     """
+    if Y_train.min() != 0:
+        Y_train -= 1
+        if isinstance(Y_test, np.ndarray):
+            Y_test -= 1
+        if isinstance(Y_val, np.ndarray):
+            Y_val  -= 1
+
     split = {}
     split['X_test'] = None
     split['X_val'] = None
@@ -199,6 +206,7 @@ def create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
     if isinstance(X_val, np.ndarray):
         split['X_val'] = X_val if X_val.dtype is np.float32 else X_val.astype(np.float32)
     split['Y_val'] = Y_val
+    
     return split
 
 def measure_performance(Y_test, probs, perf, metrics_names):

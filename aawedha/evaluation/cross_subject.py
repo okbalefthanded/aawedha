@@ -1,11 +1,11 @@
 from aawedha.evaluation.evaluation_utils import create_split
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.evaluation.base import Evaluation
+from aawedha.evaluation.benchmark import BenchMark
 from aawedha.io.base import DataSet
 import numpy as np
 
 
-class CrossSubject(Evaluation):
+class CrossSubject(BenchMark):
     '''Cross Subject Evaluation
 
     derived from base Evaluation class, takes same attributes and overrides
@@ -42,89 +42,14 @@ class CrossSubject(Evaluation):
             cross-subject evaluation, False otherwise
             default : True
         """
-
         if self._assert_partition(excl):
             raise Exception(
                 f'Parition exceeds subjects count, use a different parition')
 
-        n_phase = len(self.settings.partition)
-        train_phase, val_phase = self.settings.partition[0], self.settings.partition[1]
-
-        if n_phase == 2:
-            # independent test set available
-            test_phase = 0
-        elif n_phase == 3:
-            # generate a set set from the dataset
-            test_phase = self.settings.partition[2]
-        else:
-            # error : wrong settings.partition
-            raise AssertionError('Wrong settings.partition scheme', self.settings.partition)
+        train_phase, val_phase, test_phase = self._phases_partiton()
 
         self.settings.folds = self.get_folds(nfolds, train_phase, val_phase, 
                                              test_phase, exclude_subj=excl)
-
-    def run_evaluation(self, folds=None, pointer=None, check=False, savecsv=False, csvfolder=None):
-        """Perform evaluation on subsets of subjects
-
-        Parameters
-        ----------
-        folds : list
-            list of indices of folds to evaluate, if None we'll evaluate
-            the entire list of folds generated.
-
-        pointer : CheckPoint instance
-            save state of evaluation
-
-        check : bool
-            if True, sets evaluation checkpoint for future operation resume,
-            False otherwise
-
-        savecsv: bool
-            if True, saves evaluation results in a csv file as a pandas DataFrame
-
-        csvfolder : str
-            if savecsv is True, the results files in csv will be saved inside this folder
-        """
-        # generate folds if folds are empty
-        if not self.settings.folds:
-            self.generate_split(nfolds=30)
-
-        if not pointer and check:
-            pointer = CheckPoint(self)
-
-        res = []
-        if not self.learner.compiled:
-            self._compile_model()
-
-        if self.log:
-            print(f'Logging to file : {self.logger.name()}')
-            self.log_experiment()
-
-        operations = self.get_operations(folds)
-
-        res = self.execute(operations, check, pointer)
-        #
-        # self._post_operations()
-        if (isinstance(self.dataset.epochs, np.ndarray) and
-                self.dataset.epochs.ndim == 3):
-            #
-            self.dataset.recover_dim()
-        
-        if isinstance(self.dataset, DataSet):
-            classes = self.dataset.get_n_classes()
-        else:
-            # for experimental CrossSet evaluation
-            classes = self.target.get_n_classes()
-
-        # if len(self.settings.folds) == len(self.predictions):
-            # self.results = self.results_reports(res)
-        self.score.results_reports(res, classes, {'folds': list(operations)})
-        # elif check:
-        if check:
-            # self.results = self.results_reports(pointer.rets)
-            self.score.results_reports(pointer.rets, classes, {'folds': list(operations)})
-
-        self._post_operations(savecsv, csvfolder)
 
     def get_folds(self, nfolds, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy
@@ -166,79 +91,27 @@ class CrossSubject(Evaluation):
                               ])
         return folds
 
-    def execute(self, operations, check, pointer):
-        """Execute the evaluations on specified folds in operations.
+    def _phases_partiton(self):
+        n_phase = len(self.settings.partition)
+        train_phase, val_phase = self.settings.partition[0], self.settings.partition[1]
 
-        Parameters
-        ----------
-        operations : Iterable
-            range | list, specify index of folds to evaluate.
-        
-       
-        check : bool
-            if True, sets evaluation checkpoint for future operation resume,
-            False otherwise.
-        
-        pointer : CheckPoint instance
-            saves the state of evaluation
-
-        Returns
-        -------
-        list
-            list of each fold performance following the metrics specified in the model config.
-        """
-        res = []
-        for fold in operations:
-            #
-            if self.settings.verbose == 0:
-                print(f'Evaluating fold: {fold+1}/{len(self.settings.folds)}...')
-
-            rets = self._cross_subject(fold)
-
-            if self.log:
-                self._log_operation_results(fold, rets)
-
-            res.append(rets)
-
-            if check:
-                pointer.set_checkpoint(fold + 1, self.learner.model, rets)
-
-        return res
-
-    def get_operations(self, folds=None):
-        """get an iterable object for evaluation, it can be
-        all folds or a defined subset of folds.
-        In case of long evaluation, the iterable starts from the current
-        index
-
-        Parameters
-        ----------
-        folds : list | int, optional
-            defined list of folds or a just a single one, by default None
-
-        Returns
-        -------
-        range | list
-            selection of folds to evaluate, from all folds available to a
-            defined subset
-        """
-        if self.settings.current and not folds:
-            operations = range(self.settings.current, len(self.settings.folds))
-        elif type(folds) is list:
-            operations = folds
-        elif type(folds) is int:
-            operations = [folds]
+        if n_phase == 2:
+            # independent test set available
+            test_phase = 0
+        elif n_phase == 3:
+            # generate a set set from the dataset
+            test_phase = self.settings.partition[2]
         else:
-            operations = range(len(self.settings.folds))
-
-        return operations
-
-    def _cross_subject(self, fold):
+            # error : wrong settings.partition
+            raise AssertionError('Wrong settings.partition scheme', self.settings.partition)
+        return train_phase, val_phase, test_phase
+    
+    def _eval_operation(self, op):
         """Evaluate the subsets of subjects drawn from fold
 
         Parameters
         ----------
-        fold : int
+        fold (op) : int
             fold index
 
         Returns
@@ -246,7 +119,7 @@ class CrossSubject(Evaluation):
         rets : tuple
             folds performance
         """
-        split = self._split_set(fold)
+        split = self._split_set(op)
         rets = self._eval_split(split)
         return rets
 
@@ -272,23 +145,17 @@ class CrossSubject(Evaluation):
         if channels_format == 'channels_first':
             shape = (2, 1, 0)
         '''
+        _train, _val, _test = 0, 1, 2
         shape = (2, 1, 0)
-        X_train, Y_train = self._cat_lists(fold, 0)
-        X_test, Y_test = self._cat_lists(fold, 2)
+        X_train, Y_train = self._cat_lists(fold, _train)
+        X_test, Y_test = self._cat_lists(fold, _test)
         X_train = X_train.transpose(shape)
         X_test = X_test.transpose(shape)
 
+        X_val, Y_val = None, None
         if self._has_val():
-            X_val, Y_val = self._cat_lists(fold, 1)
-            X_val = X_val.transpose(shape)
-        else:
-            X_val, Y_val = None, None
-
-        if Y_train.min() != 0:
-            Y_train -= 1
-            Y_test -= 1
-            if Y_val is not None:
-                Y_val -= 1
+            X_val, Y_val = self._cat_lists(fold, _val)
+            X_val = X_val.transpose(shape)            
 
         split = create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test)
         return split
@@ -324,3 +191,9 @@ class CrossSubject(Evaluation):
         Y = np.concatenate([self.dataset.y[idx] 
                             for idx in self.settings.folds[fold][phase]], axis=-1)
         return X, Y
+
+    def _total_operations(self):
+        return len(self.settings.folds)
+
+    def _eval_type(self):
+        return "Fold"

@@ -144,11 +144,6 @@ class Train(Evaluation):
         else:
             X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=val_size)
 
-        if Y_train.min() != 0:
-            Y_train -= 1
-            if isinstance(Y_val, np.ndarray):
-                Y_val -= 1
-
         split = create_split(X_train, X_val, None, Y_train, Y_val, None)
         return split
 

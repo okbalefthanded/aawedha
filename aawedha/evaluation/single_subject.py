@@ -2,12 +2,12 @@ from aawedha.evaluation.evaluation_utils import aggregate_results
 from aawedha.evaluation.evaluation_utils import create_split
 from sklearn.model_selection import KFold, StratifiedKFold
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.evaluation.base import Evaluation
+from aawedha.evaluation.benchmark import BenchMark
 from aawedha.io.base import DataSet
 import numpy as np
 
 
-class SingleSubject(Evaluation):
+class SingleSubject(BenchMark):
     """Single Subject Evaluation
 
     derived from base Evaluation class, takes same attributes and overrides
@@ -37,103 +37,10 @@ class SingleSubject(Evaluation):
             cross-validation strategy
             default : 'Kfold'
         """
-        n_phase = len(self.settings.partition)
-        train_phase = self.settings.partition[0]
-        #
-        if isinstance(self.dataset.y, list):
-            #
-            n_trials = np.array([self.dataset.y[i].shape[0]
-                                 for i in range(self.n_subjects)])
-        else:
-            n_trials = self.dataset.y.shape[1]
-        #
-        if n_phase == 2:
-            if hasattr(self.dataset, 'test_epochs'):
-                val_phase, test_phase = self.settings.partition[1], 0
-            else:
-                val_phase, test_phase = 0, self.settings.partition[1]
-            # independent test set available
-        elif n_phase == 3:
-            # generate a set set from the dataset
-            val_phase, test_phase = self.settings.partition[1], self.settings.partition[2]
-        else:
-            # error : wrong settings.partition
-            raise AssertionError('Wrong partition scheme', self.settings.partition)
-        #
-        part = np.round(n_trials / np.sum(self.settings.partition)).astype(int)
-        #
-        train_phase = train_phase * part
-        val_phase = val_phase * part
-        test_phase = test_phase * part
-
+        train_phase, val_phase, test_phase, n_trials = self._phases_partition()
+        
         self.settings.folds = self.get_folds(nfolds, n_trials, train_phase,
                                     val_phase, test_phase, strategy)
-
-    def run_evaluation(self, subject=None, pointer=None, check=False, savecsv=False, csvfolder=None):
-        """Perform evaluation on each subject
-
-        Parameters
-        ----------
-        subject : int | list
-            - specific subject id, performs a single evaluation.
-            - list of subjects from the set of subjects available in dataset
-            default : None, evaluate each subject
-
-        pointer : CheckPoint instance
-            saves the state of evaluation
-
-        check : bool
-            if True, sets evaluation checkpoint for future operation resume,
-            False otherwise
-
-        savecsv: bool
-            if True, saves evaluation results in a csv file as a pandas DataFrame
-
-        csvfolder : str
-            if savecsv is True, the results files in csv will be saved inside this folder
-        """
-        # generate folds if folds are empty
-        if not self.settings.folds:
-            self.generate_split(nfolds=30)
-
-        if not pointer and check:
-            pointer = CheckPoint(self)
-
-        independent_test = False
-
-        if hasattr(self.dataset, 'test_epochs'):
-            if self._equal_subjects():
-                independent_test = True
-            else:
-                # concatenate train & test data
-                # test data are different subjects
-                n_subj = self._fuse_data()
-                self.n_subjects = n_subj
-        #
-        operations = self.get_operations(subject)
-
-        if not self.learner.compiled:
-            self._compile_model()
-
-        if self.log:
-            print(f'Logging to file : {self.logger.name()}')
-            self.log_experiment()
-
-        eval_results = self.execute(operations, independent_test, check, pointer)
-        
-        if (not isinstance(self.dataset.epochs, list) and
-                self.dataset.epochs.ndim == 3):
-            self.dataset.recover_dim()
-
-        if isinstance(self.dataset, DataSet):
-            classes = self.dataset.get_n_classes()
-        else:
-            # for experimental CrossSet evaluation
-            classes = self.target.get_n_classes()
-
-        self.score.results_reports(eval_results, classes, {'subjects': list(operations)})
-        
-        self._post_operations(savecsv, csvfolder)
 
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
         """Generate folds following a KFold cross-validation strategy
@@ -177,81 +84,44 @@ class SingleSubject(Evaluation):
             folds = self._get_split(nfolds, t, tr, vl, stg)
         return folds
 
-    def get_operations(self, subject=None):
-        """Get an iterable object for evaluation, it can be
-        all subjects or a defined subset of subjects.
-        In case of long evaluation, the iterable starts from the current
-        index
+    def _phases_partition(self):
 
-        Parameters
-        ----------
-        subject : list | int, optional
-            defined list of subjects or a just a single one, by default None
-
-        Returns
-        -------
-        range | list
-            selection of subjects to evaluate, from all subjects available to a
-            defined subset
-        """
-        if self.settings.current and not subject:
-            operations = range(self.settings.current, self.n_subjects)
-        elif type(subject) is list:
-            operations = subject
-        elif type(subject) is int:
-            operations = [subject]
+        n_phase = len(self.settings.partition)
+        train_phase = self.settings.partition[0]
+        #
+        if isinstance(self.dataset.y, list):
+            #
+            n_trials = np.array([self.dataset.y[i].shape[0]
+                                 for i in range(self.n_subjects)])
         else:
-            operations = range(self.n_subjects)
-
-        return operations
-           
-    def execute(self, operations, independent_test, check, pointer):
-        """Execute the evaluations on specified subjects in operations.
-
-        Parameters
-        ----------
-        operations : Iterable
-            range | list, specify index of subjects to evaluate.
-        
-        independent_test : bool
-            if True, DataSet contains and independent Test set, False otherwise.
-        
-        check : bool
-            if True, sets evaluation checkpoint for future operation resume,
-            False otherwise.
-        
-        pointer : CheckPoint instance
-            saves the state of evaluation
-
-        Returns
-        -------
-        list
-            list of each subject performance following the metrics specified in the model config.
-        """
-        eval_results = []
-        for subj in operations:
-            if self.settings.verbose == 0:
-                print(f'Evaluating Subject: {subj+1}/{self.n_subjects}...')
-
-            rets = self._single_subject(subj, independent_test)
-            subj_results = aggregate_results(rets)            
-
-            if self.log:
-                self._log_operation_results(subj, subj_results)
-
-            eval_results.append(subj_results)
-
-            if check:
-                pointer.set_checkpoint(subj+1, self.learner.model, subj_results)
-        
-        return eval_results
+            n_trials = self.dataset.y.shape[1]
+        #
+        if n_phase == 2:
+            if hasattr(self.dataset, 'test_epochs'):
+                val_phase, test_phase = self.settings.partition[1], 0
+            else:
+                val_phase, test_phase = 0, self.settings.partition[1]
+            # independent test set available
+        elif n_phase == 3:
+            # generate a set set from the dataset
+            val_phase, test_phase = self.settings.partition[1], self.settings.partition[2]
+        else:
+            # error : wrong settings.partition
+            raise AssertionError('Wrong partition scheme', self.settings.partition)
+        #
+        part = np.round(n_trials / np.sum(self.settings.partition)).astype(int)
+        #
+        train_phase = train_phase * part
+        val_phase = val_phase * part
+        test_phase = test_phase * part
+        return train_phase, val_phase, test_phase, n_trials
     
-    def _single_subject(self, subj, indie=False):
+    def _eval_operation(self, op):
         """Evaluate a subject on each fold
 
         Parameters
         ----------
-        subj : int
+        subj (op) : int
             subject id to be selected and evaluated
 
         indie : bool
@@ -264,18 +134,28 @@ class SingleSubject(Evaluation):
         rets : list of tuple, length = nfolds
             contains subject's performance on each folds
         """
-        x, y = self._get_data_pair(subj)
+        indie = False
+        if hasattr(self.dataset, 'test_epochs'):
+            if self._equal_subjects():
+                # independent_test = True
+                indie = True
+            # else:
+                # concatenate train & test data
+                # test data are different subjects
+                # self.n_subjects = self._fuse_data()
+
+        x, y = self._get_data_pair(op)
         subj_results = []
-        # get in the fold!!!
+
         if isinstance(self.dataset.epochs, list):
             folds_range = range(len(self.settings.folds[0]))
         else:
             folds_range = range(len(self.settings.folds))
 
         for fold in folds_range:
-            split = self._split_set(x, y, subj, fold, indie)
+            split = self._split_set(x, y, op, fold, indie)
             subj_results.append(self._eval_split(split))
-
+        subj_results = aggregate_results(subj_results)
         return subj_results
 
     def _fuse_data(self):
@@ -337,23 +217,24 @@ class SingleSubject(Evaluation):
         # folds[0][0][0] : inconsistent fold subject trials
         # folds[0][0] : same trials numbers for all subjects
         split = {}
-        #
+        
         if isinstance(self.dataset.epochs, list):
-            f = self.settings.folds[subj][fold][:]  # subject, fold, phase
+            folds = self.settings.folds[subj][fold][:]  # subject, fold, phase
         else:
-            f = self.settings.folds[fold][:]
+            folds = self.settings.folds[fold][:]
         '''
         if x.ndim == 4:
             trials, kernels, channels, samples = x.shape
         elif x.ndim == 3:
             trials, kernels, samples = x.shape
         '''
-        X_train = x[f[0]]
-        Y_train = y[f[0]]
+        _train, _val, _test = 0, 1, 2
+        X_train = x[folds[_train]]
+        Y_train = y[folds[_train]]
+        
         X_val, Y_val = None, None
         if indie:
             # independent Test set
-            # shape = (1, 0, 2)
             X_test = self.dataset.test_epochs[subj]
             # _, _, _, channels_format = self._get_fit_configs()
             if X_test.ndim == 3:
@@ -365,24 +246,18 @@ class SingleSubject(Evaluation):
             X_test = X_test.transpose(shape)
             # validation data
             if len(self.settings.partition) == 2:
-                X_val = x[f[1]]
-                Y_val = y[f[1]]
+                X_val = x[folds[_val]]
+                Y_val = y[folds[_val]]
             Y_test = self.dataset.test_y[subj][:].astype(int)
         else:
             if len(self.settings.partition) == 2:
-                X_test = x[f[1]]
-                Y_test = y[f[1]]
+                X_test = x[folds[_val]]
+                Y_test = y[folds[_val]]
             else:
-                X_val = x[f[1]]
-                Y_val = y[f[1]]
-                X_test = x[f[2]]
-                Y_test = y[f[2]]
-
-        if Y_train.min() != 0:
-            Y_train -= 1
-            Y_test -= 1
-            if Y_val is not None:
-                Y_val -= 1
+                X_val = x[folds[_val]]
+                Y_val = y[folds[_val]]
+                X_test = x[folds[_test]]
+                Y_test = y[folds[_test]]
 
         split = create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test)
         return split
@@ -477,3 +352,9 @@ class SingleSubject(Evaluation):
                     folds.append([train[:tr], train[tr:tr + vl], test])
                 
         return folds
+
+    def _total_operations(self):
+        return self.n_subjects
+
+    def _eval_type(self):
+        return "Subject"
