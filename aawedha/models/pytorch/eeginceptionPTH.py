@@ -34,11 +34,11 @@ class EEGInceptionPTH(TorchModel):
         kernel = 16
         # Block 1
         self.c1 = conv_block(1, "Conv2D", temp_f, (1, kernel*4), "same")
-        self.d1 = conv_block(8,"Depth2D", spat_f, (8, 1), "valid")
+        self.d1 = conv_block(8,"Depth2D", spat_f, (Chans, 1), "valid")
         self.c2 = conv_block(1, "Conv2D", temp_f, (1, kernel*2), "same")
-        self.d2 = conv_block(8,"Depth2D", spat_f, (8, 1), "valid")
+        self.d2 = conv_block(8,"Depth2D", spat_f, (Chans, 1), "valid")
         self.c3 = conv_block(1, "Conv2D", temp_f, (1, kernel), "same")
-        self.d3 = conv_block(8,"Depth2D", spat_f, (8, 1), "valid")
+        self.d3 = conv_block(8,"Depth2D", spat_f, (Chans, 1), "valid")
         self.p1 = nn.AvgPool2d(kernel_size=(1, 4), stride=(1, 4))
         # Block 2
         self.c4 = conv_block(48, "Conv2D", temp_f, (1, kernel), "same")
@@ -50,7 +50,7 @@ class EEGInceptionPTH(TorchModel):
         self.p3 = nn.AvgPool2d(kernel_size=(1, 2), stride=(1, 2))
         self.c8 = conv_block(12, "Conv2D", 6, (1, 4), "same", bias=False)
         self.p4 = nn.AvgPool2d(kernel_size=(1, 2), stride=(1, 2))
-        self.dense = nn.Linear(6 * (Samples // division_rate)*(Chans-7), nb_classes)
+        self.dense = nn.Linear(6 * (Samples // division_rate), nb_classes)
                 
 
     def forward(self, x):

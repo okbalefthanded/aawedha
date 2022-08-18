@@ -8,7 +8,6 @@ import numpy as np
 import glob
 
 
-
 files = ['description.pdf',
          'online_study_1-7.zip',
          'online_study_8-13.zip',
@@ -38,6 +37,37 @@ class FreiburgOnline(DataSet):
                          doi='https://doi.org/10.1371/journal.pone.0175856',
                          url="https://zenodo.org/record/192684/files"
                          )
+
+    def generate_set(self, load_path=None, download=False,
+                     save=True, save_folder=None,
+                     fname=None):
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+        download : bool,
+            if True, download raw data first. default False.
+        save : bool,
+            it True save DataSet, default True.
+        save_folder : str
+            DataSet object saving folder path
+        fname: str, optional
+            saving path for file, specified when different versions of
+            DataSet are saved in the same folder
+            default: None
+        """
+        if download:
+            self.download_raw(load_path)
+        self.epochs, self.y = self.load_raw(load_path)
+        self.subjects = self._get_subjects(n_subjects=13)
+        self.paradigm = self._get_paradigm()
+        if save:
+            self.save_set(save_folder, fname)
 
     def load_raw(self, path=None):
         """Read and process raw data into structured arrays
@@ -71,37 +101,6 @@ class FreiburgOnline(DataSet):
 
         return X, Y
 
-    def generate_set(self, load_path=None, download=False,
-                     save=True, save_folder=None,
-                     fname=None):
-        """Main method for creating and saving DataSet objects and files:
-            - sets train and test (if present) epochs and labels
-            - sets dataset information : subjects, paradigm
-            - saves DataSet object as a serialized pickle object
-
-        Parameters
-        ----------
-        load_path : str
-            raw data folder path
-        download : bool,
-            if True, download raw data first. default False.
-        save : bool,
-            it True save DataSet, default True.
-        save_folder : str
-            DataSet object saving folder path
-        fname: str, optional
-            saving path for file, specified when different versions of
-            DataSet are saved in the same folder
-            default: None
-        """
-        if download:
-            self.download_raw(load_path)
-        self.epochs, self.y = self.load_raw(load_path)
-        self.subjects = self._get_subjects(n_subjects=13)
-        self.paradigm = self._get_paradigm()
-        if save:
-            self.save_set(save_folder, fname)
-
     def download_raw(self, store_path):
         """Download raw data from dataset repo url and stored it in a folder.
 
@@ -113,9 +112,8 @@ class FreiburgOnline(DataSet):
         for f in files:
             download_file(f"{self.url}/{f}", store_path)
         zip_files = glob.glob(f"{store_path}/*.zip")
-        unzip_files(zip_files, store_path)        
+        unzip_files(zip_files, store_path)      
         
-
     def _get_subjects(self, n_subjects=0):
         """Construct Subjects list
 

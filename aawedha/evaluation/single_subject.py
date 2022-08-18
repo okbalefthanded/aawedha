@@ -1,9 +1,7 @@
 from aawedha.evaluation.evaluation_utils import aggregate_results
 from aawedha.evaluation.evaluation_utils import create_split
 from sklearn.model_selection import KFold, StratifiedKFold
-from aawedha.evaluation.checkpoint import CheckPoint
 from aawedha.evaluation.benchmark import BenchMark
-from aawedha.io.base import DataSet
 import numpy as np
 
 

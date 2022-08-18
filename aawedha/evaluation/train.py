@@ -55,7 +55,7 @@ class Train(Evaluation):
         if new_labels:
             self._select_trials(new_labels, events)
 
-        self.results = self._train(selection, val_size)
+        self.score.results = self._train(selection, val_size)
 
         # save model in HDF5 format or SavedModel
         if save_model:

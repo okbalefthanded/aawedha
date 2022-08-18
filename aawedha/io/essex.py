@@ -91,8 +91,7 @@ class Essex(DataSet):
         self.events = events
         self.phrase = phrase
         if save:
-            self.save_set(save_folder, fname)
-        
+            self.save_set(save_folder, fname)        
 
     def load_raw(self, path=None, channels=None, epoch=[0., .7], 
                      band=[1.0, 5.0], order=2,  downsample=None):

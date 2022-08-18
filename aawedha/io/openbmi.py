@@ -1,9 +1,9 @@
-from aawedha.io.base import DataSet
-from aawedha.paradigms.ssvep import SSVEP
-from aawedha.paradigms.erp import ERP
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
-from scipy.io import loadmat
+from aawedha.paradigms.ssvep import SSVEP
 import aawedha.utils.network as network
+from aawedha.paradigms.erp import ERP
+from aawedha.io.base import DataSet
+from scipy.io import loadmat
 import numpy as np
 import glob
 import os

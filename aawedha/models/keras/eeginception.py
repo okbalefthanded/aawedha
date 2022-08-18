@@ -33,11 +33,11 @@ def EEGInception(nb_classes=1, Chans=15, Samples=205, activation='elu', pooling=
     ##################################################################
     # Inception Module 1
     c1 = conv_block(reshape, "Conv2D", 8, (1, 64), "same")
-    d1 = conv_block(c1,     "Depth2D", 2, (8, 1), "valid")
+    d1 = conv_block(c1,     "Depth2D", 2, (Chans, 1), "valid")
     c2 = conv_block(reshape, "Conv2D", 8, (1, 32), "same")
-    d2 = conv_block(c2,     "Depth2D", 2, (8, 1), "valid")
+    d2 = conv_block(c2,     "Depth2D", 2, (Chans, 1), "valid")
     c3 = conv_block(reshape, "Conv2D", 8, (1, 16), "same")
-    d3 = conv_block(c3,     "Depth2D", 2, (8, 1), "valid")
+    d3 = conv_block(c3,     "Depth2D", 2, (Chans, 1), "valid")
     n1 = Concatenate(axis=1)([d1, d2, d3])
     a1 = pool((1, 4))(n1)
     # Inception Module 2

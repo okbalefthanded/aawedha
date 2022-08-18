@@ -1,7 +1,5 @@
 from aawedha.evaluation.evaluation_utils import create_split
-from aawedha.evaluation.checkpoint import CheckPoint
 from aawedha.evaluation.benchmark import BenchMark
-from aawedha.io.base import DataSet
 import numpy as np
 
 

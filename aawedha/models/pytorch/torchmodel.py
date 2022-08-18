@@ -296,7 +296,6 @@ class TorchModel(nn.Module):
                 if metric_name == 'auroc':
                     metric_name = 'auc'
                 return_metrics[metric_name] = metric.compute().item()
-            # return_metrics[metric_name] = metric.compute().item()
         return return_metrics
     
     def _is_binary(self):
@@ -314,7 +313,6 @@ class TorchModel(nn.Module):
                 metric.num_classes = 2
 
     def _labels_to_int(self, metric, labels):
-        # if categorical
         if self.is_categorical and metric == 'auroc':
             return labels.argmax(axis=1).int()
         else:

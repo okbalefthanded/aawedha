@@ -1,9 +1,9 @@
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
-from aawedha.io.base import DataSet
-from aawedha.paradigms.erp import ERP
-from aawedha.paradigms.subject import Subject
 from aawedha.utils.network import download_file
+from aawedha.paradigms.subject import Subject
 from aawedha.utils.utils import unzip_files
+from aawedha.paradigms.erp import ERP
+from aawedha.io.base import DataSet
 from scipy.io import loadmat
 from datetime import datetime
 import numpy as np
@@ -37,6 +37,51 @@ class EPFL(DataSet):
         self.phrase = []
         self.test_phrase = []
         self.flashes_test = []
+
+    def generate_set(self, load_path=None,
+                     download=False,
+                     save=True,
+                     save_folder=None,
+                     fname=None,
+                     epoch=[0., 0.7],
+                     band=[1, 10],
+                     order=2):
+        """Main method for creating and saving DataSet objects and files:
+            - sets train and test (if present) epochs and labels
+            - sets dataset information : subjects, paradigm
+            - saves DataSet object as a serialized pickle object
+
+        Parameters
+        ----------
+        load_path : str
+            raw data folder path
+
+        download : bool,
+            if True, download raw data first. default False.
+        
+        save_folder : str
+            DataSet object saving folder path
+
+        epoch : list of float
+            epoch duration in seconds relative to trials' onset
+            default : 700 msec, [0., .7]
+        
+        band : list
+            band-pass filter frequencies, low-freq and high-freq
+            default : [1., 10.]
+        
+        order : int
+            band-pass filter order
+            default: 2
+        """
+        if download:
+            self.download_raw(load_path)
+        self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(
+            load_path, epoch, band, order)
+        self.subjects = self._get_subjects(n_subjects=9)
+        self.paradigm = self._get_paradigm()
+        if save:
+            self.save_set(save_folder, fname)
 
     def load_raw(self, path=None, epoch=[0., .7],
                  band=[1, 10], order=2):
@@ -122,50 +167,20 @@ class EPFL(DataSet):
         self.flashes_test = np.array(flashes_test)
         return X, Y, X_test, Y_test
 
-    def generate_set(self, load_path=None,
-                     download=False,
-                     save=True,
-                     save_folder=None,
-                     fname=None,
-                     epoch=[0., 0.7],
-                     band=[1, 10],
-                     order=2):
-        """Main method for creating and saving DataSet objects and files:
-            - sets train and test (if present) epochs and labels
-            - sets dataset information : subjects, paradigm
-            - saves DataSet object as a serialized pickle object
+    def download_raw(self, store_path=None):
+        """Download raw data from dataset repo url and stored it in a folder.
 
         Parameters
         ----------
-        load_path : str
-            raw data folder path
-
-        download : bool,
-            if True, download raw data first. default False.
-        
-        save_folder : str
-            DataSet object saving folder path
-
-        epoch : list of float
-            epoch duration in seconds relative to trials' onset
-            default : 700 msec, [0., .7]
-        
-        band : list
-            band-pass filter frequencies, low-freq and high-freq
-            default : [1., 10.]
-        
-        order : int
-            band-pass filter order
-            default: 2
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
         """
-        if download:
-            self.download_raw(load_path)
-        self.epochs, self.y, self.test_epochs, self.test_y = self.load_raw(
-            load_path, epoch, band, order)
-        self.subjects = self._get_subjects(n_subjects=9)
-        self.paradigm = self._get_paradigm()
-        if save:
-            self.save_set(save_folder, fname)
+        for i in range(1, 10):
+            url_f = f"{self.url}/subject{i}.zip"
+            download_file(url_f, store_path)
+        # unzip files and delete
+        zip_files = glob.glob(f"{store_path}/*.zip")
+        unzip_files(zip_files, store_path)
 
     def _load_session(self, files, epoch, band, order):
         """Process a single session files (multiple runs for each subject): load, filter, epoch.
@@ -219,21 +234,6 @@ class EPFL(DataSet):
         target = np.array(target)
         stims = np.concatenate(stims, axis=-1)
         return epochs, y, target, stims, flashes
-
-    def download_raw(self, store_path=None):
-        """Download raw data from dataset repo url and stored it in a folder.
-
-        Parameters
-        ----------
-        store_path : str, 
-            folder path where raw data will be stored, by default None. data will be stored in working path.
-        """
-        for i in range(1, 10):
-            url_f = f"{self.url}/subject{i}.zip"
-            download_file(url_f, store_path)
-        # unzip files and delete
-        zip_files = glob.glob(f"{store_path}/*.zip")
-        unzip_files(zip_files, store_path)
 
     def _get_epochs(self, data, epoch, band, order):
         """Process a single run file for a subject.
