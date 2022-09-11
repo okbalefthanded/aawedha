@@ -17,5 +17,5 @@ def load_yaml(config_filepath):
     with open(config_filepath, 'r') as _file:
         content = _file.read()
         # load config
-        config_dict = yaml.load(content)
+        config_dict = yaml.load(content, Loader=yaml.Loader) # from pyyaml >= 6.0, Loader is required
     return config_dict

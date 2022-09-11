@@ -144,8 +144,7 @@ class Model:
             self.model.compile(loss=khsara,
                                 optimizer=optimizer,
                                 metrics=metrics
-                                   )
-                  
+                                   )                  
 
     def _fit_normalize_keras(self, X_train):
         for layer in self.model.layers:
