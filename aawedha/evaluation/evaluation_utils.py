@@ -145,25 +145,25 @@ def transform_scale(X, mu, sigma):
     return X
 
 def transpose_split(arrays):
-        """Transpose input Data to be prepared for NCHW format
-        N : batch (assigned at fit), C: channels here refers to trials,
-        H : height here refers to EEG channels, W : width here refers to samples
+    """Transpose input Data to be prepared for NCHW format
+    N : batch (assigned at fit), C: channels here refers to trials,
+    H : height here refers to EEG channels, W : width here refers to samples
 
-        Parameters
-        ----------
-        arrays: list of data arrays
+    Parameters
+    ----------
+    arrays: list of data arrays
             - Training data in 1st position
             - Test data in 2nd position
             - if not none, Validation data
-        Returns
-        ------- 
-        list of arrays same order as input
-        """
-        for i, arr in enumerate(arrays):
-            if isinstance(arr, np.ndarray):
-                arrays[i] = arr.transpose((2, 1, 0))
-                # trials , channels, samples
-        return arrays
+    Returns
+    -------
+    list of arrays same order as input
+    """
+    for i, arr in enumerate(arrays):
+        if isinstance(arr, np.ndarray):
+            arrays[i] = arr.transpose((2, 1, 0))
+            # trials , channels, samples
+    return arrays
 
 def create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
     """gather data arrays in a dict
@@ -227,8 +227,8 @@ def measure_performance(Y_test, probs, perf, metrics_names):
     -------
         dict of performance metrics : {metric : value}
     """
-    results  = {}      
-    
+    results  = {}
+
     # classes = Y_test.max()
     if Y_test.ndim == 2:
         Y_test = Y_test.argmax(axis=1)
@@ -242,9 +242,9 @@ def measure_performance(Y_test, probs, perf, metrics_names):
         results = {metric:value for metric, value in zip(metrics_names, perf)}
 
     if classes == 2:
-        if probs.shape[1] > 1:            
+        if probs.shape[1] > 1:
             probs = probs[:, 1]
-        fp_rate, tp_rate, thresholds = roc_curve(Y_test, probs)
+        fp_rate, tp_rate, _ = roc_curve(Y_test, probs)
         viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
         results['viz'] = viz
         preds = np.zeros(len(probs))
@@ -253,7 +253,7 @@ def measure_performance(Y_test, probs, perf, metrics_names):
         preds = probs.argmax(axis=-1)
     results['probs'] = probs
     results['confusion'] = confusion_matrix(Y_test, preds) 
-    return results 
+    return results
 
 def aggregate_results(res):
     """Aggregate subject's results from folds into a single list
@@ -268,8 +268,8 @@ def aggregate_results(res):
     -------
     dict of performance metrics
     """
-    results = dict()
-    if type(res) is list:
+    results = {}
+    if isinstance(res, list):
         metrics = res[0].keys()
     else:
         metrics = res.keys()
@@ -350,7 +350,7 @@ def char_rate_epoch(epochs, desc, model, phrase, n_char, paradigm, flashes=None)
         events in order of flashing
     model : trained Keras/Pytorch model
         trained model for prediction.
-    phrase : 1d array of int 
+    phrase : 1d array of int
         correct phrase to spell by subject
     n_char : int
         count of characters spelled in session
@@ -367,11 +367,11 @@ def char_rate_epoch(epochs, desc, model, phrase, n_char, paradigm, flashes=None)
     if isinstance(flashes, np.ndarray):
         trials = flashes // n_char # repetition per char
         scores, desc, max_step = predict_flexible_trials(epochs, desc, model, paradigm, trials)
-        repetitions = np.min(trials)         
+        repetitions = np.min(trials)
     else:
         scores = predict_fixed_trials(epochs, model)
         repetitions = paradigm.repetition
-        max_step = repetitions * paradigm.stimuli 
+        max_step = repetitions * paradigm.stimuli
 
     acc_per_rep = np.zeros((repetitions))
     commands = paradigm.speller

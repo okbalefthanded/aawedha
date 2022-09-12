@@ -143,6 +143,7 @@ class SingleSubject(BenchMark):
                 # self.n_subjects = self._fuse_data()
 
         x, y = self._get_data_pair(op)
+
         subj_results = []
 
         if isinstance(self.dataset.epochs, list):
@@ -262,7 +263,7 @@ class SingleSubject(BenchMark):
 
     def _get_data_pair(self, subj=0):
         """Get data pair for a subject from the dataset.
-        Transform x,y to Keras model input format.
+        Transform x, y to model input format.
 
         Parameters
         ----------

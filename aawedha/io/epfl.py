@@ -163,7 +163,8 @@ class EPFL(DataSet):
         self.events = events
         self.test_events = events_test
         self.phrase = np.array(ph)
-        self.phrase_test = np.array(ph_test)
+        # self.phrase_test = np.array(ph_test)
+        self.test_phrase = np.array(ph_test)
         self.flashes_test = np.array(flashes_test)
         return X, Y, X_test, Y_test
 

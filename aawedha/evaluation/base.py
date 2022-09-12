@@ -497,7 +497,9 @@ class Evaluation:
         if isinstance(X_test, np.ndarray):
             probs = self.learner.predict(X_test)
             perf  = self.learner.evaluate(X_test, Y_test, batch_size=batch, 
-                                          return_dict=True, verbose=0)        
+                                          return_dict=True, verbose=0)  
+            # 
+            # perf['char_rate'] = char_rate()      
         return history, probs, perf
 
     def _eval_split(self, split={}):
@@ -512,7 +514,7 @@ class Evaluation:
         -------
         rets: dict of performance metrics
         """
-        rets = []
+        eval_perf = []
         X_train, Y_train = split['X_train'], split['Y_train']
         X_test, Y_test = split['X_test'], split['Y_test']
         X_val, Y_val = split['X_val'], split['Y_val']
@@ -527,8 +529,8 @@ class Evaluation:
         self.learner.history.append(model_history)
 
         if isinstance(X_test, np.ndarray):            
-            rets = measure_performance(Y_test, probs, perf, self.learner.model.metrics_names)
-        return rets        
+            eval_perf = measure_performance(Y_test, probs, perf, self.learner.model.metrics_names)
+        return eval_perf       
 
     def _get_fit_configs(self):
         """Returns fit configurations as tuple

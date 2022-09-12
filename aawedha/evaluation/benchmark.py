@@ -6,7 +6,8 @@ import abc
 
 class BenchMark(Evaluation):
     
-    def run_evaluation(self, selection=None, pointer=None, check=False, savecsv=False, csvfolder=None):
+    def run_evaluation(self, selection=None, pointer=None, check=False,
+                        savecsv=False, csvfolder=None):
         """Perform evaluation on each subject
 
         Parameters

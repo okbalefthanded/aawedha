@@ -7,8 +7,8 @@ import tensorflow as tf
 
 class Model:
 
-    def __init__(self, model=None, compiled=False, weights={}, 
-                config={}, history=[], normalize=True, 
+    def __init__(self, model=None, compiled=False, weights={},
+                config={}, history=[], normalize=True,
                 name=None, model_type=None):
         self.model = model
         self.compiled = compiled
@@ -44,7 +44,7 @@ class Model:
             preds = self.model.predict(X)
         else:
             preds = self.model.predict(X, normalize=self.do_normalize)
-        return preds 
+        return preds
 
     def evaluate(self, X, Y, batch_size=32, return_dict=True, verbose=0):
         perfs = {}
