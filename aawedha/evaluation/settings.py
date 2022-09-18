@@ -47,6 +47,8 @@ class Settings:
         return batch, ep, clbks, aug #, format
 
     def set_paradigm_metrics(self, metrics):
+        if not isinstance(metrics, list):
+            metrics = [metrics]
         for metric in metrics:
             if isinstance(metric, str):
                 self.paradigm_metrics[metric] = paradigm_metrics[metric]
