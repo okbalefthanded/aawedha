@@ -17,7 +17,9 @@ available_metrics = {
     'accuracy': torchmetrics.Accuracy,
     'precision': torchmetrics.Precision,
     'recall': torchmetrics.Recall,
-    'auc': torchmetrics.AUROC
+    'auc': torchmetrics.AUROC,
+    'ece': torchmetrics.CalibrationError,
+    'mcc': torchmetrics.MatthewsCorrCoef
     }
 
 custom_opt = {
@@ -62,12 +64,12 @@ def get_metrics(metrics):
     return selected_metrics
 
 def build_scheduler(data_loader, optimizer, scheduler):
-        available = list(optim.lr_scheduler.__dict__.keys())
-        sched_id = scheduler[0]        
-        params = {'optimizer': optimizer, **scheduler[1]}
-        if sched_id == 'OneCycleLR':
-            params['steps_per_epoch'] = len(data_loader)
-        if sched_id in available:
-            return getattr(optim.lr_scheduler, sched_id)(**params)
-        else:
-            ModuleNotFoundError   
+    available = list(optim.lr_scheduler.__dict__.keys())
+    sched_id = scheduler[0]        
+    params = {'optimizer': optimizer, **scheduler[1]}
+    if sched_id == 'OneCycleLR':
+        params['steps_per_epoch'] = len(data_loader)
+    if sched_id in available:
+        return getattr(optim.lr_scheduler, sched_id)(**params)
+    else:
+        ModuleNotFoundError   

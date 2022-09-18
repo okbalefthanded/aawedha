@@ -20,7 +20,7 @@ class Score(object):
 		eval_results = aggregate_results(eval_results)
 		eval_results = self._update_results(eval_results, classes, operations)
 		self.results = eval_results
-	
+
 	def _update_results(self, res, classes, operations):
 		"""Add metrics results mean to results dict.
 
@@ -39,6 +39,8 @@ class Score(object):
 			metrics.remove('viz')
 
 		for metric in metrics:
+			if metric == 'probs':
+				continue
 			res[metric] = np.array(res[metric])
 			res[metric + '_mean'] = res[metric].mean()
 			res[metric + '_mean_per_fold'] = res[metric].mean(axis=0)

@@ -119,17 +119,12 @@ class SingleSubject(BenchMark):
 
         Parameters
         ----------
-        subj (op) : int
+        op : int
             subject id to be selected and evaluated
-
-        indie : bool
-            True if independent set available in dataset, so no need to use
-            the test fold.
-            default : False
 
         Returns
         -------
-        rets : list of tuple, length = nfolds
+        subj_results : list of tuple, length = nfolds
             contains subject's performance on each folds
         """
         indie = False
@@ -153,7 +148,14 @@ class SingleSubject(BenchMark):
 
         for fold in folds_range:
             split = self._split_set(x, y, op, fold, indie)
-            subj_results.append(self._eval_split(split))
+            split_perf = self._eval_split(split)
+            if self.settings.paradigm_metrics:
+                # TODO
+                paradigm_perf = self._eval_paradigm_metrics(split_perf['probs'], op)
+                for m in paradigm_perf:
+                    split_perf[m] = paradigm_perf[m]
+            subj_results.append(split_perf)
+
         subj_results = aggregate_results(subj_results)
         return subj_results
 
@@ -214,7 +216,7 @@ class SingleSubject(BenchMark):
             train/validation/test EEG data and labels
         """
         # folds[0][0][0] : inconsistent fold subject trials
-        # folds[0][0] : same trials numbers for all subjects
+        # folds[0][0]    : same trials numbers for all subjects
         split = {}
         
         if isinstance(self.dataset.epochs, list):
@@ -232,8 +234,7 @@ class SingleSubject(BenchMark):
         Y_train = y[folds[_train]]
         
         X_val, Y_val = None, None
-        if indie:
-            # independent Test set
+        if indie: # independent Test set            
             X_test = self.dataset.test_epochs[subj]
             # _, _, _, channels_format = self._get_fit_configs()
             if X_test.ndim == 3:

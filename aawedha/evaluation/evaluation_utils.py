@@ -1,5 +1,7 @@
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.models.utils_models import model_lib
+from aawedha.paradigms.base import Paradigm
+from aawedha.paradigms.utils_paradigms import spelling_rate
 from tensorflow.keras.utils import to_categorical
 from tensorflow_addons.metrics import F1Score
 from pyLpov.utils.utils import select_target
@@ -7,6 +9,11 @@ from sklearn.metrics import accuracy_score
 from pyLpov.utils.utils import itr
 import tensorflow as tf
 import numpy as np
+
+
+paradigm_metrics = {
+    'spelling_rate': spelling_rate
+}
 
 
 def metrics_by_lib(lib):
@@ -35,7 +42,7 @@ def metrics_by_lib(lib):
                         # F1Score(num_classes=2, name="f1score"),
                         ]
     else:
-        return ['accuracy', 'precision', 'recall', 'auc']
+        return ['accuracy', 'precision', 'recall', 'auc', 'ece', 'mcc']
 
 def class_weights(y):
     """Calculates inverse of ratio of class' examples in train dataset

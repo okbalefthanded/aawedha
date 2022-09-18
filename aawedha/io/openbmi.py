@@ -505,4 +505,4 @@ class OpenBMIERP(DataSet):
                    stimuli=36,
                    stim_type='Face',
                    phrase=['NEURAL_NETWORKS_AND_DEEP_LEARNING','PATTERN_RECOGNITION_MACHINE_LEARNING'],
-                   flashing_mode='random_set_presentation')
+                   flashing_mode='RSP') # random_set_presentation

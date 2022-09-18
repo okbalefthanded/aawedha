@@ -232,6 +232,8 @@ class Evaluation:
         if model_config:
             self.learner.config = model_config
             self.settings.fit_config = model_config['fit']
+            if 'paradigm_metrics' in model_config['compile']:
+                self.settings.set_paradigm_metrics(model_config['compile']['paradigm_metrics'])
 
         self.learner.model = model
         self.learner.name = model.name

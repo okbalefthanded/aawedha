@@ -131,6 +131,13 @@ class BenchMark(Evaluation):
             self.log_experiment()
         
         return operations, pointer
+    
+    def _eval_paradigm_metrics(self, probs, op):
+        pm = {}
+        if self.settings.paradigm_metrics:
+            for metric in self.settings.paradigm_metrics:
+                pm[metric] = self.settings.paradigm_metrics[metric](probs, op, self.dataset) 
+            return pm        
 
     @abc.abstractmethod
     def _eval_operation(self, op):

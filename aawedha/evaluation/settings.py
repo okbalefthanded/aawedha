@@ -1,3 +1,4 @@
+from aawedha.evaluation.evaluation_utils import paradigm_metrics
 
 
 class Settings:
@@ -11,6 +12,7 @@ class Settings:
         self.current = current
         self.debug = debug
         self.fit_config = {}
+        self.paradigm_metrics = {}
 
     def get_fit_configs(self):
         """Returns fit configurations as tuple
@@ -43,3 +45,10 @@ class Settings:
         # K.set_image_data_format(format)
         
         return batch, ep, clbks, aug #, format
+
+    def set_paradigm_metrics(self, metrics):
+        for metric in metrics:
+            if isinstance(metric, str):
+                self.paradigm_metrics[metric] = paradigm_metrics[metric]
+            # TODO
+                
