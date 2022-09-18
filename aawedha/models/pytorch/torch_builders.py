@@ -58,7 +58,11 @@ def get_metrics(metrics):
     selected_metrics = []
     for metric in metrics:
         if isinstance(metric, str):
-            selected_metrics.append(available_metrics[metric]())
+            # quick hack, FIXME
+            if metric == 'mcc':
+                selected_metrics.append(available_metrics[metric](num_classes=2))    
+            else:
+                selected_metrics.append(available_metrics[metric]())
         else:
             selected_metrics.append(metric)
     return selected_metrics
