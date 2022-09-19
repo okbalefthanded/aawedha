@@ -214,8 +214,8 @@ class Perturbations(DataSet):
             X.append(x)
             Y.append(y)
 
-        X = np.array(X)
-        Y = np.array(Y).squeeze()
+        X = np.array(X, dtype=np.float32)
+        Y = np.array(Y, dtype=np.float32).squeeze()
         return X, Y
 
     def download_raw(self, store_path):

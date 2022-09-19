@@ -60,8 +60,8 @@ class Comp_IV_2a(DataSet):
             X.append(x)
             Y.append(y)
         
-        X = np.array(X)
-        Y = np.array(Y)
+        X = np.array(X, dtype=np.float32)
+        Y = np.array(Y, dtype=np.float32)
         return X, Y
     
     def load_raw_legacy(self, path=None, mode='',

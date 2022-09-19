@@ -177,8 +177,8 @@ class Exoskeleton(DataSet):
             x, y = self._get_epoched(session, records,
                                      epoch_duration, band,
                                      order, augment, method, slide)
-            X.append(x)
-            Y.append(y)
+            X.append(x.astype(np.float32))
+            Y.append(y.astype(np.float32))
 
         return X, Y
 

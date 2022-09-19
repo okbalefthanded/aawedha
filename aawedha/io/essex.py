@@ -195,9 +195,9 @@ class Essex(DataSet):
             epos.crop(epoch[0], epoch[1])
             if downsample:
                 epos.decimate(downsample)
-            epos = np.transpose(epos.get_data(), (2, 1, 0))
+            epos = np.transpose(epos.get_data().astype(np.float32), (2, 1, 0))
             X.append(epos*1e6)
-            Y.append(y)
+            Y.append(y.astype(np.float32))
             ev.append(events[:, -1])
             phrase.append(targets)
             flashes.append(counts)

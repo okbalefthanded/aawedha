@@ -226,8 +226,8 @@ class OpenBMISSVEP(DataSet):
         if augment and mode == 'test':
             self.sessions = self.sessions * augmented
 
-        X = np.array(X)
-        Y = np.array(Y).squeeze()
+        X = np.array(X, dtype=np.float32)
+        Y = np.array(Y, dtype=np.float32).squeeze()
         events = np.array(events).squeeze()
         return X, Y, events
 
@@ -459,8 +459,8 @@ class OpenBMIERP(DataSet):
             Y.append(np.concatenate(y_subj, axis=-1))
             events.append(np.concatenate(events_subj, axis=-1))
 
-        X = np.array(X)
-        Y = np.array(Y).squeeze()
+        X = np.array(X, dtype=np.float32)
+        Y = np.array(Y, dtype=np.float32).squeeze()
         events = np.array(events).squeeze()
         return X, Y, events
 
