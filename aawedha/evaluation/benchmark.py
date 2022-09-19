@@ -137,7 +137,7 @@ class BenchMark(Evaluation):
         if self.settings.paradigm_metrics:
             for metric in self.settings.paradigm_metrics:
                 pm[metric] = self.settings.paradigm_metrics[metric](probs, op, self.dataset) 
-            return pm        
+        return pm        
 
     @abc.abstractmethod
     def _eval_operation(self, op):

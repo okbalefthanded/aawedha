@@ -1,10 +1,10 @@
+from aawedha.paradigms.utils_paradigms import spelling_rate
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.models.utils_models import model_lib
-from aawedha.paradigms.base import Paradigm
-from aawedha.paradigms.utils_paradigms import spelling_rate
 from tensorflow.keras.utils import to_categorical
 from tensorflow_addons.metrics import F1Score
 from pyLpov.utils.utils import select_target
+from aawedha.paradigms.base import Paradigm
 from sklearn.metrics import accuracy_score
 from pyLpov.utils.utils import itr
 import tensorflow as tf
@@ -259,7 +259,7 @@ def measure_performance(Y_test, probs, perf, metrics_names):
     else:
         preds = probs.argmax(axis=-1)
     results['probs'] = probs
-    results['confusion'] = confusion_matrix(Y_test, preds) 
+    results['confusion'] = confusion_matrix(Y_test, preds)
     return results
 
 def aggregate_results(res):

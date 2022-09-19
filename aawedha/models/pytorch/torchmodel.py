@@ -287,11 +287,13 @@ class TorchModel(nn.Module):
 
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():
+            if self._is_binary():
+                outputs = nn.Sigmoid()(outputs)
+                outputs = outputs.squeeze()
+                labels = labels.squeeze()
             for metric in self.metrics_list:
-                metric_name = str(metric).lower()[:-2]
-                if self._is_binary():
-                    outputs = nn.Sigmoid()(outputs)
-                labels = self._labels_to_int(metric_name, labels)                                    
+                metric_name = str(metric).lower()[:-2] 
+                labels = self._labels_to_int(metric_name, labels)
                 metric.update(outputs, labels)
                 if metric_name == 'auroc':
                     metric_name = 'auc'
