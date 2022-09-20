@@ -1,4 +1,5 @@
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
+from aawedha.analysis.utils import array_to_intstr
 from aawedha.utils.network import download_file
 from aawedha.paradigms.subject import Subject
 from aawedha.utils.utils import unzip_files
@@ -101,7 +102,7 @@ class EPFL(DataSet):
         order : int
             band-pass filter order
             default: 2
-        
+
         Returns
         -------
         X : nd array (subjects x samples x channels x trials)
@@ -117,7 +118,7 @@ class EPFL(DataSet):
         sessions = range(1, 5)
         events = []
         events_test = []
-        
+
         X = []
         Y = []
         X_test = []
@@ -147,10 +148,10 @@ class EPFL(DataSet):
 
             epochs = np.concatenate(epochs, axis=-1)  # subject, sessions, runs
             y = np.concatenate(y, axis=-1)
-            ph.append(np.concatenate(target, axis=-1))
+            ph.append(array_to_intstr(np.concatenate(target, axis=-1)))
             # ph.append(target)
             # ph_test.append(np.concatenate(test_target, axis=-1))
-            ph_test.append(test_target)
+            ph_test.append(array_to_intstr(test_target))
             X.append(epochs.astype(np.float32))
             Y.append(y.astype(np.float32))
             X_test.append(test_epochs.astype(np.float32))

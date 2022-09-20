@@ -1,3 +1,4 @@
+from tensorflow_addons.metrics import MatthewsCorrelationCoefficient
 from aawedha.paradigms.utils_paradigms import spelling_rate
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.models.utils_models import model_lib
@@ -39,6 +40,7 @@ def metrics_by_lib(lib):
                         tf.keras.metrics.FalseNegatives(name='fn'),
                         tf.keras.metrics.Precision(name='precision'),
                         tf.keras.metrics.Recall(name='recall'),
+                        # MatthewsCorrelationCoefficient(num_classes=2, name='mcc'), # unsuppored sparse labels
                         # F1Score(num_classes=2, name="f1score"),
                         ]
     else:

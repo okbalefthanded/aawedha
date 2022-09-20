@@ -291,6 +291,9 @@ class TorchModel(nn.Module):
                 outputs = nn.Sigmoid()(outputs)
                 outputs = outputs.squeeze()
                 labels = labels.squeeze()
+                # hack for ECE
+                if outputs.min() == 0:
+                    outputs[outputs==0] += 1e-10
             for metric in self.metrics_list:
                 metric_name = str(metric).lower()[:-2] 
                 labels = self._labels_to_int(metric_name, labels)
