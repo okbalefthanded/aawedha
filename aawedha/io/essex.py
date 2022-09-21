@@ -34,6 +34,7 @@ class Essex(DataSet):
                          url="https://archive.physionet.org/pn4/erpbci"
                          )
         self.phrase = []
+        self.flashes = []
 
     def generate_set(self, load_path=None, download=False, channels=None, epoch=[0., .7], 
                      band=[1.0, 10.0], order=2,  downsample=None, 

@@ -37,7 +37,7 @@ class EPFL(DataSet):
         self.test_events = []
         self.phrase = []
         self.test_phrase = []
-        self.flashes_test = []
+        self.test_flashes = []
 
     def generate_set(self, load_path=None,
                      download=False,
@@ -125,7 +125,7 @@ class EPFL(DataSet):
         Y_test = []
         ph = []
         ph_test = []
-        flashes_test = []
+        test_flashes = []
         for sbj in range(1, subjects + 1):
             target = []
             if sbj == 5:
@@ -158,7 +158,7 @@ class EPFL(DataSet):
             Y_test.append(test_y.astype(np.float32))
             events.append(np.concatenate(stims, axis=-1))
             events_test.append(stm)
-            flashes_test.append(flashes)
+            test_flashes.append(flashes)
             
         #
         self.events = events
@@ -166,7 +166,7 @@ class EPFL(DataSet):
         self.phrase = np.array(ph)
         # self.phrase_test = np.array(ph_test)
         self.test_phrase = np.array(ph_test)
-        self.flashes_test = np.array(flashes_test)
+        self.test_flashes = np.array(test_flashes)
         return X, Y, X_test, Y_test
 
     def download_raw(self, store_path=None):

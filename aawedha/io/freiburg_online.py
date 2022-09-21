@@ -95,9 +95,8 @@ class FreiburgOnline(DataSet):
             del data
 
         samples, channels, trials = X[0].shape
-        X = np.array(X).reshape(
-            (n_subjects, samples, channels, trials), order='F', dtype=np.float32)
-        Y = np.array(Y).reshape((n_subjects, trials), order='F', dtype=np.float32) 
+        X = np.array(X).reshape((n_subjects, samples, channels, trials), order='F').astype(np.float32)
+        Y = np.array(Y).reshape((n_subjects, trials), order='F').astype(np.float32) 
 
         return X, Y
 

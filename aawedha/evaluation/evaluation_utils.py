@@ -425,7 +425,7 @@ def predict_fixed_trials(epochs, model):
             scores = scores[:, 1]
     return scores
 
-def predict_flexible_trials(epochs, desc, model, paradigm, trials):    
+def predict_flexible_trials(epochs, desc, model, paradigm, trials):
     """Calculate prediction scores on epoches with flexible number
     of trial repetitions for each subject's session.
     a fixed number of trials is selected after prediction, this number
