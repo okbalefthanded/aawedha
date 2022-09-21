@@ -501,8 +501,8 @@ class OpenBMIERP(DataSet):
     def _get_paradigm(self,):
         return ERP(title='ERP_Face', control='Sync',
                    stimulation=80,
-                   break_duration=135, repetition=12,
-                   stimuli=36,
+                   break_duration=135, repetition=5,
+                   stimuli=12,
                    stim_type='Face',
                    phrase=['NEURAL_NETWORKS_AND_DEEP_LEARNING','PATTERN_RECOGNITION_MACHINE_LEARNING'],
                    flashing_mode='RSP') # random_set_presentation

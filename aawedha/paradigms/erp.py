@@ -5,6 +5,8 @@
 from aawedha.paradigms.base import Paradigm
 
 
+
+
 class ERP(Paradigm):
     """
     Attributes
