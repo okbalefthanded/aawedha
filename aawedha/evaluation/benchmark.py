@@ -6,6 +6,7 @@ import abc
 
 class BenchMark(Evaluation):
     
+    #pylint: disable=too-many-arguments
     def run_evaluation(self, selection=None, pointer=None, check=False,
                         savecsv=False, csvfolder=None):
         """Perform evaluation on each subject
@@ -115,7 +116,7 @@ class BenchMark(Evaluation):
     
     def _pre_operations(self, selection=None, pointer=None, check=False):
         # generate folds if folds are empty
-        if not self.settings.folds:
+        if not self.settings.folds and self.settings.partition:
             self.generate_split(nfolds=30)
 
         if not pointer and check:

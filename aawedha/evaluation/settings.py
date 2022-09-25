@@ -11,6 +11,7 @@ class Settings:
         self.verbose = verbose
         self.current = current
         self.debug = debug
+        self.nfolds = 0
         self.fit_config = {}
         self.paradigm_metrics = {}
 

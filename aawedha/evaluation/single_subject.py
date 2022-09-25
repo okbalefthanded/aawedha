@@ -1,3 +1,4 @@
+from re import X
 from aawedha.evaluation.evaluation_utils import aggregate_results
 from aawedha.evaluation.evaluation_utils import create_split
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -35,9 +36,11 @@ class SingleSubject(BenchMark):
             cross-validation strategy
             default : 'Kfold'
         """
-        train_phase, val_phase, test_phase, n_trials = self._phases_partition()
+        self.settings.nfolds = nfolds
+        if self.settings.partition:
+            train_phase, val_phase, test_phase, n_trials = self._phases_partition()
         
-        self.settings.folds = self.get_folds(nfolds, n_trials, train_phase,
+            self.settings.folds = self.get_folds(nfolds, n_trials, train_phase,
                                     val_phase, test_phase, strategy)
 
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
@@ -140,11 +143,14 @@ class SingleSubject(BenchMark):
         x, y = self._get_data_pair(op)
 
         subj_results = []
-
+        
+        '''
         if isinstance(self.dataset.epochs, list):
             folds_range = range(len(self.settings.folds[0]))
         else:
             folds_range = range(len(self.settings.folds))
+        '''
+        folds_range = range(self.settings.nfolds)
 
         for fold in folds_range:
             split = self._split_set(x, y, op, fold, indie)
@@ -189,11 +195,11 @@ class SingleSubject(BenchMark):
 
         Parameters
         ----------
-        x : nd array (trials x kernels x channels x samples)
+        x : nd array (trials x channels x samples)
             subject EEG data to be split
             default: None
 
-        y : nd array (n_examples x n_classes)
+        y : nd array (trials x n_classes)
             subject data labels
             default: None
 
@@ -219,19 +225,25 @@ class SingleSubject(BenchMark):
         # folds[0][0]    : same trials numbers for all subjects
         split = {}
         
-        if isinstance(self.dataset.epochs, list):
-            folds = self.settings.folds[subj][fold][:]  # subject, fold, phase
+        if self.settings.folds:
+
+            if isinstance(self.dataset.epochs, list):
+                folds = self.settings.folds[subj][fold][:]  # subject, fold, phase
+            else:
+                folds = self.settings.folds[fold][:]
+            '''
+            if x.ndim == 4:
+                trials, kernels, channels, samples = x.shape
+            elif x.ndim == 3:
+                trials, kernels, samples = x.shape
+            '''
+            _train, _val, _test = 0, 1, 2
+            X_train = x[folds[_train]]
+            Y_train = y[folds[_train]]
+
         else:
-            folds = self.settings.folds[fold][:]
-        '''
-        if x.ndim == 4:
-            trials, kernels, channels, samples = x.shape
-        elif x.ndim == 3:
-            trials, kernels, samples = x.shape
-        '''
-        _train, _val, _test = 0, 1, 2
-        X_train = x[folds[_train]]
-        Y_train = y[folds[_train]]
+            X_train = x
+            Y_train = y
         
         X_val, Y_val = None, None
         if indie: # independent Test set            
@@ -245,7 +257,7 @@ class SingleSubject(BenchMark):
                 shape = (1, 0)
             X_test = X_test.transpose(shape)
             # validation data
-            if len(self.settings.partition) == 2:
+            if self.settings.partition and len(self.settings.partition) == 2:
                 X_val = x[folds[_val]]
                 Y_val = y[folds[_val]]
             Y_test = self.dataset.test_y[subj][:].astype(int)

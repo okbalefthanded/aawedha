@@ -504,5 +504,11 @@ class OpenBMIERP(DataSet):
                    break_duration=135, repetition=5,
                    stimuli=12,
                    stim_type='Face',
+                   speller=['A', 'B', 'C', 'D', 'E', 'F',
+                              'G', 'H', 'I', 'J', 'K', 'L',
+                              'M', 'N', 'O', 'P', 'Q', 'R',
+                              'S', 'T', 'U', 'V', 'W', 'X',
+                              'Y', 'Z', '1', '2', '3', '4',
+                              '5', '6', '7', '8', '9', '_'],
                    phrase=['NEURAL_NETWORKS_AND_DEEP_LEARNING','PATTERN_RECOGNITION_MACHINE_LEARNING'],
                    flashing_mode='RSP') # random_set_presentation

@@ -9,6 +9,7 @@ import os
 
 class Train(Evaluation):
 
+    #pylint: disable=too-many-arguments
     def run_evaluation(self, val_size=0.1, selection=None, save_model=False, 
                        model_format='TF', save_history=False, folder=None,
                        new_labels=None, events=None):
