@@ -108,9 +108,9 @@ class MultiDay(DataSet):
             else:
                 ch_names = self.ch_names
             if fname:
-                fname = f'{fname}_{rng}_'
+                dname = f'{fname}_{rng}_'
             else:
-                fname = f'{self.title}_{rng}_'
+                dname = f'{self.title}_{rng}_'
             #
             dataset = MultiDay()
             dataset.title = f'{self.title}_{rng}'
@@ -124,7 +124,7 @@ class MultiDay(DataSet):
             dataset.events = events
             dataset.test_events = test_events
             if save:
-                dataset.save_set(save_folder, fname=fname)
+                dataset.save_set(save_folder, fname=dname)
             #
 
     def load_raw(self, path=None, ch=None, mode='', frange='',

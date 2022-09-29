@@ -3,6 +3,7 @@ from aawedha.evaluation.evaluation_utils import paradigm_metrics
 
 class Settings:
 
+    #pylint: disable=too-many-arguments
     def __init__(self, partition=None, folds=None, engine="pytorch", 
                  verbose=0, current=0, debug=False):
         self.partition = partition

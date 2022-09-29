@@ -476,7 +476,7 @@ class DataSet(metaclass=ABCMeta):
         shapes = self._get_shapes(['epochs', 'y', 'events'])
         print(f"Shapes : {shapes}")
         if hasattr(self, 'test_epochs'):
-            if isinstance(self.test_epochs, list) and self.test_epochs:
+            if isinstance(self.test_epochs, np.ndarray) or self.test_epochs:
                 test_shapes = self._get_shapes(['test_epochs', 'test_y', 'test_events'])
                 print(f"Test Shapes: {test_shapes}")
 

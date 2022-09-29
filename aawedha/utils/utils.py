@@ -54,7 +54,6 @@ def get_tpu_address():
         print('TPU not found')
     return TPU_ADDRESS
 
-
 def init_TPU():
     """initialize TPU for training on TPUs
 
@@ -175,7 +174,6 @@ def set_seed(seed):
     random.seed(seed)
     tf.random.set_seed(seed)
     torch.manual_seed(seed)
-
 
 def make_folders(root="aawedha"):
     """Create additional folders where logs, trained models, checkpoints

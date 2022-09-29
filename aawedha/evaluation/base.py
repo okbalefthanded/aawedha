@@ -294,10 +294,12 @@ class Evaluation:
             data, duration, data_shape = self.dataset.info()
         else:
             data, duration, data_shape = '', '0', '[]'
-
-        prt = 'Subjects partition ' + \
+        if self.settings.partition:
+            prt = 'Subjects partition ' + \
               ', '.join(f'{s[i], self.settings.partition[i]}' for i in range(
                   len(self.settings.partition)))
+        else:
+            prt = '0'
         model = f'Model: {self.learner.name}'
         model_config = f'Model config: {self._get_model_configs_info()}'
         device = get_device(self.learner.config)
@@ -646,7 +648,10 @@ class Evaluation:
             False otherwise
         """
         subjects = self._get_n_subjects()
-        prt = np.sum(self.settings.partition)
+        if self.settings.partition:
+            prt = np.sum(self.settings.partition)
+        else:
+            prt = 0
         return subjects < prt
 
     def _has_val(self):
@@ -658,22 +663,28 @@ class Evaluation:
            if 0 no validation, otherwise number of parts from dataset to use
             in validation
         """
-        train = self.settings.partition[0]
-        if len(self.settings.partition) == 3:
-            test = self.settings.partition[2]
-        else:
-            test = 1
-
-        return self._get_n_subjects() - train - test
+        if self.settings.partition:
+            train = self.settings.partition[0]
+            if len(self.settings.partition) == 3:
+                test = self.settings.partition[2]
+            else:
+                test = 1
+            return self._get_n_subjects() - train - test
 
     def _init_logger(self):
         if self.dataset:
             title = self.dataset.title
         else:
             title = ''
-        if not os.path.isdir("aawedha/logs"):
-                make_folders()
-        dataset_folder = f"aawedha/logs/{title}/"
+        wd = os.getcwd()
+        inside_root = 'aawedha' in [name for name in os.listdir(".") if os.path.isdir(wd)]
+        if inside_root:
+            root = 'aawedha' 
+        else:            
+            root = wd
+        if not os.path.isdir(f"{root}/logs"):
+            make_folders(root)
+        dataset_folder = f"{root}/logs/{title}/"
         now = datetime.datetime.now().strftime('%c').replace(' ', '_').replace(':', '_')
         if not os.path.isdir(dataset_folder):
             os.mkdir(dataset_folder)
