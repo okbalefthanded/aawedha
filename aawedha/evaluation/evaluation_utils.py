@@ -197,13 +197,10 @@ def create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
     dict
         evaluation data split dictionary where the key is the array's name.
     """
-    if Y_train.min() != 0:
-        Y_train -= 1
-        if isinstance(Y_test, np.ndarray):
-            Y_test -= 1
-        if isinstance(Y_val, np.ndarray):
-            Y_val  -= 1
-
+    Y_train = class_min_zero(Y_train)
+    Y_test  = class_min_zero(Y_test)
+    Y_val   = class_min_zero(Y_val)
+    
     split = {}
     split['X_test'] = None
     split['X_val'] = None
@@ -217,6 +214,24 @@ def create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
     split['Y_val'] = Y_val
     
     return split
+
+def class_min_zero(array):
+    """Enforce class labels in the range [0, C)
+
+    Parameters
+    ----------
+    array : numpy array 1d
+        labels array
+
+    Returns
+    -------
+    numpy array
+        class labels in range [0, C)
+    """
+    if isinstance(array, np.ndarray):
+        if array.min() == 1:
+            array -= 1
+    return array
 
 def measure_performance(Y_test, probs, perf, metrics_names):
     """Measure model performance on a dataset
