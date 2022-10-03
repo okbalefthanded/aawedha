@@ -300,6 +300,8 @@ class TorchModel(nn.Module):
                 metric.update(outputs, labels)
                 if metric_name == 'auroc':
                     metric_name = 'auc'
+                if metric_name == 'ece':
+                    print(outputs.shape, outputs.dtype, labels.shape, labels.dtype)
                 return_metrics[metric_name] = metric.compute().item()
         return return_metrics
     

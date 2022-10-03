@@ -13,6 +13,7 @@ torch
 torchvision
 torchmetrics
 torchsummary
+holocron
 libauc
 pytest
 pynvml
@@ -23,6 +24,5 @@ antialiased-cnns
 pyyaml
 thop
 git+https://github.com/lessw2020/Ranger21.git
-git+https://github.com/artemmavrin/focal-loss.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git
 git+https://github.com/okbalefthanded/pyLpov.git@py3

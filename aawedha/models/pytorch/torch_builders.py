@@ -1,17 +1,20 @@
-import torch.optim as optim
-import torch.nn as nn
-import torchmetrics
+from aawedha.loss.focal_loss import FocalLoss
 from libauc.losses import AUCMLoss
 from libauc.optimizers import PESG
+from holocron.nn import PolyLoss
 from ranger21 import Ranger21
-
+from torch import optim
+from torch import nn
+import torchmetrics
 
 losses = {
     'binary_crossentropy': nn.BCEWithLogitsLoss,
     'sparse_categorical_crossentropy': nn.CrossEntropyLoss,
     'categorical_crossentropy': nn.CrossEntropyLoss,
+    'focal_loss': FocalLoss,
+    'poly_loss': PolyLoss,
     'auc_margin' : AUCMLoss
-            }
+    }
 
 available_metrics = {
     'accuracy': torchmetrics.Accuracy,
@@ -49,10 +52,19 @@ def _get_optim(opt_id, params):
         raise ModuleNotFoundError
 
 def get_loss(loss):
-    if loss in list(losses.keys()):
-        return losses[loss]()
+    if isinstance(loss, str):
+        if loss in list(losses.keys()):
+            return losses[loss]()
+        else:
+            raise ModuleNotFoundError
+    elif isinstance(loss, list):
+        loss_id = loss[0]
+        params = loss[1]
+        return losses[loss_id](**params)
+    elif isinstance(loss, nn.Module):
+        return loss
     else:
-        raise ModuleNotFoundError
+        raise NotImplementedError
 
 def get_metrics(metrics):
     selected_metrics = []
