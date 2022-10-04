@@ -28,7 +28,8 @@ class TorchModel(nn.Module):
         self.input_shape = None
         self.mu = None
         self.sigma = None  
-        self.is_categorical = False      
+        self.is_categorical = False 
+        self._is_binary = False     
 
     def compile(self, optimizer='Adam', loss=None,
                 metrics=None, loss_weights=None,
@@ -92,7 +93,9 @@ class TorchModel(nn.Module):
             train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle, 
                                             labels_type=labels_type) 
             if y.ndim > 1:
-                self._set_auroc_classes()                
+                self._set_auroc_classes()         
+
+        self._is_binary = torch.tensor(y).unique().max() == 1       
         
         if class_weight: 
             if isinstance(y, np.ndarray):
@@ -171,9 +174,10 @@ class TorchModel(nn.Module):
             x_tensor = torch.tensor(x, dtype=torch.float32).to(self.device)
         pred = self(x_tensor)
         #if self._is_binary():
-        if pred.ndim == 2:
-            if pred.shape[1] == 1:
-                pred = nn.Sigmoid()(pred)
+        # if pred.ndim == 2:
+        #    if pred.shape[1] == 1:
+        if self._is_binary:
+            pred = nn.Sigmoid()(pred)
         return pred.cpu().detach().numpy()
 
     def evaluate(self, x, y=None, batch_size=32, verbose=0, normalize=False, 
@@ -289,7 +293,8 @@ class TorchModel(nn.Module):
 
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():
-            if self._is_binary(labels):
+            # if self._is_binary(labels):
+            if self._is_binary:
                 outputs = nn.Sigmoid()(outputs)
                 outputs = outputs.squeeze()
                 labels = labels.squeeze()
@@ -305,8 +310,8 @@ class TorchModel(nn.Module):
                 return_metrics[metric_name] = metric.compute().item()
         return return_metrics
     
-    def _is_binary(self, labels):
-        return labels.unique().max() == 1
+    # def _is_binary(self, labels):
+    #     return labels.unique().max() == 1
         # return "BCE" in str(type(self.loss))
         
     def _is_one_cycle(self):
