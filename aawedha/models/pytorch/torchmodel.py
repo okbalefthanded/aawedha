@@ -128,7 +128,7 @@ class TorchModel(nn.Module):
                 print("Epoch {}/{}".format(epoch+1, epochs))
             # train step
             for i, data in enumerate(train_loader, 0):
-                return_metrics = self.train_step(data)              
+                return_metrics = self.train_step(data)
                 running_loss += return_metrics['loss'] / len(train_loader)
                 return_metrics['loss'] = running_loss
 
@@ -170,8 +170,10 @@ class TorchModel(nn.Module):
         else:
             x_tensor = torch.tensor(x, dtype=torch.float32).to(self.device)
         pred = self(x_tensor)
-        if self._is_binary():
-            pred = nn.Sigmoid()(pred)
+        #if self._is_binary():
+        if pred.ndim == 2:
+            if pred.shape[1] == 1:
+                pred = nn.Sigmoid()(pred)
         return pred.cpu().detach().numpy()
 
     def evaluate(self, x, y=None, batch_size=32, verbose=0, normalize=False, 
@@ -287,7 +289,7 @@ class TorchModel(nn.Module):
 
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():
-            if self._is_binary():
+            if self._is_binary(labels):
                 outputs = nn.Sigmoid()(outputs)
                 outputs = outputs.squeeze()
                 labels = labels.squeeze()
@@ -300,14 +302,13 @@ class TorchModel(nn.Module):
                 metric.update(outputs, labels)
                 if metric_name == 'auroc':
                     metric_name = 'auc'
-                if metric_name == 'ece':
-                    print(outputs.shape, outputs.dtype, labels.shape, labels.dtype)
                 return_metrics[metric_name] = metric.compute().item()
         return return_metrics
     
-    def _is_binary(self):
-        return "BCE" in str(type(self.loss))
-
+    def _is_binary(self, labels):
+        return labels.unique().max() == 1
+        # return "BCE" in str(type(self.loss))
+        
     def _is_one_cycle(self):
         return type(self.scheduler) is torch.optim.lr_scheduler.OneCycleLR
     
