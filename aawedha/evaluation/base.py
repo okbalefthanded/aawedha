@@ -1,11 +1,12 @@
 from aawedha.evaluation.evaluation_utils import labels_to_categorical
 from aawedha.evaluation.evaluation_utils import measure_performance
+from aawedha.evaluation.evaluation_utils import save_metric_csv
 from aawedha.evaluation.evaluation_utils import class_weights
 from aawedha.evaluation.mixup import build_mixup_dataset
 from aawedha.evaluation.checkpoint import CheckPoint
 from aawedha.models.utils_models import load_model
+from aawedha.utils.utils import make_folders, cwd
 from aawedha.evaluation.settings import Settings
-from aawedha.utils.utils import make_folders
 from aawedha.utils.utils import get_gpu_name
 from aawedha.models.base_model import Model
 from aawedha.utils.utils import get_device
@@ -127,8 +128,8 @@ class Evaluation:
     """
 
     def __init__(self, dataset=None, model=None, partition=None, folds=None,
-                 verbose=2, log=False, engine="pytorch", normalize=True, 
-                 debug=False):
+                 verbose=2, engine="pytorch", normalize=True, log=False,   
+                 log_level='debug', debug=False):
         """
         """
         self.dataset = dataset
@@ -139,7 +140,7 @@ class Evaluation:
         self.log = log
         self.logger = None        
         if self.log:
-            self.logger = self._init_logger()           
+            self.logger = self._init_logger(log_level)           
         self.log_dir = None 
 
     def __str__(self):
@@ -671,7 +672,7 @@ class Evaluation:
                 test = 1
             return self._get_n_subjects() - train - test
 
-    def _init_logger(self):
+    def _init_logger(self, level='debug'):
         if self.dataset:
             title = self.dataset.title
         else:
@@ -690,7 +691,7 @@ class Evaluation:
             os.mkdir(dataset_folder)
         f = dataset_folder + '_'.join([self.__class__.__name__,
                                            title, now, '.log'])
-        return Logger(fname=f, logger_name='eval_log')
+        return Logger(fname=f, logger_name='eval_log', level=level)
     
     def _log_operation_results(self, op_ind, op_results):
         """Save an evaluation iteration results in logger.
@@ -741,8 +742,9 @@ class Evaluation:
         folder : str
             results files will be stored inside folder, if None, a default folder inside aawedha is used.
         """
+        root = cwd()
         if not folder:
-            folder = 'aawedha/results'
+            folder = f'{root}/results'
             if not os.path.isdir(folder):
                 os.mkdir(folder)
 
@@ -763,9 +765,11 @@ class Evaluation:
         
         if evl == 'CrossSubject' or evl == 'CrossSet':
             columns = ['Fold 1']
-            metrics.remove("folds")
+            if "folds" in metrics:
+                metrics.remove("folds")
         elif evl == 'SingleSubject':
-            metrics.remove("subjects")
+            if 'Subject' in metrics:
+                metrics.remove("Subject")
             nfolds = len(self.score.results['accuracy'][0])
             # columns = [f'Fold {fld+1}' for fld, _ in enumerate(evl.folds)]
             columns = [f'Fold {fld+1}' for fld in range(nfolds)]
@@ -774,6 +778,12 @@ class Evaluation:
         date = time_now()
         results = self.score.results
         for metric in metrics:
+            if metric == 'viz':
+                continue
+            index_name = f"{self.learner.model.name} / {metric}"
+            fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
+            save_metric_csv(results[metric], rows, columns, fname, index_name)
+            '''
             acc = results[metric].round(3) 
             if acc.ndim == 1:
                 acc_mean = acc
@@ -790,3 +800,4 @@ class Evaluation:
             fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
             df.to_csv(fname, encoding='utf-8')
             print(f"Results saved as CSV in: {fname}")
+            '''

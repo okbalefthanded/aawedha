@@ -9,6 +9,7 @@ from aawedha.paradigms.base import Paradigm
 from sklearn.metrics import accuracy_score
 from pyLpov.utils.utils import itr
 import tensorflow as tf
+import pandas as pd
 import numpy as np
 
 
@@ -304,6 +305,25 @@ def aggregate_results(res):
         results[metric] = tmp
 
     return results
+
+def save_metric_csv(result, rows, columns, fname, index):
+    acc = result.round(3)
+    if acc.ndim == 1:
+        acc_mean = acc
+        std = result.std().round(3)
+        std = np.tile(std, len(rows) - 1)
+    else:
+        acc_mean = result.mean(axis=1).round(3)
+        std = result.std(axis=1).round(3) 
+    sem = np.round(std / np.sqrt(len(result)), 3)
+    values = np.column_stack((acc, acc_mean, std, sem))
+    values = np.vstack((values, values.mean(axis=0).round(3)))
+    df = pd.DataFrame(data=values, index=rows, columns=columns)
+    df.index.name = index
+    # df.index.name = f"{self.learner.model.name} / {metric}"
+    # fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
+    df.to_csv(fname, encoding='utf-8')
+    print(f"Results saved as CSV in: {fname}")
 
 def predict_trial(epochs, y, desc, model, n_char, commands):
     """Calculate character recognition rate

@@ -1,3 +1,4 @@
+from aawedha.utils.utils import cwd
 import pickle
 import os
 
@@ -143,6 +144,11 @@ class CheckPoint:
         -------
         no value
         """
+        root = cwd()
+
+        if not os.path.isdir(f"{root}/trained"):
+            os.mkdir(f"{root}/trained")
+
         if rets:
             self.rets.append(rets)
         self.current = current
@@ -150,16 +156,17 @@ class CheckPoint:
         # HOTFIX FIXME
         # rolling back to h5 format due to TPU restrictions
         if self.settings.engine == 'keras':
-            self.check_path = 'aawedha/trained/current_model.h5'
+            self.check_path = f'{root}/trained/current_model.h5'
             # self.learner.name = 'aawedha/trained/current_model.h5'
             # self.model_name = 'aawedha/trained/current_model'
         elif self.settings.engine == 'pytorch':
             # self.model_name = 'aawedha/trained/current_model.pth'
-            self.check_path = 'aawedha/trained/current_model.pth' 
+            self.check_path = f'{root}/trained/current_model.pth'
         # model.save(self.model_name)
+        
         model.save(self.check_path)
         # save evaluation as object?
-        save_folder = 'aawedha/checkpoints'
+        save_folder = f'{root}/checkpoints'
         if not os.path.isdir(save_folder):
             os.mkdir(save_folder)
 

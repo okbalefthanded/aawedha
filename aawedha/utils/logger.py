@@ -1,16 +1,27 @@
 import logging
 
 
+levels_names = {
+    'debug' : logging.DEBUG,
+    'info' : logging.INFO
+}
+
 class Logger:
 
-    def __init__(self, fname="logger.log", logger_name="eval_log"):
-        self.logger = self._create_logger(fname, logger_name)
+    def __init__(self, fname="logger.log", logger_name="eval_log",
+                 level='debug'):
+        self.logging_level = levels_names[level]
+        self.logger = self._create_logger(fname, logger_name, self.logging_level)
+        
 
     def name(self):
         return self.logger.handlers[0].baseFilename
 
     def log(self, message):
-        self.logger.debug(message)
+        if self.logging_level == logging.DEBUG:
+            self.logger.debug(message)
+        elif self.logging_level == logging.INFO:
+            self.logger.info(message)
 
     def log_results(self, score):
         """Log metrics means after the end of an evaluation to logger"""
@@ -19,7 +30,8 @@ class Logger:
         # self.logger.debug(' / '.join(means))
         self.log(' / '.join(means))
 
-    def _create_logger(self, fname='logger.log', logger_name='eval_log'):
+    def _create_logger(self, fname='logger.log', logger_name='eval_log', 
+                       level='debug'):
         """define a logger instance
 
         Parameters
@@ -35,10 +47,10 @@ class Logger:
             logger instance
         """
         logger = logging.getLogger(logger_name)
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(level)
         # Create handlers
         f_handler = logging.FileHandler(fname, mode='a')
-        f_handler.setLevel(logging.DEBUG)
+        f_handler.setLevel(level)
         # Create formatters and add it to handlers
         f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         f_handler.setFormatter(f_format)

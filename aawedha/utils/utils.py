@@ -191,3 +191,14 @@ def make_folders(root="aawedha"):
             folder = folder.replace(':', '_')
         if not os.path.isdir(folder):
             os.mkdir(folder)
+
+def cwd():
+    """Get current working directory
+
+    Returns
+    -------
+    str
+        current working directory
+    """
+    cwdir = os.getcwd().split('/')[-1]
+    return os.getcwd() if cwdir != 'aawedha' else 'aawedha'
