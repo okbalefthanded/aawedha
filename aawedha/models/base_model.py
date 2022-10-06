@@ -123,6 +123,13 @@ class Model:
     def set_type(self):
         self.type = model_lib(type(self.model))
 
+    def output_shape(self):
+        
+        if self.type == 'keras':
+            raise NotImplemented
+        else:
+            return self.model.output_shape
+    
     def _compile_keras(self, khsara, optimizer, metrics):
         self.model.compile(loss=khsara,
                                optimizer=optimizer,

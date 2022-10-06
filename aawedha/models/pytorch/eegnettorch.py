@@ -94,6 +94,7 @@ class EEGNetTorch(EEGNetTorchBase):
         self.dense = LineardWithConstraint( (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
 
         self.initialize_glorot_uniform()
+        
 
 
 class EEGNetTorchSSVEP(EEGNetTorchBase):

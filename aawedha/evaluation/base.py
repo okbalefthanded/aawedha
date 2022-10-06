@@ -239,7 +239,9 @@ class Evaluation:
         self.learner.model = model
         self.learner.name = model.name
         self.learner.set_type()
-        self.reset_weights()    
+        self.reset_weights()   
+        if self.settings.engine == 'pytorch':
+            self.set_output_shape() 
 
     def save_model(self, folderpath=None, filepath=None, modelformat='TF'):
         """Save trained model in HDF5 format or SavedModel TF format
@@ -622,7 +624,10 @@ class Evaluation:
             loss_config = khsara.get_config()
             if khsara.name != 'sparse_categorical_crossentropy' and 'label_smoothing' in loss_config:
                 if loss_config['label_smoothing'] != 0.0:
-                    convert_label = True              
+                    convert_label = True
+        elif self.settings.engine == 'pytorch':
+            if self.learner.output_shape() > 1:
+                convert_label = True              
                   
         if convert_label:
             Y_train = labels_to_categorical(Y_train)
@@ -783,21 +788,3 @@ class Evaluation:
             index_name = f"{self.learner.model.name} / {metric}"
             fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
             save_metric_csv(results[metric], rows, columns, fname, index_name)
-            '''
-            acc = results[metric].round(3) 
-            if acc.ndim == 1:
-                acc_mean = acc
-                std = results[metric].std().round(3)
-                std = np.tile(std, len(rows) - 1)
-            else:
-                acc_mean = results[metric].mean(axis=1).round(3)
-                std = results[metric].std(axis=1).round(3) 
-            sem = np.round(std / np.sqrt(len(results[metric])), 3)
-            values = np.column_stack((acc, acc_mean, std, sem))
-            values = np.vstack((values, values.mean(axis=0).round(3)))
-            df = pd.DataFrame(data=values, index=rows, columns=columns)
-            df.index.name = f"{self.learner.model.name} / {metric}"
-            fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
-            df.to_csv(fname, encoding='utf-8')
-            print(f"Results saved as CSV in: {fname}")
-            '''

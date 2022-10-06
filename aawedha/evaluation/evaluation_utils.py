@@ -320,8 +320,6 @@ def save_metric_csv(result, rows, columns, fname, index):
     values = np.vstack((values, values.mean(axis=0).round(3)))
     df = pd.DataFrame(data=values, index=rows, columns=columns)
     df.index.name = index
-    # df.index.name = f"{self.learner.model.name} / {metric}"
-    # fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
     df.to_csv(fname, encoding='utf-8')
     print(f"Results saved as CSV in: {fname}")
 

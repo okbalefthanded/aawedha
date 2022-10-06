@@ -1,3 +1,4 @@
+from copy import deepcopy
 from aawedha.models.pytorch.samtorch import enable_running_stats, disable_running_stats
 from aawedha.models.pytorch.torch_builders import get_metrics, build_scheduler
 from aawedha.evaluation.evaluation_utils import fit_scale, transform_scale
@@ -15,7 +16,7 @@ import pkbar
 class TorchModel(nn.Module):
 
     def __init__(self, device='cuda', name='torchmodel'):
-        super(TorchModel, self).__init__()
+        super().__init__()
         self.optimizer = None
         self.loss = None
         self.metrics_list = []
@@ -26,6 +27,7 @@ class TorchModel(nn.Module):
         self.history = {}
         self.device = device
         self.input_shape = None
+        self.output_shape = None
         self.mu = None
         self.sigma = None  
         self.is_categorical = False 
@@ -263,11 +265,16 @@ class TorchModel(nn.Module):
     def get_weights(self):
         return self.state_dict()
 
-    def summary(self):
+    def summary(self, shape=None):
         """
         """
-        if self.input_shape:
-            summary(self, self.input_shape, device=self.device)
+        input_shape = None
+        if shape:
+            input_shape = shape
+        elif self.input_shape:
+            input_shape = self.input_shape
+        if input_shape:
+            summary(self, input_shape, device=self.device)
 
     def save(self, path):
         torch.save(self, path)  
@@ -291,20 +298,36 @@ class TorchModel(nn.Module):
         if self.scheduler:
             self.scheduler.step()
 
+    def set_output_shape(self):
+        """Setter for output shape attribute
+        """
+        modules = list(self._modules.keys())
+        output_index = -2
+        if modules[-1] != 'loss':
+            output_index = -1
+        last_layer = modules[output_index]
+        if hasattr(self._modules[last_layer], 'out_features'):
+            self.output_shape = self._modules[last_layer].out_features
+
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():
             # if self._is_binary(labels):
+            # torchmetrics requires sparse labels, some losses (eg polyLoss)
+            # require categorical labels
+            targets = deepcopy(labels)
+            if targets.shape[1] > 1:
+                targets = targets.argmax(axis=1)
             if self._is_binary:
                 outputs = nn.Sigmoid()(outputs)
                 outputs = outputs.squeeze()
-                labels = labels.squeeze()
+                targets = targets.squeeze()
                 # hack for ECE
                 if outputs.min() == 0:
                     outputs[outputs==0] += 1e-10
             for metric in self.metrics_list:
                 metric_name = str(metric).lower()[:-2] 
-                labels = self._labels_to_int(metric_name, labels)
-                metric.update(outputs, labels)
+                targets = self._labels_to_int(metric_name, targets)
+                metric.update(outputs, targets)
                 if metric_name == 'auroc':
                     metric_name = 'auc'
                 return_metrics[metric_name] = metric.compute().item()
