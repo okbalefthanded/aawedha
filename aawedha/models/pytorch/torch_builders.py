@@ -2,6 +2,7 @@
 #from aawedha.loss.focal_loss import FocalLoss
 #from aawedha.loss.poly_loss import PolyLoss
 import aawedha.loss.torch_loss as tl
+from aawedha.optimizers.adan import Adan
 from libauc.losses import AUCMLoss
 from libauc.optimizers import PESG
 #from holocron.nn import PolyLoss
@@ -30,6 +31,7 @@ available_metrics = {
     }
 
 custom_opt = {
+    'Adan': Adan,
     'Ranger': Ranger21,
     'PESG' : PESG
 }
