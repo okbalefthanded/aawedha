@@ -1,4 +1,4 @@
-from aawedha.evaluation.evaluation_utils import paradigm_metrics
+from aawedha.paradigms.utils_paradigms import paradigm_metrics
 
 
 class Settings:

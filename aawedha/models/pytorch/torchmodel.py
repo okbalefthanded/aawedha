@@ -4,10 +4,8 @@ from aawedha.models.pytorch.torch_builders import get_metrics, build_scheduler
 from aawedha.evaluation.evaluation_utils import fit_scale, transform_scale
 from aawedha.models.pytorch.torch_builders import get_optimizer, get_loss
 from torchsummary import summary
-import torch.optim as optim
 import torch.nn as nn
 import numpy as np
-import torchmetrics
 import collections
 import torch
 import pkbar
@@ -319,8 +317,8 @@ class TorchModel(nn.Module):
             # torchmetrics requires sparse labels, some losses (eg polyLoss)
             # require categorical labels
             targets = deepcopy(labels)
-            if targets.shape[1] > 1:
-                targets = targets.argmax(axis=1)
+            # if targets.shape[1] > 1:
+            #   targets = targets.argmax(axis=1)
             if self._is_binary:
                 outputs = nn.Sigmoid()(outputs)
                 outputs = outputs.squeeze()

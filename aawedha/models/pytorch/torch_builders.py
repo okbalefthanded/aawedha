@@ -1,19 +1,22 @@
-from aawedha.loss.focal_loss import FocalLoss
+#from aawedha.loss.complement_ce import ComplementCrossEntropy
+#from aawedha.loss.focal_loss import FocalLoss
+#from aawedha.loss.poly_loss import PolyLoss
+import aawedha.loss.torch_loss as tl
 from libauc.losses import AUCMLoss
 from libauc.optimizers import PESG
 #from holocron.nn import PolyLoss
-from aawedha.loss.poly_loss import PolyLoss
 from ranger21 import Ranger21
 from torch import optim
 from torch import nn
 import torchmetrics
 
 losses = {
-    'binary_crossentropy': nn.BCEWithLogitsLoss,
     'sparse_categorical_crossentropy': nn.CrossEntropyLoss,
+    'complement_crossentropy': tl.ComplementCrossEntropy,
     'categorical_crossentropy': nn.CrossEntropyLoss,
-    'focal_loss': FocalLoss,
-    'poly_loss': PolyLoss,
+    'binary_crossentropy': nn.BCEWithLogitsLoss,
+    'focal_loss': tl.FocalLoss,
+    'poly_loss': tl.PolyLoss,
     'auc_margin' : AUCMLoss
     }
 

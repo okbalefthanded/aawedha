@@ -1,4 +1,3 @@
-from re import X
 from aawedha.evaluation.evaluation_utils import aggregate_results
 from aawedha.evaluation.evaluation_utils import create_split
 from sklearn.model_selection import KFold, StratifiedKFold

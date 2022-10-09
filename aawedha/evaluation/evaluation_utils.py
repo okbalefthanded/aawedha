@@ -1,5 +1,4 @@
 from tensorflow_addons.metrics import MatthewsCorrelationCoefficient
-from aawedha.paradigms.utils_paradigms import spelling_rate
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.models.utils_models import model_lib
 from tensorflow.keras.utils import to_categorical
@@ -13,9 +12,28 @@ import pandas as pd
 import numpy as np
 
 
-paradigm_metrics = {
-    'spelling_rate': spelling_rate
-}
+
+def positive_class_prob(probs):
+    """Select probabilities of positive class from binary classification
+    probabilities
+
+    Parameters
+    ----------
+    probs : numpy array (N x 1) or (N x M)
+        model output as probabilites.
+        N : batch size or number of samples
+        M : 2 for categorical output
+
+    Returns
+    -------
+    1D array
+        Probabilies of y_class = 1
+    """
+    scores = probs.squeeze()
+    if scores.ndim == 1:
+        return scores
+    else:
+        return scores[:, 1]
 
 
 def metrics_by_lib(lib):
