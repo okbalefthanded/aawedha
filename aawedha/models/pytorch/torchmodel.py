@@ -97,7 +97,11 @@ class TorchModel(nn.Module):
             if y.ndim > 1:
                 self._set_auroc_classes()         
 
-        self._is_binary = torch.tensor(y).unique().max() == 1       
+        self.set_output_shape()
+        if self.is_categorical:
+            self._is_binary = torch.tensor(y).shape[1] == 2
+        else:
+            self._is_binary = torch.tensor(y).unique().max() == 1       
         
         if class_weight: 
             if isinstance(y, np.ndarray):

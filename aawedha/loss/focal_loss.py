@@ -1,4 +1,5 @@
 from typing import Any, List, Optional, Union
+from torch.nn import functional as F
 from torch import Tensor
 from torch import nn
 import torch 
@@ -8,9 +9,6 @@ import torch
 # https://github.com/pytorch/vision/blob/main/torchvision/ops/focal_loss.py
 
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-import torch
-from torch.nn import functional as F
-
 
 def sigmoid_focal_loss(
     inputs: torch.Tensor,
