@@ -1,5 +1,8 @@
 language: python
 
+os: linux
+dist: focal
+
 python:
   - 3.7.14
 
