@@ -241,7 +241,7 @@ class Evaluation:
         self.learner.set_type()
         self.reset_weights()   
         if self.settings.engine == 'pytorch':
-            self.set_output_shape() 
+            self.learner.model.set_output_shape() 
 
     def save_model(self, folderpath=None, filepath=None, modelformat='TF'):
         """Save trained model in HDF5 format or SavedModel TF format
