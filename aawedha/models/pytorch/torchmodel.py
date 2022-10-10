@@ -29,7 +29,7 @@ class TorchModel(nn.Module):
         self.mu = None
         self.sigma = None  
         self.is_categorical = False 
-        self._is_binary = False     
+        self.is_binary = False     
 
     def compile(self, optimizer='Adam', loss=None,
                 metrics=None, loss_weights=None,
@@ -97,9 +97,9 @@ class TorchModel(nn.Module):
 
         self.set_output_shape()
         if self.is_categorical:
-            self._is_binary = torch.tensor(y).shape[1] == 2
+            self.is_binary = torch.tensor(y).shape[1] == 2
         else:
-            self._is_binary = torch.tensor(y).unique().max() == 1       
+            self.is_binary = torch.tensor(y).unique().max() == 1       
         
         if class_weight: 
             if isinstance(y, np.ndarray):
@@ -180,7 +180,7 @@ class TorchModel(nn.Module):
         #if self._is_binary():
         # if pred.ndim == 2:
         #    if pred.shape[1] == 1:
-        if self._is_binary:
+        if self.is_binary:
             pred = nn.Sigmoid()(pred)
         return pred.cpu().detach().numpy()
 
@@ -319,7 +319,7 @@ class TorchModel(nn.Module):
             targets = deepcopy(labels)
             # if targets.shape[1] > 1:
             #   targets = targets.argmax(axis=1)
-            if self._is_binary:
+            if self.is_binary:
                 outputs = nn.Sigmoid()(outputs)
                 outputs = outputs.squeeze()
                 targets = targets.squeeze()

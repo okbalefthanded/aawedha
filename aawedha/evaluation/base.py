@@ -619,7 +619,7 @@ class Evaluation:
         device = get_device(self.learner.config)
         classes = self._get_classes()
         khsara, _, _, _ = self.learner.get_compile_configs(device, classes)
-             
+
         if self.settings.engine == 'keras' and type(khsara) != str:
             loss_config = khsara.get_config()
             if khsara.name != 'sparse_categorical_crossentropy' and 'label_smoothing' in loss_config:
@@ -627,7 +627,9 @@ class Evaluation:
                     convert_label = True
         elif self.settings.engine == 'pytorch':
             if self.learner.output_shape() > 1:
-                convert_label = True              
+                if Y_train.ndim > 1:
+                    if Y_train.shape[1] == 2:
+                        convert_label = True              
                   
         if convert_label:
             Y_train = labels_to_categorical(Y_train)
