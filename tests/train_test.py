@@ -61,6 +61,8 @@ def process_evaluation(evl, model=None):
 def test_single_subject():
     # set seeds
     set_seed(42)
+    # create main data folder
+    os.mkdir("data")
     # load data
     data = create_dataset()
     subjects, samples, channels, n_classes = data.epochs.shape
