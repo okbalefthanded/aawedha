@@ -27,6 +27,7 @@ def create_dataset():
                 download=download,
                 fname='Comp_IV_2a'
                 )
+    return ds
 
 def load_data():
     fpath = 'data/Comp_IV_Data_Set_IIa/epoched/Comp_IV_2a.pkl'
