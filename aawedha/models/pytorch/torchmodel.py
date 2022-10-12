@@ -96,10 +96,10 @@ class TorchModel(nn.Module):
                 self._set_auroc_classes()         
 
         self.set_output_shape()
-        if self.is_categorical:
-            self.is_binary = torch.tensor(y).shape[1] == 2
-        else:
-            self.is_binary = torch.tensor(y).unique().max() == 1       
+        if isinstance(y, np.ndarray):
+            self._set_is_binary(torch.tensor(y))
+        elif not y:
+            self._set_is_binary(train_loader.dataset.tensors[1])
         
         if class_weight: 
             if isinstance(y, np.ndarray):
@@ -338,6 +338,13 @@ class TorchModel(nn.Module):
     # def _is_binary(self, labels):
     #     return labels.unique().max() == 1
         # return "BCE" in str(type(self.loss))
+
+    def _set_is_binary(self, y):
+        if self.is_categorical:
+            self.is_binary = y.shape[1] == 2
+        else:
+            self.is_binary = y.unique().max() == 1
+        
         
     def _is_one_cycle(self):
         return type(self.scheduler) is torch.optim.lr_scheduler.OneCycleLR

@@ -1,6 +1,7 @@
 """
     Base class for datasets
 """
+from sklearn.model_selection import StratifiedKFold
 from abc import ABCMeta, abstractmethod
 from aawedha.analysis.utils import isfloat
 from aawedha.analysis.preprocess import eeg_epoch
@@ -304,6 +305,25 @@ class DataSet(metaclass=ABCMeta):
 
         return indexes
 
+    def select_trials(self, ratio=0.1):
+        """Keep a random subset of training trials.
+        The selection is done by Shuffled stratified Kfold.
+
+        Parameters
+        ----------
+        ratio : float, optional
+            percentage of trials to keep, by default 0.1
+        """
+        assert 0. < ratio < 1.
+        
+        skf = StratifiedKFold(n_splits=int((1-ratio)*10), shuffle=True)        
+        
+        if isinstance(self.y, list):
+            n_trials = [y.shape[2] for y in self.y]
+        else:
+            n_trials = self.y[0].shape[2]
+        pass
+
     def rearrange_legacy(self, target_events=[], v=0):
         '''Rearrange dataset by selecting a subset of epochs and their
         labels and events, according to the target events passed.
@@ -509,7 +529,8 @@ class DataSet(metaclass=ABCMeta):
             data_shape = f'{self.epochs.shape}'
         return data, duration, data_shape            
     
-    def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, slide=0.1, method='divide'):
+    def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, 
+                            slide=0.1, method='divide'):
         """Segment continuous EEG data using an augmentation method
 
         Parameters
@@ -554,7 +575,9 @@ class DataSet(metaclass=ABCMeta):
 
         return v
 
-    def _get_augmented_epoched(self, eeg, epoch, stimulation, onset=0, slide=0.1, method='divide'):
+    def _get_augmented_epoched(self, eeg, epoch, stimulation, 
+                                onset=0, slide=0.1, 
+                                method='divide'):
         """Segment epoched EEG data using an augmentation method
 
         Parameters

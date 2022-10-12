@@ -129,7 +129,7 @@ class Evaluation:
 
     def __init__(self, dataset=None, model=None, partition=None, folds=None,
                  verbose=2, engine="pytorch", normalize=True, log=False,   
-                 log_level='debug', debug=False):
+                 log_level='debug', log_name=None, debug=False):
         """
         """
         self.dataset = dataset
@@ -140,7 +140,7 @@ class Evaluation:
         self.log = log
         self.logger = None        
         if self.log:
-            self.logger = self._init_logger(log_level)           
+            self.logger = self._init_logger(log_level, log_name)           
         self.log_dir = None 
 
     def __str__(self):
@@ -679,7 +679,9 @@ class Evaluation:
                 test = 1
             return self._get_n_subjects() - train - test
 
-    def _init_logger(self, level='debug'):
+    def _init_logger(self, level='debug', name=None):
+        
+        lname = name if name else '' 
         if self.dataset:
             title = self.dataset.title
         else:
@@ -696,7 +698,7 @@ class Evaluation:
         now = datetime.datetime.now().strftime('%c').replace(' ', '_').replace(':', '_')
         if not os.path.isdir(dataset_folder):
             os.mkdir(dataset_folder)
-        f = dataset_folder + '_'.join([self.__class__.__name__,
+        f = dataset_folder + '_'.join([lname, self.__class__.__name__,
                                            title, now, '.log'])
         return Logger(fname=f, logger_name='eval_log', level=level)
     
