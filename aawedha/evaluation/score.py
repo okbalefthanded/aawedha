@@ -3,20 +3,44 @@ import numpy as np
 
 
 class Score(object):
-
 	def __init__(self):
 		self.results = {}
 
 	def build(self, metrics):
+		"""initialize results as a dict with empty lists
+
+		Parameters
+		----------
+		metrics : list
+			metrics names
+		"""
 		self.results = {metric: [] for metric in metrics}
 		self.results['probs'] = []
 		self.results['confusion'] = []
 
 	def update(self, results):
+		"""Update metrics by append values to each metric list
+
+		Parameters
+		----------
+		results : dict
+			metrics and their values
+		"""
 		for metric in results:
 			self.results[metric].append(results[metric])
 
 	def results_reports(self, eval_results, classes, operations):
+		"""Finalize metric calculation
+
+		Parameters
+		----------
+		eval_results : dict
+			evluation metric results
+		classes : int
+			class labels count
+		operations : dict
+			evaluation type and the operation indexes evaluated.
+		"""
 		eval_results = aggregate_results(eval_results)
 		eval_results = self._update_results(eval_results, classes, operations)
 		self.results = eval_results

@@ -83,12 +83,12 @@ class DataSet(metaclass=ABCMeta):
 
     def __str__(self):
         subjects = len(self.epochs)
-        if type(self.epochs) is np.ndarray:            
+        if isinstance(self.epochs, np.ndarray):
             epoch_length = self.epochs.shape[1]
             trials = self.epochs.shape[-1]
-        elif type(self.epochs) is list:
+        elif isinstance(self.epochs, list):
             epoch_length = self.epochs[0].shape[0]
-            trials = [self.epochs[i].shape[-1] for i in range(subjects)]        
+            trials = [self.epochs[i].shape[-1] for i in range(subjects)]
         else:
             subjects = 0
             epoch_length = 0.0
@@ -97,9 +97,10 @@ class DataSet(metaclass=ABCMeta):
         info = (f'DataSet: {self.title} | <{self.paradigm.title}>',
                 f'sampling rate: {self.fs}',
                 f'Subjects: {subjects}',
-                f'Epoch length: {epoch_length}',
+                f'Epoch length: {epoch_length / self.fs} sec',
                 f'Channels: {self.ch_names}',
-                f'Trials: {trials}')
+                f'Trials: {trials}',
+                f'Classes: {self.get_n_classes()}')
         return '\n'.join(info)
 
     @abstractmethod

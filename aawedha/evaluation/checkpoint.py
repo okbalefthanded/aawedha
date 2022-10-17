@@ -107,9 +107,9 @@ class CheckPoint:
         self.current = None
         self.check_path = None
         self.learner = evl.learner
-        self.settings = evl.settings        
+        self.settings = evl.settings
         self.score = evl.score
-        self.log = evl.log        
+        self.log = evl.log
         if evl.logger:
             self.logger = evl.logger.name()
         self.rets = []
@@ -163,7 +163,7 @@ class CheckPoint:
             # self.model_name = 'aawedha/trained/current_model.pth'
             self.check_path = f'{root}/trained/current_model.pth'
         # model.save(self.model_name)
-        
+
         model.save(self.check_path)
         # save evaluation as object?
         save_folder = f'{root}/checkpoints'
@@ -174,7 +174,7 @@ class CheckPoint:
         print(f'Saving Checkpoint to destination: {fname}')
         with open(fname, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
-    
+
     @staticmethod
     def load_checkpoint():
         """load saved checkpoint to resume evaluation
@@ -184,7 +184,9 @@ class CheckPoint:
         checkpoint :
             a checkpoint of a saved evaluation
         """
-        file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
+        root = cwd()
+        # file_name = 'aawedha/checkpoints/current_CheckPoint.pkl'
+        file_name = f'{root}/checkpoints/current_CheckPoint.pkl'
         if os.path.exists(file_name):
             with open(file_name, 'rb') as f:
                 chkpoint = pickle.load(f)

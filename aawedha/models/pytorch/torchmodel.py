@@ -268,7 +268,13 @@ class TorchModel(nn.Module):
         return self.state_dict()
 
     def summary(self, shape=None):
-        """
+        """Display the model layers and their input/output shapes.
+        
+
+        Parameters
+        ----------
+        shape : tuple, optional
+            data input shape (channels x samples), by default None
         """
         input_shape = None
         if shape:
@@ -279,6 +285,13 @@ class TorchModel(nn.Module):
             summary(self, input_shape, device=self.device)
 
     def save(self, path):
+        """Save model
+
+        Parameters
+        ----------
+        path : str
+            saved model path
+        """
         torch.save(self, path)  
 
     def set_scale(self, x):
@@ -293,6 +306,8 @@ class TorchModel(nn.Module):
         return transform_scale(x, self.mu, self.sigma)
 
     def reset_metrics(self):
+        """Reset metric values
+        """
         for metric in self.metrics_list:
             metric.reset()   
     
