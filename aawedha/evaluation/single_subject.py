@@ -346,10 +346,10 @@ class SingleSubject(BenchMark):
         # for train, test in cv.split(t):
         for train, test in cv:
             if len(self.settings.partition) == 2:
-                # independent test set
+                # no validation split or idependent test set
                 folds.append([train, test])
             elif len(self.settings.partition) == 3:
-                # generate test set from the entire set
+                # generate train/val/test sets from the entire set
                 if stg == 'Stratified':
                     if np.sum(np.diff(y) == 0) > np.sum(np.diff(y) == 1):
                         tmp = np.random.choice(train, tr, replace=False)
