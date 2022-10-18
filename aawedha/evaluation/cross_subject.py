@@ -119,6 +119,8 @@ class CrossSubject(BenchMark):
         """
         split = self._split_set(op)
         rets = self._eval_split(split)
+        del split 
+        self.learner.reset_weights()
         return rets
 
     def _split_set(self, fold):

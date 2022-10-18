@@ -160,6 +160,8 @@ class SingleSubject(BenchMark):
                 for m in paradigm_perf:
                     split_perf[m] = paradigm_perf[m]
             subj_results.append(split_perf)
+            del split
+            self.learner.reset_weights()
 
         subj_results = aggregate_results(subj_results)
         return subj_results

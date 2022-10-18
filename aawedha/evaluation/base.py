@@ -536,7 +536,7 @@ class Evaluation:
         self.learner.history.append(model_history)
 
         if isinstance(X_test, np.ndarray):            
-            eval_perf = measure_performance(Y_test, probs, perf, self.learner.model.metrics_names)
+            eval_perf = measure_performance(Y_test, probs, perf, self.learner.model.metrics_names)        
         return eval_perf       
 
     def _get_fit_configs(self):
