@@ -93,12 +93,12 @@ class BenchMark(Evaluation):
 
         Parameters
         ----------
-        folds (selection) : list | int, optional
+        selection : list | int, optional
             defined list of folds or a just a single one, by default None
 
         Returns
         -------
-        range | list
+        Iterator : range | list
             selection of folds to evaluate, from all folds available to a
             defined subset
         """
@@ -115,6 +115,29 @@ class BenchMark(Evaluation):
         return operations 
     
     def _pre_operations(self, selection=None, pointer=None, check=False):
+        """Preparations before evaluation:
+        - generate splits if empty.
+        - set checkpoint if check is required.
+        - compile model if newly created or reset.
+        - log evaluation info.
+
+        Parameters
+        ----------
+        selection : int or list, optional
+            folds/subject selections to be evaluated, by default None
+            if None all will be evaluated.
+        pointer : Checkpoint instance, optional
+            saving checkpoint, by default None
+        check : bool, optional
+            if True , and pointer is None. Create a Checkpoint, by default False.
+
+        Returns
+        -------
+        operations: Iterator
+            indexes of Folds/subjects to evaluate.
+        pointer : Checkpoint instance
+            saving checkpoint
+        """
         # generate folds if folds are empty
         if not self.settings.folds and self.settings.partition:
             self.generate_split(nfolds=30)
@@ -134,6 +157,21 @@ class BenchMark(Evaluation):
         return operations, pointer
     
     def _eval_paradigm_metrics(self, probs, op):
+        """Evaluate paradigm specific metrics like spelling rate
+        for ERP based experiments.
+
+        Parameters
+        ----------
+        probs : ndarray : [batch, N] 
+            model's output/probabilities of classes.
+        op : int
+            Fold/subject index to be evaluated.
+
+        Returns
+        -------
+        dict
+            dictionary of metrics keys/values
+        """
         pm = {}
         if self.settings.paradigm_metrics:
             for metric in self.settings.paradigm_metrics:

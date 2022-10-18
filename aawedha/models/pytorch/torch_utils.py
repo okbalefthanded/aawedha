@@ -30,8 +30,25 @@ class LineardWithConstraint(nn.Linear):
 
 
 def count_flops(pth_model):
+    """Count PyTorch models FLOPS 
+
+    Parameters
+    ----------
+    pth_model : TorchModel instance (based on nn.Module)
+        a PyTorch model.
+
+    Returns
+    -------
+    str
+        Model's flops
+
+    Raises
+    ------
+    ValueError
+        raises a value error if model's input shape is not predefined.
     """
-    """
+    if not pth_model.input_shape:
+        raise ValueError("Model input shape is not set")
     input_tensor = torch.ones(1, *pth_model.input_shape, device=pth_model.device)
     macs, _ = profile(pth_model, inputs=(input_tensor,))
     macs, _ = clever_format([macs, _], "%.3f")

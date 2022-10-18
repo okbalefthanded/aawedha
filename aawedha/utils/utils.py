@@ -1,4 +1,5 @@
 from pynvml import *
+from tensorflow.keras import backend as K
 from aawedha.analysis.utils import isfloat
 import tensorflow as tf
 import pandas as pd
@@ -202,3 +203,16 @@ def cwd():
     """
     cwdir = os.getcwd().split('/')[-1]
     return os.getcwd() if cwdir != 'aawedha' else 'aawedha'
+
+def set_channels_order(order='first'):
+    """Set the order of channels in tensors for Keras to
+    First or Last.
+
+    Parameters
+    ----------
+    order : str, optional
+        dimension of channels, by default 'first'
+    """
+    assert order in ('first', 'last')
+    K.set_image_data_format(f'channels_{order}')
+
