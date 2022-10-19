@@ -126,7 +126,7 @@ class Model:
     def output_shape(self):
         
         if self.type == 'keras':
-            raise NotImplemented
+            raise NotImplementedError
         else:
             return self.model.output_shape
     
