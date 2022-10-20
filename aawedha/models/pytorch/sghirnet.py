@@ -152,3 +152,44 @@ class SghirNet3(TorchModel):
         x = flatten(x, 1)        
         x = self.dense(x)
         return x
+
+
+class SghirNet4(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
+                name="SghirNet"):
+        super().__init__(device, name)       
+        # like a stem
+        # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.BatchNorm2d(F2)
+        self.pool1 = nn.AvgPool2d(kernel_size=(1, 2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, kernLength // 4), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.BatchNorm2d(F2)
+        self.pool2 = nn.AvgPool2d(kernel_size=(1, 2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, kernLength // 16), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn3   = nn.BatchNorm2d(F2)
+        self.pool3 = nn.AvgPool2d(kernel_size=(1, 2))
+        self.do3   = nn.Dropout(p=dropoutRate)
+        #
+        self.dense = LineardWithConstraint((Samples // 2), nb_classes, max_norm=0.5)
+
+        self.initialize_glorot_uniform()
+
+    def forward(self, x):
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))
+        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))
+        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))
+        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))
+        x = flatten(x, 1)
+        x = self.dense(x)
+        return x
