@@ -1,3 +1,4 @@
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
@@ -40,7 +41,8 @@ class SghirNet(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        self.initialize_glorot_uniform()       
+        # self.initialize_glorot_uniform() 
+        initialize_Glorot_uniform(self)      
 
     def forward(self, x):        
         x = self._reshape_input(x)
@@ -87,7 +89,8 @@ class SghirNet2(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        self.initialize_glorot_uniform()
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
         
 
     def forward(self, x):        
@@ -137,7 +140,8 @@ class SghirNet3(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*(Samples // 16), nb_classes, max_norm=0.5)
 
-        self.initialize_glorot_uniform()       
+        # self.initialize_glorot_uniform()       
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):        
         x = self._reshape_input(x)
@@ -182,7 +186,8 @@ class SghirNet4(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 2), nb_classes, max_norm=0.5)
 
-        self.initialize_glorot_uniform()
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
         x = self._reshape_input(x)

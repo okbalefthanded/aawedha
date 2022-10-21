@@ -1,3 +1,4 @@
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
@@ -93,7 +94,8 @@ class EEGNetTorch(EEGNetTorchBase):
         # self.dense = LineardWithConstraint(nb_classes * (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
         self.dense = LineardWithConstraint( (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
 
-        self.initialize_glorot_uniform()
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
         
 
 
@@ -121,7 +123,8 @@ class EEGNetTorchSSVEP(EEGNetTorchBase):
         self.drop2 = nn.Dropout(p=dropoutRate)
         self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
 
-        self.initialize_glorot_uniform()
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
 
 
 class EEGNetConvNorm(EEGNetTorchBase):
@@ -148,7 +151,8 @@ class EEGNetConvNorm(EEGNetTorchBase):
         self.drop2 = nn.Dropout(p=dropoutRate)
         self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
 
-        self.initialize_glorot_uniform()
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
 
 
 class EEGNetTorchBlur(EEGNetTorchBase):
@@ -173,7 +177,8 @@ class EEGNetTorchBlur(EEGNetTorchBase):
         self.drop2 = nn.Dropout(p=dropoutRate)
         self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
 
-        self.initialize_glorot_uniform()
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
 
 
 class EEGNetBlurNorm(TorchModel):
@@ -200,4 +205,5 @@ class EEGNetBlurNorm(TorchModel):
         self.drop2 = nn.Dropout(p=dropoutRate)
         self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
 
-        self.initialize_glorot_uniform()
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)

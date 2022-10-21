@@ -1,3 +1,4 @@
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
@@ -59,6 +60,7 @@ class DeepConvNetPTH(TorchModel):
         self.dense = LineardWithConstraint(200 * (Samples // division_rate), nb_classes, max_norm=0.5)
 
         self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
         
 
     def forward(self, x):        
