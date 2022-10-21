@@ -27,8 +27,8 @@ def initialize_He_uniform(model):
     for module in model.modules():
         if hasattr(module, 'weight'):
             if not("BatchNorm" in module.__class__.__name__):
-                nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-            else: isinstance(module, nn.BatchNorm2d):
+                nn.init.kaiming_uniform_(module.weight, mode='fan_out', nonlinearity='relu')
+            else: 
                 nn.init.constant_(module.weight, 1)
         if hasattr(module, "bias"):
             if module.bias is not None:
