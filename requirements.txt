@@ -20,9 +20,9 @@ pynvml
 requests
 tqdm
 pkbar
-antialiased-cnns
 pyyaml
 thop
+git+https://github.com/okbalefthanded/antialiased-cnns.git
 git+https://github.com/lessw2020/Ranger21.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git
 git+https://github.com/okbalefthanded/pyLpov.git@py3
