@@ -3,6 +3,7 @@ from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.layers.condconv import CondConv, CondConvConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
+from timm.models.layers.drop import DropPath
 from torch.nn.functional import elu, gelu
 from antialiased_cnns import BlurPool
 from torch import flatten
@@ -901,4 +902,123 @@ class SghirNet16(TorchModel):
         x = self.dense(x)
         return x
 
+# SghirNet10 + DropPath in skips
+class SghirNet17(TorchModel):
 
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2,
+                device="cuda", name="SghirNet17"):
+        super().__init__(device, name)       
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        self.dp1   = DropPath(dropPath_rate) if dropPath_rate else nn.Identity()
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, kernLength // 4), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.LayerNorm([F2, 1, (kernLength // 4)+1])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        self.dp2   = DropPath(dropPath_rate) if dropPath_rate else nn.Identity()
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, kernLength // 16), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn3   = nn.LayerNorm([F2, 1, (kernLength // 16)+1])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4
+        self.conv4 = Conv2dWithConstraint(F2, F2, (1, kernLength // 64), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn4   = nn.LayerNorm([F2, 1, (kernLength // 64)+1])
+        self.pool4 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do4   = nn.Dropout(p=dropoutRate) 
+        #
+        self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
+
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
+        
+    def forward(self, x):        
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))
+        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = self.dp1(x) + self.skip1(shortcut1)
+        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.dp2(x) + self.skip2(shortcut2)
+        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = flatten(x, 1)       
+        x = self.dense(x)
+        return x
+
+# SghirNet 10 + 3rd skip + drop path
+class SghirNet18(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2, 
+                device="cuda", name="SghirNet18"):
+        super().__init__(device, name)       
+        # like a stem
+        # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        self.dp1   = DropPath(dropPath_rate) if dropPath_rate else nn.Identity()
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, kernLength // 4), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.LayerNorm([F2, 1, (kernLength // 4)+1])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        self.dp2   = DropPath(dropPath_rate) if dropPath_rate else nn.Identity()
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, kernLength // 16), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn3   = nn.LayerNorm([F2, 1, (kernLength // 16)+1])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        self.skip3 = skip(F2, F2, kernLength // 2, kernLength // 8) 
+        self.dp3   = DropPath(dropPath_rate) if dropPath_rate else nn.Identity()
+        # block4
+        self.conv4 = Conv2dWithConstraint(F2, F2, (1, kernLength // 64), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn4   = nn.LayerNorm([F2, 1, (kernLength // 64)+1])
+        self.pool4 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do4   = nn.Dropout(p=dropoutRate) 
+        #
+        self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
+
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
+        
+
+    def forward(self, x):        
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))        
+        
+        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x        
+        
+        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = self.dp1(x) + self.skip1(shortcut1)        
+        
+        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        shortcut3 = x
+        x = self.dp2(x) + self.skip2(shortcut2)        
+        
+        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))
+        x = self.dp3(x) + self.skip3(shortcut3)    
+        
+        x = flatten(x, 1)
+        x = self.dense(x)
+        return x
