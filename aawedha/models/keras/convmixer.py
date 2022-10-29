@@ -1,4 +1,4 @@
-from tensorflow.keras.layers.experimental.preprocessing import Normalization
+from tensorflow.keras.layers.preprocessing import Normalization
 from tensorflow.keras.layers import Activation, Reshape
 from tensorflow.keras.constraints import max_norm
 from tensorflow.keras import layers

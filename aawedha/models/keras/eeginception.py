@@ -1,5 +1,5 @@
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers.experimental.preprocessing import Normalization
+from tensorflow.keras.layers.preprocessing import Normalization
 from tensorflow.keras.layers import Dense, Activation, Dropout, Reshape
 from tensorflow.keras.layers import Conv2D, AveragePooling2D
 from tensorflow.keras.layers import DepthwiseConv2D

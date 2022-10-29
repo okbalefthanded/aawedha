@@ -1,4 +1,4 @@
-from tensorflow.keras.layers.experimental.preprocessing import Normalization
+from tensorflow.keras.layers.preprocessing import Normalization
 from tensorflow.keras.layers import ZeroPadding1D, SeparableConv1D, Input
 from tensorflow.keras.layers import Activation, Flatten, Dense
 from tensorflow.keras.models import Model

@@ -8,6 +8,7 @@ from torch.nn.functional import elu, gelu
 from antialiased_cnns import BlurPool
 from torch import flatten
 from torch import nn
+import torch
 
 
 class SghirNet(TorchModel):

@@ -44,7 +44,7 @@
 """
 import tensorflow as tf 
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers.experimental.preprocessing import Normalization
+from tensorflow.keras.layers.preprocessing import Normalization
 from tensorflow.keras.layers import Dense, Activation, Permute, Dropout, Reshape
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, AveragePooling2D
 from tensorflow.keras.layers import SeparableConv2D, DepthwiseConv2D

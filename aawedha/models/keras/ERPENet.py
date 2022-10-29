@@ -7,7 +7,7 @@ Reference:
 “Universal Joint Feature Extraction for P300 EEG Classification Using Multi-Task Autoencoder,
 ” IEEE Access, vol. 7, pp. 68415–68428, 2019.
 """
-from tensorflow.keras.layers.experimental.preprocessing import Normalization
+from tensorflow.keras.layers.preprocessing import Normalization
 from tensorflow.keras.layers import BatchNormalization, Reshape, LeakyReLU
 from tensorflow.keras.layers import Reshape, UpSampling2D, ZeroPadding2D 
 from tensorflow.keras.layers import Input, TimeDistributed, Conv2D

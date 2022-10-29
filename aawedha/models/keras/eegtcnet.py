@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Conv1D, Conv2D, AveragePooling2D, SeparableC
 from tensorflow.keras.layers import BatchNormalization, Reshape
 from tensorflow.keras.layers import Dropout, Add, Lambda, DepthwiseConv2D, Input
 from tensorflow.keras.constraints import max_norm
-from tensorflow.keras.layers.experimental.preprocessing import Normalization
+from tensorflow.keras.layers.preprocessing import Normalization
 from aawedha.layers.softpool import SoftPooling2D
 
 def EEGTCNet(nb_classes, Chans=64, Samples=128, layers=3, kernel_s=10, filt=10, 
