@@ -4,6 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
+from aawedha.models.pytorch.torch_utils import MaxNorm
 
 class Attention(nn.Module):
     def __init__(self,in_channels, num_experts, init_weight=True):
@@ -169,6 +170,8 @@ class CondConvConstraint(nn.Module):
                                                            self.in_planes//self.groups,
                                                            ks1,
                                                            ks2) #bs*out_p,in_p,k,k
+
+        aggregate_weight = MaxNorm(aggregate_weight, 1.)
 
         if(self.bias is not None):
             bias=self.bias.view(self.K,-1) #K,out_p
