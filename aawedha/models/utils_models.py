@@ -132,7 +132,6 @@ def load_model(filepath):
         # model.set_device(device)
     return model
 
-
 def inference_time(model, device, batch=1):
     """
     """

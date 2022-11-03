@@ -4,10 +4,11 @@ from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.layers.condconv import CondConv, CondConvConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
 from timm.models.layers.drop import DropPath
-from torch.nn.functional import elu, gelu
+from aawedha.layers.cmt import Attention
 from antialiased_cnns import BlurPool
 from torch import flatten
 from torch import nn
+import torch.nn.functional as F
 import torch
 
 
@@ -50,10 +51,10 @@ class SghirNet(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))        
-        x = self.do4(self.pool4(elu(self.bn4(self.conv4(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))        
+        x = self.do4(self.pool4(F.elu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)        
         x = self.dense(x)
         return x
@@ -99,10 +100,10 @@ class SghirNet2(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))        
-        x = self.do4(self.pool4(elu(self.bn4(self.conv4(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))        
+        x = self.do4(self.pool4(F.elu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)        
         x = self.dense(x)
         return x
@@ -150,16 +151,16 @@ class SghirNet3(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
         
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))
         
         x = self.conv_sep_point2(self.conv_sep_depth2(x))          
-        x = self.do2(self.pool2(elu(self.bn2(x))))  
+        x = self.do2(self.pool2(F.elu(self.bn2(x))))  
 
         x = self.conv_sep_point3(self.conv_sep_depth3(x)) 
-        x = self.do3(self.pool3(elu(self.bn3(x))))
+        x = self.do3(self.pool3(F.elu(self.bn3(x))))
         
         x = self.conv_sep_point4(self.conv_sep_depth4(x))        
-        x = self.do4(self.pool4(elu(self.bn4(x))))        
+        x = self.do4(self.pool4(F.elu(self.bn4(x))))        
         
         x = flatten(x, 1)        
         x = self.dense(x)
@@ -201,9 +202,9 @@ class SghirNet4(TorchModel):
     def forward(self, x):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))
         x = flatten(x, 1)
         x = self.dense(x)
         return x
@@ -268,17 +269,17 @@ class SghirNet5(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
         
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
         
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
 
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
 
-        x = self.do4(self.pool4(elu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.elu(self.bn4(self.conv4(x)))))        
         
         x = flatten(x, 1)        
         x = self.dense(x)
@@ -330,17 +331,17 @@ class SghirNet6(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))  
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x        
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)        
         # x = self.conv_sep_point3(self.conv_sep_depth3(x)) 
         # x = self.do3(self.pool3(elu(self.bn3(x))))
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))         
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))         
         x = x + self.skip2(shortcut2)      
         x = self.conv_sep_point4(self.conv_sep_depth4(x))
-        x = self.do4(self.pool4(elu(self.bn4(x))))                
+        x = self.do4(self.pool4(F.elu(self.bn4(x))))                
         x = flatten(x, 1)        
         x = self.dense(x)
         return x
@@ -387,14 +388,14 @@ class SghirNet7(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
-        x = self.do4(self.pool4(elu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.elu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -443,15 +444,15 @@ class SghirNet8(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))        
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x        
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)        
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))
         shortcut3 = x
         x = x + self.skip2(shortcut2)        
-        x = self.do4(self.pool4(elu(self.bn4(self.conv4(x)))))
+        x = self.do4(self.pool4(F.elu(self.bn4(self.conv4(x)))))
         x = x + self.skip3(shortcut3)    
         x = flatten(x, 1)
         x = self.dense(x)
@@ -503,14 +504,14 @@ class SghirNet9(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
-        x = self.do4(self.pool4(elu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.elu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -557,17 +558,17 @@ class SghirNet10(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
                 
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -613,17 +614,17 @@ class SghirNet10dw(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
                 
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -670,14 +671,14 @@ class SghirNet11(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
-        x = self.do4(self.pool4(elu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.elu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -724,14 +725,14 @@ class SghirNet12(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -778,14 +779,14 @@ class SghirNet13(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(elu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
-        x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
-        x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.elu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
-        x = self.do4(self.pool4(elu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.elu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -833,17 +834,17 @@ class SghirNet14(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
         
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         
         x = self.dense(x)
@@ -891,17 +892,17 @@ class SghirNet14_2(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
         
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         
         x = self.dense(x)
@@ -950,18 +951,18 @@ class SghirNet15(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
 
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
         
         x = self.conv_sep_point4(self.conv_sep_depth4(x))
-        x = self.do4(self.pool4(gelu(self.bn4(x))))
+        x = self.do4(self.pool4(F.sgelu(self.bn4(x))))
                 
         x = flatten(x, 1)       
         x = self.dense(x)
@@ -1008,14 +1009,14 @@ class SghirNet16(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -1063,14 +1064,14 @@ class SghirNet17(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = self.dp1(x) + self.skip1(shortcut1)
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = self.dp2(x) + self.skip2(shortcut2)
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
@@ -1123,18 +1124,18 @@ class SghirNet18(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))        
         
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x        
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = self.dp1(x) + self.skip1(shortcut1)        
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         shortcut3 = x
         x = self.dp2(x) + self.skip2(shortcut2)        
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))
         x = self.dp3(x) + self.skip3(shortcut3)    
         
         x = flatten(x, 1)
@@ -1284,17 +1285,17 @@ class SghirNet20(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
 
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = self.ln1(x + self.skip1(shortcut1))
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = self.ln2(x + self.skip2(shortcut2))
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         
         x = flatten(x, 1)       
         x = self.dense(x)
@@ -1352,18 +1353,18 @@ class SghirNet21(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))        
         
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x        
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = self.ln1(x + self.skip1(shortcut1))        
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         shortcut3 = x
         x = self.ln2(x + self.skip2(shortcut2))   
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))
         x = self.ln3(x + self.skip3(shortcut3))    
         
         x = flatten(x, 1)
@@ -1415,17 +1416,17 @@ class SghirNet22(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
 
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = self.ln1(x + self.skip1(shortcut1))
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = self.ln2(x + self.skip2(shortcut2))
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
         
         x = flatten(x, 1)       
         x = self.dense(x)
@@ -1480,20 +1481,268 @@ class SghirNet23(TorchModel):
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))        
         
-        x = self.do1(self.pool1(gelu(self.bn1(self.conv1(x)))))        
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x        
         
-        x = self.do2(self.pool2(gelu(self.bn2(self.conv2(x)))))        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = self.ln1(x + self.skip1(shortcut1))        
         
-        x = self.do3(self.pool3(gelu(self.bn3(self.conv3(x)))))
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         shortcut3 = x
         x = self.ln2(x + self.skip2(shortcut2))   
         
-        x = self.do4(self.pool4(gelu(self.bn4(self.conv4(x)))))
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))
         x = self.ln3(x + self.skip3(shortcut3))    
         
         x = flatten(x, 1)
+        x = self.dense(x)
+        return x
+
+# sghirnet10 incremental filters
+class SghirNet24(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
+                name="SghirNet24"):
+        super().__init__(device, name)       
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2*2, kernLength // 2, kernLength // 8)
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2*2, (1, (kernLength // 4)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.LayerNorm([F2*2, 1, (kernLength // 4)])
+        self.pool2 = BlurPool(F2*2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2*2, F2*3, kernLength // 2, kernLength // 8)
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2*2, F2*3, (1, (kernLength // 16)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn3   = nn.LayerNorm([F2*3, 1, (kernLength // 16)])
+        self.pool3 = BlurPool(F2*3, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4
+        self.conv4 = Conv2dWithConstraint(F2*3, F2*4, (1, (kernLength // 64)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn4   = nn.LayerNorm([F2*4, 1, (kernLength // 64)])
+        self.pool4 = BlurPool(F2*4, filt_size=(1,2), stride=(1,2))
+        self.do4   = nn.Dropout(p=dropoutRate) 
+        #
+        self.dense = LineardWithConstraint((Samples // 2), nb_classes, max_norm=0.5)
+
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
+        
+    def forward(self, x):        
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)
+        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
+        
+        x = flatten(x, 1)  
+        x = self.dense(x)
+        return x
+
+# sghirnet10 decremental filters
+class SghirNet25(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
+                name="SghirNet25"):
+        super().__init__(device, name)       
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2//2, kernLength // 2, kernLength // 8)
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2//2, (1, (kernLength // 4)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.LayerNorm([F2//2, 1, (kernLength // 4)])
+        self.pool2 = BlurPool(F2//2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2//2, F2//4, kernLength // 2, kernLength // 8)
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2//2, F2//4, (1, (kernLength // 16)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn3   = nn.LayerNorm([F2//4, 1, (kernLength // 16)])
+        self.pool3 = BlurPool(F2//4, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4
+        self.conv4 = Conv2dWithConstraint(F2//4, F2//8, (1, (kernLength // 64)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn4   = nn.LayerNorm([F2//8, 1, (kernLength // 64)])
+        self.pool4 = BlurPool(F2//8, filt_size=(1,2), stride=(1,2))
+        self.do4   = nn.Dropout(p=dropoutRate) 
+        #
+        self.dense = LineardWithConstraint((Samples // 64), nb_classes, max_norm=0.5)
+
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
+        
+    def forward(self, x):        
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)
+        
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
+        
+        x = flatten(x, 1)  
+        x = self.dense(x)
+        return x
+
+# SghirNet10 + Attention @ last layer
+class SghirNet26(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, 
+                device="cuda", name="SghirNet26"):
+        super().__init__(device, name)       
+        pos_shape = kernLength // 32
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.LayerNorm([F2, 1, (kernLength // 4)])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn3   = nn.LayerNorm([F2, 1, (kernLength // 16)])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_ratio=1, sr_ratio=1)
+        #
+        self.dense = LineardWithConstraint((Samples // 2), nb_classes, max_norm=0.5)
+
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)     
+        x = flatten(x, 1)        
+
+        x = self.dense(x)
+        return x
+
+# SghirNet10 + 2 Attention Layers
+class SghirNet27(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, 
+                device="cuda", name="SghirNet27"):
+        super().__init__(device, name)       
+        pos_shape1 = kernLength // 8
+        pos_shape2 = kernLength // 32        
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.LayerNorm([F2, 1, (kernLength // 4)])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        # block3
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos1 = nn.Parameter(torch.randn(heads, pos_shape1, pos_shape1)) 
+        self.attn1   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_ratio=1, sr_ratio=1)
+
+        # block4        
+        self.ln2   = nn.LayerNorm(F2)
+        self.relative_pos2 = nn.Parameter(torch.randn(heads, pos_shape2, pos_shape2)) 
+        self.attn2   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_ratio=1, sr_ratio=1)
+        #
+        self.dense = LineardWithConstraint((Samples * 2), nb_classes, max_norm=0.5)
+
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        x = x + self.skip1(shortcut1)
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn1(self.ln1(x), H, W, self.relative_pos1)
+        
+        x = self.attn2(self.ln2(x), H, W, self.relative_pos1)     
+        
+        x = flatten(x, 1)       
+
         x = self.dense(x)
         return x
