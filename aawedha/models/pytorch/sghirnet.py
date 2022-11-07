@@ -3,8 +3,8 @@ from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.layers.condconv import CondConv, CondConvConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.layers.cmt import Attention, Mlp
 from timm.models.layers.drop import DropPath
-from aawedha.layers.cmt import Attention
 from antialiased_cnns import BlurPool
 from torch import flatten
 from torch import nn
@@ -1689,7 +1689,7 @@ class SghirNet27(TorchModel):
                 device="cuda", name="SghirNet27"):
         super().__init__(device, name)       
         pos_shape1 = kernLength // 8
-        pos_shape2 = kernLength // 32        
+        # pos_shape2 = kernLength // 32        
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -1714,7 +1714,7 @@ class SghirNet27(TorchModel):
 
         # block4        
         self.ln2   = nn.LayerNorm(F2)
-        self.relative_pos2 = nn.Parameter(torch.randn(heads, pos_shape2, pos_shape2)) 
+        self.relative_pos2 = nn.Parameter(torch.randn(heads, pos_shape1, pos_shape1)) 
         self.attn2   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
                                       qk_scale=None, attn_drop=0., proj_drop=0., 
                                       qk_ratio=1, sr_ratio=1)
@@ -1740,7 +1740,152 @@ class SghirNet27(TorchModel):
         
         x = self.attn1(self.ln1(x), H, W, self.relative_pos1)
         
-        x = self.attn2(self.ln2(x), H, W, self.relative_pos1)     
+        x = self.attn2(self.ln2(x), H, W, self.relative_pos2)     
+        
+        x = flatten(x, 1)       
+
+        x = self.dense(x)
+        return x
+
+# SghirNet26 + MLP after Attention
+class SghirNet28(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, 
+                device="cuda", name="SghirNet26"):
+        super().__init__(device, name)       
+        pos_shape = kernLength // 32
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.LayerNorm([F2, 1, (kernLength // 4)])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn3   = nn.LayerNorm([F2, 1, (kernLength // 16)])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn  = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2) 
+        #
+
+        #
+        self.dense = LineardWithConstraint((Samples // 2), nb_classes, max_norm=0.5)
+
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+
+
+# SghirNet 27 + MLP after Attention
+class SghirNet29(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, 
+                device="cuda", name="SghirNet27"):
+        super().__init__(device, name)       
+        pos_shape1 = kernLength // 8
+        # pos_shape2 = kernLength // 32        
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+1), groups=D, bias=False, max_norm=1., padding="valid")
+        self.bn2   = nn.LayerNorm([F2, 1, (kernLength // 4)])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        # block3
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos1 = nn.Parameter(torch.randn(heads, pos_shape1, pos_shape1)) 
+        self.attn1   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2) 
+
+        # block4        
+        self.ln3   = nn.LayerNorm(F2)
+        self.relative_pos2 = nn.Parameter(torch.randn(heads, pos_shape1, pos_shape1)) 
+        self.attn2   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln4   = nn.LayerNorm(F2)
+        self.mlp2  = Mlp(F2) 
+        #
+        self.dense = LineardWithConstraint((Samples * 2), nb_classes, max_norm=0.5)
+
+        # self.initialize_glorot_uniform()
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = self._reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        x = x + self.skip1(shortcut1)
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn1(self.ln1(x), H, W, self.relative_pos1)
+        x = self.mlp(self.ln2(x), H, W)
+        
+        x = self.attn2(self.ln3(x), H, W, self.relative_pos2) 
+        x = self.mlp(self.ln2(x), H, W)    
         
         x = flatten(x, 1)       
 

@@ -53,3 +53,37 @@ class Attention(nn.Module):
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
+
+
+class Mlp(nn.Module):
+    def __init__(self, in_features, hidden_features=None, out_features=None, 
+                 act_layer=nn.GELU, drop=0.):
+        super().__init__()
+        out_features    = out_features or in_features
+        hidden_features = hidden_features or in_features
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_features, hidden_features, 1, 1, 0, bias=True),
+            nn.GELU(),
+            nn.BatchNorm2d(hidden_features, eps=1e-5),
+        )
+        self.proj = nn.Conv2d(hidden_features, hidden_features, 3, 1, 1, groups=hidden_features)
+        self.proj_act = nn.GELU()
+        self.proj_bn  = nn.BatchNorm2d(hidden_features, eps=1e-5)
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(hidden_features, out_features, 1, 1, 0, bias=True),
+            nn.BatchNorm2d(out_features, eps=1e-5),
+        )
+        self.drop = nn.Dropout(drop)
+
+    def forward(self, x, H, W):
+        B, N, C = x.shape
+        x = x.permute(0, 2, 1).reshape(B, C, H, W)
+        x = self.conv1(x)
+        x = self.drop(x)
+        x = self.proj(x) + x
+        x = self.proj_act(x)
+        x = self.proj_bn(x)
+        x = self.conv2(x)
+        x = x.flatten(2).permute(0, 2, 1)
+        x = self.drop(x)
+        return x
