@@ -24,8 +24,8 @@ class CCNN(TorchModel):
         self.fs = fs
         self.resolution = resolution
         self.nfft  = fs / resolution
-        self.fft_start = 0 
-        self.fft_end = 0
+        self.fft_start = int(round(7 / self.resolution)) 
+        self.fft_end = int(round(70 / self.resolution))
         self.conv1 = nn.Conv2d(Chans, filters, (Chans, 1), padding="valid")
         self.bn1   = nn.BatchNorm2d(filters)
         self.drop1 = nn.Dropout(dropout_rate)
@@ -49,7 +49,7 @@ class CCNN(TorchModel):
         with torch.no_grad():
             samples = x.shape[-1]
             x = torch.fft.rfft2(x, dim=-1) / samples
-            real = x.real[]
-            imag = x.image[]
+            real = x.real[self.fft_start:self.fft_end,]
+            imag = x.image[self.fft_start:self.fft_end,]
             x = torch.cat((real, imag))
         return x
