@@ -4,10 +4,8 @@
 # 17(2), p. 026028. doi: 10.1088/1741-2552/ab6a67.
 #
 #
-from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
-from aawedha.models.pytorch.torch_utils import LineardWithConstraint
-from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
+from torchlayers.regularization import L2
 from torch import flatten
 from torch import nn
 import torch.nn.functional as F
@@ -16,25 +14,31 @@ import torch
 
 class CCNN(TorchModel):
 
-    def __init__(self, nb_classes=4, Chans=8, Samples=220, dropout_rate=0.25, kernLength=10,
-                fs=512, resolution=0.293, device='cuda', name='CCNN'):
-        super().__init__(device, name)
-        filters = 2*Chans
-        out_features = (Samples - (kernLength-1) - 1) + 1 
+    def __init__(self, nb_classes=4, Chans=8,  dropout_rate=0.25, kernLength=10,
+                fs=512, resolution=0.293, l2=0.0001, frq_band=[7, 70], 
+                device='cuda', name='CCNN'):
+        super().__init__(device, name)    
+        
         self.fs = fs
         self.resolution = resolution
-        self.nfft  = fs / resolution
-        self.fft_start = int(round(7 / self.resolution)) 
-        self.fft_end = int(round(70 / self.resolution))
-        self.conv1 = nn.Conv2d(Chans, filters, (Chans, 1), padding="valid")
+        self.nfft  = round(fs / resolution)
+        self.fft_start = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end = int(round(frq_band[1] / self.resolution)) + 1
+        
+        samples = (self.fft_end - self.fft_start) * 2        
+        out_features = (samples - (kernLength-1) - 1) + 1 
+        filters = 2*Chans
+
+        self.conv1 = L2(nn.Conv2d(1, filters, (Chans, 1), bias=False, padding="valid"), 
+                        weight_decay=l2)
         self.bn1   = nn.BatchNorm2d(filters)
         self.drop1 = nn.Dropout(dropout_rate)
-        self.conv2 = nn.Conv2d(filters, filters, (1, kernLength), padding="valid")
+        self.conv2 = L2(nn.Conv2d(filters, filters, (1, kernLength), bias=False, padding="valid"),
+                        weight_decay=l2)
         self.bn2   = nn.BatchNorm2d(filters)
         self.drop2 = nn.Dropout(dropout_rate)
-        self.fc    = LineardWithConstraint(filters * out_features, nb_classes)
-        
-        self.init_weights()
+        self.fc    = L2(nn.Linear(filters * out_features, nb_classes), 
+                        weight_decay=l2)
     
     def init_weights(self):
         for module in self.modules():
@@ -46,8 +50,7 @@ class CCNN(TorchModel):
                     nn.init.constant_(module.weight, 1)
             if hasattr(module, "bias"):
                 if module.bias is not None:
-                    nn.init.constant_(module.bias, 0)
-    
+                    nn.init.constant_(module.bias, 0)    
     
     def forward(self, x):
         x = self._reshape_input(x)

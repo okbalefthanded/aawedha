@@ -325,6 +325,9 @@ class TorchModel(nn.Module):
         last_layer = modules[output_index]
         if hasattr(self._modules[last_layer], 'out_features'):
             self.output_shape = self._modules[last_layer].out_features
+        else:
+            # Linear with TorchLayers regularizes
+            self.output_shape = self._modules[last_layer].module.out_features
 
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():
