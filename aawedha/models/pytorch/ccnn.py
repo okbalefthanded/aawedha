@@ -34,8 +34,21 @@ class CCNN(TorchModel):
         self.drop2 = nn.Dropout(dropout_rate)
         self.fc    = LineardWithConstraint(filters * out_features, nb_classes)
         
-        initialize_Glorot_uniform(self)
-
+        self.init_weights()
+    
+    def init_weights(self):
+        for module in self.modules():
+            if hasattr(module, 'weight'):
+                cls_name = module.__class__.__name__            
+                if not("BatchNorm" in cls_name or "LayerNorm" in cls_name):
+                    nn.init.normal_(module.weight, mean=0.0, std=0.01)
+                else:
+                    nn.init.constant_(module.weight, 1)
+            if hasattr(module, "bias"):
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0)
+    
+    
     def forward(self, x):
         x = self._reshape_input(x)
         x = self.transform(x)
@@ -48,8 +61,8 @@ class CCNN(TorchModel):
     def transform(self, x):
         with torch.no_grad():
             samples = x.shape[-1]
-            x = torch.fft.rfft2(x, dim=-1) / samples
-            real = x.real[self.fft_start:self.fft_end,]
-            imag = x.image[self.fft_start:self.fft_end,]
-            x = torch.cat((real, imag))
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
         return x
