@@ -251,10 +251,19 @@ class TorchModel(nn.Module):
             for layer in self.state_dict():
                 self.state_dict()[layer] = state_dict[layer]
         '''
-        # TODO: for custom modules 
-        for layer in self.children():
-            if hasattr(layer, 'reset_parameters'):
-                layer.reset_parameters()
+        # TODO: for custom modules
+        if hasattr(self, 'init_weight'):
+            self.init_weights()
+        else:
+            for layer in self.children():
+                if isinstance(layer, nn.Sequential):
+                    [l.reset_parameters() for l in layer if hasattr(l, 'reset_parameters')]
+                if hasattr(layer, 'module'):
+                    # layers that are composed of modules
+                    layer.module.reset_parameters()
+                if hasattr(layer, 'reset_parameters'):
+                    layer.reset_parameters()
+        
         # self.optimizer = get_optimizer(self.optimizer, self.parameters())
         # print(self.optimizer.state_dict())
         if self.optimizer:
@@ -418,17 +427,6 @@ class TorchModel(nn.Module):
                                              batch_size=batch_size, 
                                              shuffle=shuffle)
         return loader
-
-    def initialize_glorot_uniform(self):
-        for module in self.modules():
-            if hasattr(module, 'weight'):
-                if not("BatchNorm" in module.__class__.__name__):
-                    nn.init.xavier_uniform_(module.weight, gain=1)
-                else:
-                    nn.init.constant_(module.weight, 1)
-            if hasattr(module, "bias"):
-                if module.bias is not None:
-                    nn.init.constant_(module.bias, 0)
 
 
 class SAMTorch(TorchModel):

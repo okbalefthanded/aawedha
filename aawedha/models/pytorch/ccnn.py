@@ -5,6 +5,7 @@
 #
 #
 from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.utils_models import is_a_loss
 from torchlayers.regularization import L2
 from torch import flatten
 from torch import nn
@@ -42,15 +43,16 @@ class CCNN(TorchModel):
     
     def init_weights(self):
         for module in self.modules():
-            if hasattr(module, 'weight'):
-                cls_name = module.__class__.__name__            
-                if not("BatchNorm" in cls_name or "LayerNorm" in cls_name):
-                    nn.init.normal_(module.weight, mean=0.0, std=0.01)
-                else:
-                    nn.init.constant_(module.weight, 1)
-            if hasattr(module, "bias"):
-                if module.bias is not None:
-                    nn.init.constant_(module.bias, 0)    
+            if not is_a_loss(module):
+                if hasattr(module, 'weight'):
+                    cls_name = module.__class__.__name__            
+                    if not("BatchNorm" in cls_name or "LayerNorm" in cls_name):
+                        nn.init.normal_(module.weight, mean=0.0, std=0.01)
+                    else:
+                        nn.init.constant_(module.weight, 1)
+                if hasattr(module, "bias"):
+                    if module.bias is not None:
+                        nn.init.constant_(module.bias, 0)    
     
     def forward(self, x):
         x = self._reshape_input(x)

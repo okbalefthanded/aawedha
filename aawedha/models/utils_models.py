@@ -1,5 +1,7 @@
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+from aawedha.models.pytorch.torch_builders import losses
 from timeit import default_timer as timer
+from inspect import getfullargspec
 from datetime import timedelta
 from copy import deepcopy
 import tensorflow as tf
@@ -74,12 +76,14 @@ def create_model_from_config(config, optional):
     Keras Model instance
     """
     cfg = deepcopy(config)
-    missing_keys = ["Chans", "Samples"]
-    for key in missing_keys:
-        if key not in cfg["parameters"]:
-            cfg["parameters"][key] = optional[key]
-
     mod = __import__(cfg['from'], fromlist=[cfg['name']])
+    kwargs = getfullargspec(getattr(mod, cfg['name']).__init__)[0]
+    
+    missing_keys = ["nb_classes", "Chans", "Samples"]
+    for key in missing_keys:
+        if key not in cfg["parameters"] and key in kwargs:
+            cfg["parameters"][key] = optional[key]
+    
     # create the instance
     if 'parameters' in cfg.keys():
         params = cfg['parameters']
@@ -156,3 +160,13 @@ def elapsed_time(model, tensor):
     pred = model.predict(tensor)
     end = timer()
     return timedelta(seconds=end-start)
+
+def is_a_loss(mod):
+    """Test whether a Pytorch nn Module is a loss instance.
+
+    Parameters
+    ----------
+    mod : nn.Module instance
+        a pytorch nn module
+    """
+    return any([isinstance(mod, loss) for _, loss in losses.items()])
