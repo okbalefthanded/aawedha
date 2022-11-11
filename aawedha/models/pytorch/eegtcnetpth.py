@@ -1,4 +1,3 @@
-from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
@@ -98,7 +97,7 @@ class EEGTCNetPTH(TorchModel):
         self.tcn = TemporalConvNet(16, [filt]*layers, kernel_size=kernel_s, dropout=dropout)
         self.dense = LineardWithConstraint(filt, nb_classes, max_norm=regRate)
         #
-        initialize_Glorot_uniform(self)
+        self.init_weights()
 
     def forward(self, x):
         x = self._reshape_input(x)     

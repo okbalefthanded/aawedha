@@ -12,6 +12,7 @@ class FFtNet(TorchModel):
                 device="cuda", name="FFtNet"):
 
         super().__init__(device=device, name=name)
+        
         self.length = kernLength
         self.conv1 = nn.Conv2d(1, 6, (Chans, 1), bias=False, padding='valid')
         self.bn1   = nn.BatchNorm2d(6)
@@ -21,7 +22,8 @@ class FFtNet(TorchModel):
         self.dense = nn.Linear(544, 15)
         self.drop  = nn.Dropout(0.5)
         self.dense2 = nn.Linear(15, nb_classes)
-        initialize_Glorot_uniform(self)
+        
+        self.init_weights()   
 
     def forward(self, x):        
         x = self._reshape_input(x)

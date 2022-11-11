@@ -1,9 +1,10 @@
-from copy import deepcopy
 from aawedha.models.pytorch.samtorch import enable_running_stats, disable_running_stats
 from aawedha.models.pytorch.torch_builders import get_metrics, build_scheduler
 from aawedha.evaluation.evaluation_utils import fit_scale, transform_scale
 from aawedha.models.pytorch.torch_builders import get_optimizer, get_loss
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from torchsummary import summary
+from copy import deepcopy
 import torch.nn as nn
 import numpy as np
 import collections
@@ -245,6 +246,12 @@ class TorchModel(nn.Module):
         else:
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+    def init_weights(self):
+        """Default weights and bias initialization scheme.
+        following Glorot uniform method.
+        """
+        initialize_Glorot_uniform(self)
+    
     def set_weights(self, state_dict):
         '''
         with torch.no_grad():

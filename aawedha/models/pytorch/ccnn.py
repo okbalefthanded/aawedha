@@ -40,7 +40,9 @@ class CCNN(TorchModel):
         self.drop2 = nn.Dropout(dropout_rate)
         self.fc    = L2(nn.Linear(filters * out_features, nb_classes), 
                         weight_decay=l2)
-    
+
+        self.init_weights()
+            
     def init_weights(self):
         for module in self.modules():
             if not is_a_loss(module):

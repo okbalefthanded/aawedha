@@ -1,4 +1,3 @@
-from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.models.pytorch.torchmodel import TorchModel
 from torch import flatten
@@ -53,8 +52,7 @@ class EEGInceptionPTH(TorchModel):
         self.p4 = nn.AvgPool2d(kernel_size=(1, 2), stride=(1, 2))
         self.dense = nn.Linear(6 * (Samples // division_rate), nb_classes)
 
-        initialize_Glorot_uniform(self)
-                
+        self.init_weights()                
 
     def forward(self, x):
         x = self._reshape_input(x)

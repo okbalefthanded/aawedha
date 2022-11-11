@@ -1,4 +1,3 @@
-from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torchmodel import TorchModel
 from torch import nn
 from torch import flatten
@@ -35,8 +34,7 @@ class SepConv1DPTH(TorchModel):
         self.conv_sep_point = nn.Conv1d(Chans, Filters, 1, bias=False)
         self.dense = nn.Linear((Filters * ((Samples // 8))), nb_classes)
 
-        # self.initialize_glorot_uniform()
-        initialize_Glorot_uniform(self)
+        self.init_weights()
         
     def forward(self, x):
         x = self.pad(x)
