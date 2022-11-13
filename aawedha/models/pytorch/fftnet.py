@@ -1,4 +1,3 @@
-from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torchmodel import TorchModel
 from torch import flatten
 from torch import nn

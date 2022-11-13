@@ -1824,8 +1824,7 @@ class SghirNet29(TorchModel):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, 
-                heads=1, dim=46, 
-                device="cuda", name="SghirNet27"):
+                heads=1, dim=46, device="cuda", name="SghirNet29"):
         super().__init__(device, name)       
         pos_shape1 = kernLength // 8
         # pos_shape2 = kernLength // 32        
@@ -1891,3 +1890,69 @@ class SghirNet29(TorchModel):
 
         x = self.dense(x)
         return x
+
+
+# Complex-features on CMT
+class SghirNet30(TorchModel):
+
+    def __init__(self, nb_classes=4, Chans=8,  dropout_rate=0.25,
+                 fs=512, resolution=0.293,frq_band=[7, 70], heads=1,
+                 device='cuda', name='SghirNet30'):
+        super().__init__(device, name)
+
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        samples = (self.fft_end - self.fft_start) * 2        
+        filters = 2*Chans
+
+        self.conv1 = Conv2dWithConstraint(1, filters, (Chans, 1), max_norm=1, bias=False, padding="valid")
+        self.bn1   = nn.LayerNorm([filters, 1, samples])
+        self.do1   = nn.Dropout(p=dropout_rate)
+        
+        self.ln1   = nn.LayerNorm(filters)
+        self.relative_pos1 = nn.Parameter(torch.randn(heads, samples, samples)) 
+        self.attn1   = Attention(dim=filters, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_ratio=1, sr_ratio=1)
+
+        self.ln2   = nn.LayerNorm(filters)
+        self.relative_pos2 = nn.Parameter(torch.randn(heads, samples, samples)) 
+        self.attn2   = Attention(dim=filters, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_ratio=1, sr_ratio=1)
+        
+        self.dense = LineardWithConstraint(filters * samples, nb_classes, max_norm=0.5)
+
+        self.init_weights()
+
+    def forward(self, x):
+        x = self._reshape_input(x)
+        x = self.transform(x)
+        x = self.do1(self.bn1(self.conv1(x)))
+
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        shortcut1 = x
+        x = self.attn1(self.ln1(x), H, W, self.relative_pos1)
+        x = x + shortcut1
+        shortcut2 = x
+        x = self.attn2(self.ln2(x), H, W, self.relative_pos2)
+        x = x + shortcut2
+
+        x = flatten(x, 1)
+        x = self.dense(x)       
+        
+        return x 
+
+    def transform(self, x):
+      with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+      return x
