@@ -1884,7 +1884,7 @@ class SghirNet29(TorchModel):
         x = self.mlp(self.ln2(x), H, W)
         
         x = self.attn2(self.ln3(x), H, W, self.relative_pos2) 
-        x = self.mlp(self.ln2(x), H, W)    
+        x = self.mlp2(self.ln2(x), H, W)    
         
         x = flatten(x, 1)       
 

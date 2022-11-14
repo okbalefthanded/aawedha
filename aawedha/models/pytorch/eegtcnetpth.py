@@ -1,9 +1,3 @@
-from aawedha.models.pytorch.torch_utils import LineardWithConstraint
-from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
-from aawedha.models.pytorch.torchmodel import TorchModel
-from torch.nn.functional import elu
-from torch import nn
-
 # PyTorch Implementation  of EEGTCNet: 
 # Ingolfsson, T. M., Hersche, M., Wang, X., Kobayashi, N., Cavigelli, L., &#38; Benini, L. (2020). 
 # EEG-TCNet: An Accurate Temporal Convolutional Network for Embedded Motor-Imagery Brain-Machine Interfaces. 
@@ -11,6 +5,12 @@ from torch import nn
 # https://doi.org/10.1109/SMC42975.2020.9283028
 
 # TCN Block and Convolution based on the original code : https://github.com/locuslab/TCN/blob/master/TCN/tcn.py
+
+from aawedha.models.pytorch.torch_utils import LineardWithConstraint
+from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
+from aawedha.models.pytorch.torchmodel import TorchModel
+from torch import nn
+import torch.nn.functional as F
 
 class Chomp1d(nn.Module):
     def __init__(self, chomp_size):
@@ -82,9 +82,9 @@ class EEGTCNetPTH(TorchModel):
         F2 = numFilters*D
         # EEGNET
         self.conv1 = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
-        self.bn1 = nn.BatchNorm2d(F1)
+        self.bn1   = nn.BatchNorm2d(F1)
         self.conv2 = Conv2dWithConstraint(F1, F1 * D, (Chans, 1), max_norm=1, bias=False, groups=F1, padding="valid")      
-        self.bn2 = nn.BatchNorm2d(F1 * D)
+        self.bn2   = nn.BatchNorm2d(F1 * D)
         self.pool1 = nn.AvgPool2d(kernel_size=(1, 8))
         self.drop1 = nn.Dropout(p=dropout_eeg)
         # https://discuss.pytorch.org/t/how-to-modify-a-conv2d-to-depthwise-separable-convolution/15843/7
@@ -94,7 +94,7 @@ class EEGTCNetPTH(TorchModel):
         self.pool2 = nn.AvgPool2d(kernel_size=(1, 8))
         self.drop2 = nn.Dropout(p=dropout_eeg)
         # TCN
-        self.tcn = TemporalConvNet(16, [filt]*layers, kernel_size=kernel_s, dropout=dropout)
+        self.tcn   = TemporalConvNet(16, [filt]*layers, kernel_size=kernel_s, dropout=dropout)
         self.dense = LineardWithConstraint(filt, nb_classes, max_norm=regRate)
         #
         self.init_weights()
@@ -103,11 +103,11 @@ class EEGTCNetPTH(TorchModel):
         x = self._reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
-        x = elu(x)
+        x = F.elu(x)
         x = self.drop1(self.pool1(x))        
         x = self.conv_sep_point(self.conv_sep_depth(x))        
         x = self.bn3(x)
-        x = elu(x)
+        x = F.elu(x)
         x = self.drop2(self.pool2(x))
         #
         n, c, _, w = x.shape
