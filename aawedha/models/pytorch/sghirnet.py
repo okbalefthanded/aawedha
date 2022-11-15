@@ -10,6 +10,7 @@ from torch import flatten
 from torch import nn
 import torch.nn.functional as F
 import torch
+import math
 
 
 class SghirNet(TorchModel):
@@ -522,34 +523,46 @@ class SghirNet10(TorchModel):
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
                 name="SghirNet10"):
-        super().__init__(device, name)       
+        super().__init__(device, name)
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)
+        # print(offset, Samples % 2)
+        # 
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
-        self.bn   = nn.BatchNorm2d(F1)
+        self.bn   = nn.BatchNorm2d(F1)        
         # block1        
         self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
-        self.bn1   = nn.LayerNorm([F2, 1, kernLength])
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
         self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
         self.do1   = nn.Dropout(p=dropoutRate)
-        self.skip1 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)
+        
         # block2
-        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+1), groups=D, bias=False, max_norm=1., padding="valid")
-        self.bn2   = nn.LayerNorm([F2, 1, (kernLength // 4)])
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
         self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
         self.do2   = nn.Dropout(p=dropoutRate)
-        self.skip2 = skip(F2, F2, kernLength // 2, kernLength // 8)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)
+        
         # block3
-        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+1), groups=D, bias=False, max_norm=1., padding="valid")
-        self.bn3   = nn.LayerNorm([F2, 1, (kernLength // 16)])
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
         self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
         self.do3   = nn.Dropout(p=dropoutRate) 
+        
         # block4
-        self.conv4 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 64)+1), groups=D, bias=False, max_norm=1., padding="valid")
-        self.bn4   = nn.LayerNorm([F2, 1, (kernLength // 64)])
+        self.conv4 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 64)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = math.ceil(Samples / 64 )
+        self.bn4   = nn.LayerNorm([F2, 1, out_shape])
         self.pool4 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
-        self.do4   = nn.Dropout(p=dropoutRate) 
+        self.do4   = nn.Dropout(p=dropoutRate)         
         #
-        self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
+        out_shape = math.ceil(out_shape / 2) * F2
+        # self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
 
         # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
@@ -557,18 +570,19 @@ class SghirNet10(TorchModel):
     def forward(self, x):        
         x = self._reshape_input(x)
         x = self.bn(self.conv(x))
-                
+            
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
-        
+
         x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
         shortcut2 = x
         x = x + self.skip1(shortcut1)
         
         x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
         x = x + self.skip2(shortcut2)
-        
-        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))        
+
+        x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))  
+
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
