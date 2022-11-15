@@ -1,5 +1,7 @@
 
 import numpy as  np
+import math 
+
 
 def isfloat(value):
     try:
@@ -23,3 +25,20 @@ def array_to_intstr(array):
         array of str
     """
     return np.array([str(int(c)) for c in np.nditer(array)])
+
+def is_prime(n):
+    """Test whether a number is prime
+
+    Parameters
+    ----------
+    n : int
+        a positive number
+
+    Returns
+    -------
+    bool 
+        True is n is prime, False otherwise.
+    """
+    if n % 2 == 0 and n > 2: 
+        return False
+    return all(n % i for i in range(3, int(math.sqrt(n)) + 1, 2))
