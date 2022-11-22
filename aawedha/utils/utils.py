@@ -12,23 +12,26 @@ import torch
 import os
 
 
-def get_device(config):
-        """Returns compute settings.engine : GPU / TPU
+def get_device(config=None):
+    """Returns compute settings.engine : GPU / TPU
 
-        Returns
-        -------
-        str
-            computer settings.engine for training
-        """
-        # test if env got GPU
-        device = 'GPU'  # default
+    Returns
+    -------
+    str
+        computer settings.engine for training
+    """
+    # test if env got GPU
+    device = 'GPU'  # default
+    if config:
         if 'device' in config:
             return config['device']
-        else:
-            devices = [dev.device_type for dev in tf.config.get_visible_devices()]
-            if 'GPU' not in devices:
-                device = 'CPU'
-            return device
+    
+    devices = [dev.device_type for dev in tf.config.get_visible_devices()]
+    if 'GPU' not in devices:
+        device = 'CPU'
+    if device == 'GPU':
+        device = 'cuda'
+    return device
 
 def get_gpu_name():
     """Returns the device (GPU) name
@@ -38,7 +41,6 @@ def get_gpu_name():
     name = nvmlDeviceGetName(handle).decode('UTF-8')
     nvmlShutdown()
     return name
-
 
 def get_tpu_address():
     """Return TPU Address

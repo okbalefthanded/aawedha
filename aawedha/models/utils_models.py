@@ -1,5 +1,6 @@
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 from aawedha.models.pytorch.torch_builders import losses
+from aawedha.utils.utils import get_device
 from timeit import default_timer as timer
 from inspect import getfullargspec
 from datetime import timedelta
@@ -130,10 +131,15 @@ def load_model(filepath):
         # regular Keras model
         model = tf.keras.models.load_model(filepath)
     elif 'pth' in filepath:
-        # device = available_device()
+        device = get_device() # available_device()
+        if isinstance(device, str):
+            device = device.lower()
         # PyTorch Model
-        model = torch.load(filepath) #, map_location=torch.device(device))
-        # model.set_device(device)
+        # model = torch.load(filepath) #, map_location=torch.device(device))
+        model = torch.load(filepath , map_location=torch.device(device))
+        model.set_device(device)
+        # model.metrics_to()
+    
     return model
 
 def inference_time(model, device, batch=1):

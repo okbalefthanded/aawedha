@@ -345,6 +345,12 @@ class TorchModel(nn.Module):
             # Linear with TorchLayers regularizes
             self.output_shape = self._modules[last_layer].module.out_features
 
+    def metrics_to(self, device=None):
+        if not device:
+            device = self.device
+        for metric in self.metrics_list:
+            metric.to(device)        
+    
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():
             # if self._is_binary(labels):
