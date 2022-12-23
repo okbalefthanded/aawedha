@@ -25,7 +25,7 @@ class Model:
             if self.type == 'keras':
                 self._compile_keras(khsara, optimizer, metrics)
             else:
-                self._compile_pytorch(khsara, optimizer, metrics, schedule)
+                self._compile_pytorch(khsara, optimizer, metrics, schedule, classes)
         else:
             self._compile_for_tpu(khsara, optimizer, classes)
         self.compiled = True    
@@ -136,11 +136,12 @@ class Model:
                                metrics=metrics
                                )
 
-    def _compile_pytorch(self, khsara, optimizer, metrics, schedule):
+    def _compile_pytorch(self, khsara, optimizer, metrics, schedule, classes):
         self.model.compile(loss=khsara,
                                optimizer=optimizer,
                                metrics=metrics,
-                               scheduler=schedule
+                               scheduler=schedule,
+                               classes=classes
                                )
     
     def _compile_for_tpu(self, khsara, optimizer, classes):

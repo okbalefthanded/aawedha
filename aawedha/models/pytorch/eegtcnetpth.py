@@ -173,3 +173,56 @@ class EEGTCNeXt(TorchModel):
         x = self.dense(x)
         return x
     
+class EEGTCNeXt2(TorchModel):
+
+    def __init__(self, nb_classes, Chans=64, Samples=128, layers=3, kernel_s=10, filt=10, 
+                 dropout=0, F1=4, D=2, kernLength=64, dropout_eeg=0.1, 
+                 device="cuda", name="EEGTCNeXt2"):
+
+        super().__init__(device=device, name=name)
+        regRate = .25
+        numFilters = F1
+        F2 = numFilters*D
+        
+        # EEGNET
+        self.conv1 = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn1   = nn.BatchNorm2d(F1)
+        
+        self.conv2 = Conv2dWithConstraint(F1, F1 * D, (Chans, 1), max_norm=1, bias=False, groups=F1, padding="valid")      
+        self.bn2   = nn.LayerNorm([F2, 1, Samples]) # nn.BatchNorm2d(F1 * D)
+        self.pool1 = BlurPool(F2, filt_size=(1,4), stride=(1,4)) # 
+        self.drop1 = nn.Dropout(p=dropout_eeg)
+        
+        # https://discuss.pytorch.org/t/how-to-modify-a-conv2d-to-depthwise-separable-convolution/15843/7
+        self.conv_sep_depth = nn.Conv2d(F2, F2, (1, 16), bias=False, groups=F2, padding="same")
+        self.conv_sep_point = nn.Conv2d(F2, F2, (1, 1), bias=False, padding="valid")
+        out_shape  = math.ceil(Samples/4)         
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape]) # nn.BatchNorm2d(F2)
+        self.pool2 = BlurPool(F2, filt_size=(1,4), stride=(1,4)) # 
+        self.drop2 = nn.Dropout(p=dropout_eeg)
+        
+        # TCN
+        self.tcn   = TemporalConvNet(16, [filt]*layers, kernel_size=kernel_s, dropout=dropout)
+        self.dense = LineardWithConstraint(filt, nb_classes, max_norm=regRate)
+        
+        #
+        self.init_weights()
+
+    def forward(self, x):
+        x = self._reshape_input(x)     
+        x = self.bn1(self.conv1(x))
+        x = self.bn2(self.conv2(x))   
+        x = F.gelu(x)
+        x = self.drop1(self.pool1(x))        
+        x = self.conv_sep_point(self.conv_sep_depth(x))        
+        x = self.bn3(x)
+        x = F.gelu(x)
+        x = self.drop2(self.pool2(x))
+        #
+        n, c, _, w = x.shape
+        x = x.reshape((n,c,w))
+        #
+        x = self.tcn(x)
+        x = x[:,:,-1]
+        x = self.dense(x)
+        return x

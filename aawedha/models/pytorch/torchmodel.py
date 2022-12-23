@@ -3,6 +3,7 @@ from aawedha.models.pytorch.torch_builders import get_metrics, build_scheduler
 from aawedha.evaluation.evaluation_utils import fit_scale, transform_scale
 from aawedha.models.pytorch.torch_builders import get_optimizer, get_loss
 from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
+from aawedha.models.pytorch.torchdata import data_shapes, make_loader
 from torchsummary import summary
 from copy import deepcopy
 import torch.nn as nn
@@ -34,12 +35,12 @@ class TorchModel(nn.Module):
 
     def compile(self, optimizer='Adam', loss=None,
                 metrics=None, loss_weights=None,
-                scheduler=None):
+                scheduler=None, classes=2):
         
         self.optimizer = get_optimizer(optimizer, self.parameters())
         self.loss = get_loss(loss)
-        self.metrics_list = get_metrics(metrics)
-
+        self.metrics_list = get_metrics(metrics, classes)
+        self.set_metrics_names(metrics)
         # transfer to device
         self.to(self.device)
         self.loss.to(self.device)
@@ -86,12 +87,12 @@ class TorchModel(nn.Module):
 
         if isinstance(x, torch.utils.data.DataLoader):
             train_loader = x
-            self.input_shape, y_size = self._data_shapes(x)
+            self.input_shape, y_size = data_shapes(x)
             if y_size > 1:
                 self._set_auroc_classes()
         else:
             self.input_shape = x.shape[1:]
-            train_loader = self.make_loader(x, y, batch_size, shuffle=shuffle, 
+            train_loader = make_loader(x, y, batch_size, shuffle=shuffle, 
                                             labels_type=labels_type) 
             if y.ndim > 1:
                 self._set_auroc_classes()         
@@ -107,18 +108,17 @@ class TorchModel(nn.Module):
                 if y.ndim > 1:
                     self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
         
-        [metric.train() for metric in self.metrics_list]
-        self.set_metrics_names()
+        [metric.train() for metric in self.metrics_list]        
 
         if self.scheduler:
             self.scheduler = build_scheduler(train_loader, self.optimizer, self.scheduler)
 
         if has_validation:
             if not isinstance(validation_data, torch.utils.data.DataLoader):
-                validation_data = self.make_loader(validation_data[0], 
-                                                   validation_data[1],
-                                                   batch_size, shuffle,
-                                                   labels_type)
+                validation_data = make_loader(validation_data[0], 
+                                              validation_data[1],
+                                              batch_size, shuffle,
+                                              labels_type)
         for metric in self.metrics_names:
             hist[metric] = []
             if has_validation:
@@ -196,7 +196,7 @@ class TorchModel(nn.Module):
             test_loader = x
         else:
             labels_type = self._labels_type()
-            test_loader = self.make_loader(x, y, batch_size, shuffle, labels_type)
+            test_loader = make_loader(x, y, batch_size, shuffle, labels_type)
 
         self.eval()
         self.loss.eval()        
@@ -227,18 +227,25 @@ class TorchModel(nn.Module):
         
         return return_metrics
 
-    def set_metrics_names(self):
+    def set_metrics_names(self, metrics):
         """
         """
         if self.metrics_names:
             return
         else:
             self.metrics_names.append('loss')
+            for m in metrics:
+                if isinstance(m, str):
+                    self.metrics_names.append(m)
+                else:
+                    self.metrics_names.append(str(m).lower()[:-2])
+            '''
             for metric in self.metrics_list:
                 key = str(metric).lower()[:-2]
                 if key == 'auroc':
                     key = 'auc'
-                self.metrics_names.append(key)                
+                self.metrics_names.append(key)    
+            '''            
 
     def set_device(self, device=None):
         if device:
@@ -366,12 +373,13 @@ class TorchModel(nn.Module):
                 # hack for ECE
                 if outputs.min() == 0:
                     outputs[outputs==0] += 1e-10
-            for metric in self.metrics_list:
-                metric_name = str(metric).lower()[:-2] 
+            for i, metric in enumerate(self.metrics_list):
+                # metric_name = str(metric).lower()[:-2] 
+                metric_name = self.metrics_names[i+1]
                 targets = self._labels_to_int(metric_name, targets)
                 metric.update(outputs, targets)
-                if metric_name == 'auroc':
-                    metric_name = 'auc'
+                # if metric_name == 'auroc':
+                #     metric_name = 'auc'
                 return_metrics[metric_name] = metric.compute().item()
         return return_metrics
     
@@ -392,13 +400,14 @@ class TorchModel(nn.Module):
     def _set_auroc_classes(self):
         self.is_categorical = True
         # set AUROC num_classes to 2
-        for metric in self.metrics_list:
-            metric_name = str(metric).lower()[:-2]
-            if metric_name == 'auroc':
-                metric.num_classes = 2
+        # for metric in self.metrics_list:
+        #     metric_name = str(metric).lower()[:-2]
+        #     if metric_name == 'auroc':
+        #         metric.num_classes = 2
 
     def _labels_to_int(self, metric, labels):
-        if self.is_categorical and metric == 'auroc':
+        # if self.is_categorical and metric == 'auroc' or metric == 'auc':
+        if self.is_categorical and metric == 'auc':
             return labels.argmax(axis=1).int()
         else:
             return labels.int()
@@ -412,34 +421,6 @@ class TorchModel(nn.Module):
     def _reshape_input(self, x):
         n, h, w = x.shape
         return x.reshape(n, 1, h, w)
-
-    @staticmethod
-    def _data_shapes(x):
-        if hasattr(x.dataset, 'tensors'):
-            input_shape = x.dataset.tensors[0].shape[1:]                
-            y_size = x.dataset.tensors[1].ndim
-        else: 
-            if hasattr(x.dataset, 'data'):
-                input_shape = x.dataset.data.shape[1:]
-            if isinstance(x.dataset.targets, list):
-                y_size = np.array(x.dataset.targets).ndim
-            else:
-                y_size = x.dataset.targets.ndim
-        return input_shape, y_size
-    
-    @staticmethod
-    def make_loader(x, y, batch_size=32, shuffle=True, labels_type=torch.long):
-        """
-        """
-        if np.unique(y).size == 2 and y.ndim < 2:
-            y = np.expand_dims(y, axis=1)
-
-        tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
-                                                    torch.tensor(y, dtype=labels_type))
-        loader = torch.utils.data.DataLoader(tensor_set, 
-                                             batch_size=batch_size, 
-                                             shuffle=shuffle)
-        return loader
 
 
 class SAMTorch(TorchModel):

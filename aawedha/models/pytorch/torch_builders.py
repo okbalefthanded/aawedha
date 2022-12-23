@@ -72,15 +72,20 @@ def get_loss(loss):
     else:
         raise NotImplementedError
 
-def get_metrics(metrics):
+def get_metrics(metrics, classes):
     selected_metrics = []
+    task = "binary" if classes == 2 else "multiclass"
+    
     for metric in metrics:
         if isinstance(metric, str):
             # quick hack, FIXME
+            selected_metrics.append(available_metrics[metric](task=task, num_classes=classes))
+            '''
             if metric == 'mcc':
                 selected_metrics.append(available_metrics[metric](num_classes=2))    
             else:
                 selected_metrics.append(available_metrics[metric]())
+            '''
         else:
             selected_metrics.append(metric)
     return selected_metrics
