@@ -92,7 +92,8 @@ def get_metrics(metrics, classes):
 
 def build_scheduler(data_loader, optimizer, scheduler):
     available = list(optim.lr_scheduler.__dict__.keys())
-    sched_id = scheduler[0]        
+    sched_id = scheduler[0]   
+    sched_id = f"{scheduler[0]}LR"     
     params = {'optimizer': optimizer, **scheduler[1]}
     if sched_id == 'OneCycleLR':
         params['steps_per_epoch'] = len(data_loader)

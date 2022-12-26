@@ -79,9 +79,7 @@ class TorchModel(nn.Module):
         """
         """
         history, hist = {}, {}
-        has_validation = False
-        if validation_data:
-            has_validation = True
+        has_validation = True if validation_data else False
 
         labels_type = self._labels_type()        
 
@@ -108,7 +106,7 @@ class TorchModel(nn.Module):
                 if y.ndim > 1:
                     self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
         
-        [metric.train() for metric in self.metrics_list]        
+        [metric.train() for metric in self.metrics_list]
 
         if self.scheduler:
             self.scheduler = build_scheduler(train_loader, self.optimizer, self.scheduler)
@@ -391,8 +389,7 @@ class TorchModel(nn.Module):
         if self.is_categorical:
             self.is_binary = y.shape[1] == 2
         else:
-            self.is_binary = y.unique().max() == 1
-        
+            self.is_binary = y.unique().max() == 1        
         
     def _is_one_cycle(self):
         return type(self.scheduler) is torch.optim.lr_scheduler.OneCycleLR
