@@ -44,8 +44,9 @@ class TorchModel(nn.Module):
         # transfer to device
         self.to(self.device)
         self.loss.to(self.device)
-        for metric in self.metrics_list:
-            metric.to(self.device)
+        [metric.to(self.device) for metric in self.metrics_list]
+        # for metric in self.metrics_list:
+        #     metric.to(self.device)
         # 
         # self.optimizer_state = self.optimizer.state_dict()
         # self.optimizer_state = optimizer
@@ -81,25 +82,14 @@ class TorchModel(nn.Module):
         history, hist = {}, {}
         has_validation = True if validation_data else False
 
-        labels_type = self._labels_type()        
-
-        if isinstance(x, torch.utils.data.DataLoader):
-            train_loader = x
-            self.input_shape, y_size = data_shapes(x)
-            if y_size > 1:
-                self._set_auroc_classes()
-        else:
-            self.input_shape = x.shape[1:]
-            train_loader = make_loader(x, y, batch_size, shuffle=shuffle, 
-                                            labels_type=labels_type) 
-            if y.ndim > 1:
-                self._set_auroc_classes()         
+        labels_type = self._labels_type()      
+        train_loader = self._create_loader(x, y, shuffle, batch_size)         
 
         self.set_output_shape()
-        if isinstance(y, np.ndarray):
-            self._set_is_binary(torch.tensor(y))
-        elif not y:
-            self._set_is_binary(train_loader.dataset.tensors[1])
+        # if isinstance(y, np.ndarray):
+        #     self._set_is_binary(torch.tensor(y))
+        # elif not y:
+        self._set_is_binary(train_loader.dataset.tensors[1])
         
         if class_weight: 
             if isinstance(y, np.ndarray):
@@ -197,9 +187,10 @@ class TorchModel(nn.Module):
             test_loader = make_loader(x, y, batch_size, shuffle, labels_type)
 
         self.eval()
-        self.loss.eval()        
-        for metric in self.metrics_list:
-            metric.eval()
+        self.loss.eval()
+        [metric.eval() for metric in self.metrics_list]        
+        # for metric in self.metrics_list:
+        #     metric.eval()
 
         self.reset_metrics()
 
@@ -418,6 +409,23 @@ class TorchModel(nn.Module):
     def _reshape_input(self, x):
         n, h, w = x.shape
         return x.reshape(n, 1, h, w)
+
+    def _create_loader(self, x, y, shuffle=True, batch_size=32):
+        labels_type = self._labels_type()  
+        
+        if isinstance(x, torch.utils.data.DataLoader):
+            train_loader = x
+            self.input_shape, y_size = data_shapes(x)
+            if y_size > 1:
+                self._set_auroc_classes()
+        else:
+            self.input_shape = x.shape[1:]
+            train_loader = make_loader(x, y, batch_size, shuffle=shuffle, 
+                                            labels_type=labels_type) 
+            if y.ndim > 1:
+                self._set_auroc_classes()
+        
+        return train_loader
 
 
 class SAMTorch(TorchModel):

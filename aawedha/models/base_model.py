@@ -97,7 +97,7 @@ class Model:
             else:
                 optimizer = 'adam'
             if 'scheduler' in self.config['compile']:
-                schedule = self.config['compile']['schedule']
+                schedule = self.config['compile']['scheduler']
         else:
             khsara, optimizer, metrics = self._default_compile(device, classes)           
 
