@@ -6,6 +6,7 @@ from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torchdata import data_shapes, make_loader
 from torchsummary import summary
 from copy import deepcopy
+import torch.optim.lr_scheduler as lrs
 import torch.nn as nn
 import numpy as np
 import collections
@@ -66,7 +67,7 @@ class TorchModel(nn.Module):
         loss.backward()
         self.optimizer.step()
         
-        if self._is_one_cycle():
+        if self._cyclical_scheduler():
             self.update_scheduler()
 
         return_metrics = {'loss': loss.item()}
@@ -139,7 +140,7 @@ class TorchModel(nn.Module):
                     hist[f"val_{metric}"].append(val_metrics[metric])
 
             # update scheduler 
-            if not self._is_one_cycle():
+            if not self._cyclical_scheduler():
                 self.update_scheduler()
             
             if verbose == 2:
@@ -382,8 +383,9 @@ class TorchModel(nn.Module):
         else:
             self.is_binary = y.unique().max() == 1        
         
-    def _is_one_cycle(self):
-        return type(self.scheduler) is torch.optim.lr_scheduler.OneCycleLR
+    def _cyclical_scheduler(self):
+        schedulers = [lrs.OneCycleLR, lrs.CyclicLR, lrs.CosineAnnealingWarmRestarts]
+        return type(self.scheduler) in schedulers
     
     def _set_auroc_classes(self):
         self.is_categorical = True

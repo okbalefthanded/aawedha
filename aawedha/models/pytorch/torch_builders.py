@@ -91,12 +91,28 @@ def get_metrics(metrics, classes):
     return selected_metrics
 
 def build_scheduler(data_loader, optimizer, scheduler):
+    params_args = {'OneCycleLR': 'steps_per_epoch',
+                    'CyclicLR': 'step_size_up',
+                    'CosineAnnealingWarmRestarts': 'T_0'}
     available = list(optim.lr_scheduler.__dict__.keys())
-    sched_id = scheduler[0]   
-    sched_id = f"{scheduler[0]}LR"     
+    sched_id = scheduler[0]
+    if sched_id !='cosinewr':   
+        sched_id = f"{scheduler[0]}LR"
+    else:
+        sched_id = "CosineAnnealingWarmRestarts"     
     params = {'optimizer': optimizer, **scheduler[1]}
+    if sched_id == 'CyclicLR':
+        params[params_args[sched_id]] = len(data_loader) // 2
+    else:
+        params[params_args[sched_id]] = len(data_loader) 
+    '''
     if sched_id == 'OneCycleLR':
         params['steps_per_epoch'] = len(data_loader)
+    elif sched_id == '':
+        pass
+    elif sched_id == 'CosineAnnealingWarmRestarts':
+        params['T_0'] = 0
+    '''    
     if sched_id in available:
         return getattr(optim.lr_scheduler, sched_id)(**params)
     else:
