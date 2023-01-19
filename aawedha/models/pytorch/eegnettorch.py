@@ -1,6 +1,7 @@
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
-from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.pytorch.torchdata import reshape_input
 from aawedha.models.pytorch.prec_conv import PreConv
 from antialiased_cnns import BlurPool
 from torch import flatten
@@ -8,11 +9,12 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class EEGNetTorchBase(TorchModel):
+class EEGNetTorchBase(nn.Module):
 
-    def __init__(self, device="cuda", name="EEGNetTorch"):
+    def __init__(self, name="EEGNetTorch"):
 
-        super().__init__(device=device, name=name)
+        super().__init__()
+        self.name = name
         self.conv1 = None
         # self.bn1 = nn.BatchNorm2d(F1, momentum=0.99, eps=0.01) # same default values as TF
         # self.bn1 = nn.BatchNorm2d(F1)
@@ -35,7 +37,7 @@ class EEGNetTorchBase(TorchModel):
         self.dense = None
 
     def forward(self, x):
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         if self.bn1:
             x = self.bn1(self.conv1(x))
         else:
@@ -61,9 +63,9 @@ class EEGNetTorch(EEGNetTorchBase):
 
     def __init__(self, nb_classes, Chans=64, Samples=128, dropoutRate=0.5,
                  kernLength=64, F1=8, D=2, F2=16, norm_rate=0.25,
-                 dropoutType='Dropout', device="cuda", name="EEGNetTorch"):
+                 dropoutType='Dropout', name="EEGNetTorch"):
 
-        super().__init__(device=device, name=name)
+        super().__init__(name=name)
         self.conv1 = nn.Conv2d(1, F1, (1, kernLength),
                                bias=False, padding='same')
         self.bn1 = nn.BatchNorm2d(F1, momentum=0.99, eps=0.01) # same default values as TF
@@ -90,7 +92,7 @@ class EEGNetTorch(EEGNetTorchBase):
         # self.dense = LineardWithConstraint(nb_classes * (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
         self.dense = LineardWithConstraint( (F2 * (Samples // 32)), nb_classes, max_norm=norm_rate)
 
-        self.init_weights()
+        initialize_Glorot_uniform(self)
         
 
 
@@ -98,10 +100,10 @@ class EEGNetTorchSSVEP(EEGNetTorchBase):
 
     def __init__(self, nb_classes=12, Chans=8, Samples=256,
                  dropoutRate=0.5, kernLength=256, F1=96,
-                 D=1, F2=96, device="cuda", 
+                 D=1, F2=96,
                  name="EEGNetTorchSSVEP"):
 
-        super().__init__(device=device, name=name)
+        super().__init__(name=name)
         self.conv1 = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn1   = nn.BatchNorm2d(F1)
         # FIXME
@@ -118,7 +120,7 @@ class EEGNetTorchSSVEP(EEGNetTorchBase):
         self.drop2 = nn.Dropout(p=dropoutRate)
         self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
 
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
 
 class EEGNetConvNorm(EEGNetTorchBase):
@@ -126,9 +128,9 @@ class EEGNetConvNorm(EEGNetTorchBase):
     def __init__(self, nb_classes=12, Chans=8, Samples=256,
                  dropoutRate=0.5, kernLength=256, F1=96,
                  D=1, F2=96, affine=True, bn=True,
-                 device="cuda", name="EEGNetTorchSSVEP_ConvNorm"):
+                 name="EEGNetTorchSSVEP_ConvNorm"):
 
-        super().__init__(device=device, name=name)
+        super().__init__(name=name)
 
         self.conv1 = PreConv(1, F1, (1, kernLength), bias=False, padding='same',
                         affine=affine, bn=bn)
@@ -145,17 +147,16 @@ class EEGNetConvNorm(EEGNetTorchBase):
         self.drop2 = nn.Dropout(p=dropoutRate)
         self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
 
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
 
 class EEGNetTorchBlur(EEGNetTorchBase):
 
     def __init__(self, nb_classes=12, Chans=8, Samples=256,
                  dropoutRate=0.5, kernLength=256, F1=96,
-                 D=1, F2=96, device="cuda", 
-                 name="EEGNetTorchBlurPool"):
+                 D=1, F2=96, name="EEGNetTorchBlurPool"):
 
-        super().__init__(device=device, name=name)
+        super().__init__(name=name)
         self.conv1 = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn1 = nn.BatchNorm2d(F1)
         self.conv2 = Conv2dWithConstraint(F1, F1 * D, (Chans, 1), max_norm=1, bias=False, groups=F1, padding="valid")
@@ -170,18 +171,18 @@ class EEGNetTorchBlur(EEGNetTorchBase):
         self.drop2 = nn.Dropout(p=dropoutRate)
         self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
 
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
 
-class EEGNetBlurNorm(TorchModel):
+class EEGNetBlurNorm(nn.Module):
 
     def __init__(self, nb_classes=12, Chans=8, Samples=256,
                  dropoutRate=0.5, kernLength=256, F1=96,
                  D=1, F2=96, affine=True, bn=True,
-                 device="cuda", name="EEGNetBlurNorm"):
+                 name="EEGNetBlurNorm"):
 
-        super().__init__(device=device, name=name)
-
+        super().__init__()
+        self.name = name 
         self.conv1 = PreConv(1, F1, (1, kernLength), bias=False, padding='same',
                         affine=affine, bn=bn)
         self.conv2 = PreConv(F1, F1 * D, (Chans, 1), bias=False, groups=F1, padding="valid",
@@ -197,4 +198,4 @@ class EEGNetBlurNorm(TorchModel):
         self.drop2 = nn.Dropout(p=dropoutRate)
         self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
 
-        self.init_weights()
+        initialize_Glorot_uniform(self)

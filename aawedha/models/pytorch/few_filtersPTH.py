@@ -1,10 +1,10 @@
-from aawedha.models.pytorch.torchmodel import TorchModel
-from torch import nn
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from torch import flatten
+from torch import nn
 import torch
 
 
-class SepConv1DPTH(TorchModel):
+class SepConv1DPTH(nn.Module):
     """Simple CNN architecture introduced in [1], consisting of
     2 layers, a single input and n_Filters of 1D Separable Convolutions.
 
@@ -27,14 +27,15 @@ class SepConv1DPTH(TorchModel):
     PyTorch Module Model instance
     """
     def __init__(self, nb_classes=1, Chans=6, Samples=206, Filters=32, 
-                 device="cuda", name="SepCon1DPTH"):
-        super().__init__(device=device, name=name)
+                 name="SepCon1DPTH"):
+        super().__init__()
+        self.name = name
         self.pad = nn.ConstantPad1d(padding=4, value=0)       
         self.conv_sep_depth = nn.Conv1d(Chans, Chans, 16, bias=True, stride=8, groups=Chans)
         self.conv_sep_point = nn.Conv1d(Chans, Filters, 1, bias=False)
         self.dense = nn.Linear((Filters * ((Samples // 8))), nb_classes)
 
-        self.init_weights()
+        initialize_Glorot_uniform(self)
         
     def forward(self, x):
         x = self.pad(x)

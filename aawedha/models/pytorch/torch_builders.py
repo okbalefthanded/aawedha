@@ -36,6 +36,10 @@ custom_opt = {
     'PESG' : PESG
 }
 
+available_callbacks = {
+    'none':  NotImplemented,
+    }
+
 def get_optimizer(optimizer, opt_params):
     """
     """
@@ -116,4 +120,22 @@ def build_scheduler(data_loader, optimizer, scheduler):
     if sched_id in available:
         return getattr(optim.lr_scheduler, sched_id)(**params)
     else:
-        ModuleNotFoundError   
+        ModuleNotFoundError  
+
+
+def build_callbacks(model, callbacks_list):
+    clbks = []
+    callback_instance = None
+    clbk_id = ""
+    for clbk in callbacks_list:
+        if isinstance(clbk, list):
+            if clbk[0] in available_callbacks:
+                clbk_id = clbk[0]
+            params = {'model': model, **clbk[1]}
+            callback_instance = available_callbacks[clbk_id](**params)
+        elif isinstance(clbk, str):
+            callback_instance = available_callbacks[clbk](model=model)    
+        else:
+            callback_instance = clbk
+    clbks.append(callback_instance)
+    return clbks   

@@ -5,13 +5,14 @@
 # https://doi.org/10.1109/SMC42975.2020.9283028
 
 # TCN Block and Convolution based on the original code : https://github.com/locuslab/TCN/blob/master/TCN/tcn.py
-
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
-from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.pytorch.torchdata import reshape_input
 from antialiased_cnns import BlurPool
 from torch import nn
 import torch.nn.functional as F
+import math
 
 class Chomp1d(nn.Module):
     def __init__(self, chomp_size):
@@ -71,13 +72,14 @@ class TemporalConvNet(nn.Module):
     def forward(self, x):
         return self.network(x)
 
-class EEGTCNetPTH(TorchModel):
+class EEGTCNetPTH(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128, layers=3, kernel_s=10, filt=10, 
              dropout=0, activation='relu', pooling='avg', F1=4, D=2, kernLength=64, 
-             dropout_eeg=0.1, device="cuda", name="EEGTCNetPTH"):
+             dropout_eeg=0.1, name="EEGTCNetPTH"):
 
-        super().__init__(device=device, name=name)
+        super().__init__()
+        self.name = name
         regRate = .25
         numFilters = F1
         F2 = numFilters*D
@@ -98,10 +100,10 @@ class EEGTCNetPTH(TorchModel):
         self.tcn   = TemporalConvNet(16, [filt]*layers, kernel_size=kernel_s, dropout=dropout)
         self.dense = LineardWithConstraint(filt, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.elu(x)
@@ -120,13 +122,14 @@ class EEGTCNetPTH(TorchModel):
         return x
 		
 
-class EEGTCNeXt(TorchModel):
+class EEGTCNeXt(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128, layers=3, kernel_s=10, filt=10, 
                  dropout=0, F1=4, D=2, kernLength=64, dropout_eeg=0.1, 
-                 device="cuda", name="EEGTCNeXt"):
+                 name="EEGTCNeXt"):
 
-        super().__init__(device=device, name=name)
+        super().__init__()
+        self.name = name
         regRate = .25
         numFilters = F1
         F2 = numFilters*D
@@ -152,10 +155,10 @@ class EEGTCNeXt(TorchModel):
         self.dense = LineardWithConstraint(filt, nb_classes, max_norm=regRate)
         
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.elu(x)
@@ -173,13 +176,14 @@ class EEGTCNeXt(TorchModel):
         x = self.dense(x)
         return x
     
-class EEGTCNeXt2(TorchModel):
+class EEGTCNeXt2(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128, layers=3, kernel_s=10, filt=10, 
                  dropout=0, F1=4, D=2, kernLength=64, dropout_eeg=0.1, 
-                 device="cuda", name="EEGTCNeXt2"):
+                 name="EEGTCNeXt2"):
 
-        super().__init__(device=device, name=name)
+        super().__init__()
+        self.name = name
         regRate = .25
         numFilters = F1
         F2 = numFilters*D
@@ -206,10 +210,10 @@ class EEGTCNeXt2(TorchModel):
         self.dense = LineardWithConstraint(filt, nb_classes, max_norm=regRate)
         
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.gelu(x)

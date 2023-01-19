@@ -2,7 +2,7 @@ from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.layers.condconv import CondConv, CondConvConstraint
-from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.pytorch.torchdata import reshape_input
 from aawedha.layers.cmt import Attention, Mlp
 from timm.models.layers.drop import DropPath
 from antialiased_cnns import BlurPool
@@ -13,12 +13,12 @@ import torch
 import math
 
 
-class SghirNet(TorchModel):
+class SghirNet(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet"):
-        super().__init__(device, name)
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet"):
+        super().__init__()
+        self.name = name 
         # like a stem
         # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -46,11 +46,10 @@ class SghirNet(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform() 
         initialize_Glorot_uniform(self)      
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
@@ -61,12 +60,12 @@ class SghirNet(TorchModel):
         return x
 
 
-class SghirNet2(TorchModel):
+class SghirNet2(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet2"):
+        super().__init__()
+        self.name = name       
         # like a stem
         # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -94,12 +93,10 @@ class SghirNet2(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
-        initialize_Glorot_uniform(self)
-        
+        initialize_Glorot_uniform(self)        
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))        
@@ -110,12 +107,12 @@ class SghirNet2(TorchModel):
         return x
 
 
-class SghirNet3(TorchModel):
+class SghirNet3(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet3"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet3"):
+        super().__init__()
+        self.name = name       
         # like a stem : temporal filters
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -144,12 +141,11 @@ class SghirNet3(TorchModel):
         self.do4   = nn.Dropout(p=dropoutRate) 
         #
         self.dense = LineardWithConstraint(F2*(Samples // 16), nb_classes, max_norm=0.5)
-
-        # self.initialize_glorot_uniform()       
+     
         initialize_Glorot_uniform(self)
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))
@@ -169,12 +165,12 @@ class SghirNet3(TorchModel):
         return x
 
 
-class SghirNet4(TorchModel):
+class SghirNet4(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet"):
+        super().__init__()
+        self.name = name       
         # like a stem
         # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -197,11 +193,10 @@ class SghirNet4(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 2), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))
         x = self.do2(self.pool2(F.elu(self.bn2(self.conv2(x)))))
@@ -228,12 +223,12 @@ def skip2(in_plane, out_plane, length1, length2, dim):
     )
 
 # SghirNet + Skip connections
-class SghirNet5(TorchModel):
+class SghirNet5(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet5"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet5"):
+        super().__init__()
+        self.name = name        
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -263,11 +258,10 @@ class SghirNet5(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform() 
         initialize_Glorot_uniform(self)      
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
@@ -288,12 +282,12 @@ class SghirNet5(TorchModel):
 
 
 # SghirNet5 + SepatableDepthConv
-class SghirNet6(TorchModel):
+class SghirNet6(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet5"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet6"):
+        super().__init__()
+        self.name = name        
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -326,11 +320,10 @@ class SghirNet6(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*(Samples // 64), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform() 
         initialize_Glorot_uniform(self)      
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))  
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x        
@@ -348,12 +341,12 @@ class SghirNet6(TorchModel):
         return x
 
 # sghirnet5 + BlurPool
-class SghirNet7(TorchModel):
+class SghirNet7(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet7"):
+        super().__init__()
+        self.name = name       
         # like a stem
         # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -383,11 +376,10 @@ class SghirNet7(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
@@ -402,12 +394,12 @@ class SghirNet7(TorchModel):
         return x
 
 # SghirNet 7 + 3rd skip
-class SghirNet8(TorchModel):
+class SghirNet8(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet8"):
+        super().__init__()
+        self.name = name       
         # like a stem
         # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -438,12 +430,10 @@ class SghirNet8(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
-
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))        
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x        
@@ -460,12 +450,12 @@ class SghirNet8(TorchModel):
         return x
 
 # sghirnet7 with BN -> LN
-class SghirNet9(TorchModel):
+class SghirNet9(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet9"):
+        super().__init__()
+        self.name = name       
         # like a stem
         # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -499,11 +489,10 @@ class SghirNet9(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
@@ -518,12 +507,13 @@ class SghirNet9(TorchModel):
         return x
 
 # sghirnet7 as ConvNext
-class SghirNet10(TorchModel):
+class SghirNet10(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, norm_rate=0.25,
-                device="cuda", name="SghirNet10"):
-        super().__init__(device, name)
+                name="SghirNet10"):
+        super().__init__()
+        self.name = name
         offset = 0 if Samples % 2 else 1    
         offsetn = int(not offset)
         # print(offset, Samples % 2)
@@ -564,11 +554,10 @@ class SghirNet10(TorchModel):
         # self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
         self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
             
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -587,12 +576,12 @@ class SghirNet10(TorchModel):
         x = self.dense(x)
         return x
 
-class SghirNet10dw(TorchModel):
+class SghirNet10dw(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet10dw"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet10dw"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -621,11 +610,10 @@ class SghirNet10dw(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 4), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
                 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -644,12 +632,12 @@ class SghirNet10dw(TorchModel):
         return x
 
 # sghirnet7 : Conv2d -> CondConv
-class SghirNet11(TorchModel):
+class SghirNet11(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet11"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -679,11 +667,10 @@ class SghirNet11(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
@@ -698,12 +685,12 @@ class SghirNet11(TorchModel):
         return x
 
 # sghirnet11 + 10
-class SghirNet12(TorchModel):
+class SghirNet12(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet12"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -733,11 +720,10 @@ class SghirNet12(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
@@ -752,12 +738,12 @@ class SghirNet12(TorchModel):
         return x
 
 # sghirnet11 with Constrained ConvConv
-class SghirNet13(TorchModel):
+class SghirNet13(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet13"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet13"):
+        super().__init__()       
+        self.name = name 
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -787,11 +773,10 @@ class SghirNet13(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.elu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
@@ -806,12 +791,12 @@ class SghirNet13(TorchModel):
         return x
 
 # sghirnet11 with Constrained ConvConv and as ConvNext
-class SghirNet14(TorchModel):
+class SghirNet14(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet14"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet14"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -841,11 +826,10 @@ class SghirNet14(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -864,12 +848,12 @@ class SghirNet14(TorchModel):
         x = self.dense(x)
         return x
 
-class SghirNet14_2(TorchModel):
+class SghirNet14_2(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet14_2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet14_2"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -899,11 +883,10 @@ class SghirNet14_2(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -923,12 +906,12 @@ class SghirNet14_2(TorchModel):
         return x
 
 # sghirnet10 with last Convs as sepconv
-class SghirNet15(TorchModel):
+class SghirNet15(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet15"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -958,11 +941,10 @@ class SghirNet15(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*(Samples // 64), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -976,19 +958,19 @@ class SghirNet15(TorchModel):
         x = x + self.skip2(shortcut2)
         
         x = self.conv_sep_point4(self.conv_sep_depth4(x))
-        x = self.do4(self.pool4(F.sgelu(self.bn4(x))))
+        x = self.do4(self.pool4(F.gelu(self.bn4(x))))
                 
         x = flatten(x, 1)       
         x = self.dense(x)
         return x
 
 # SghirNet10 + skip has LN 
-class SghirNet16(TorchModel):
+class SghirNet16(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet2"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet16"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -1017,11 +999,10 @@ class SghirNet16(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
@@ -1036,12 +1017,13 @@ class SghirNet16(TorchModel):
         return x
 
 # SghirNet10 + DropPath in skips
-class SghirNet17(TorchModel):
+class SghirNet17(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2,
-                device="cuda", name="SghirNet17"):
-        super().__init__(device, name)       
+                name="SghirNet17"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -1072,11 +1054,10 @@ class SghirNet17(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
         shortcut1 = x
@@ -1091,12 +1072,13 @@ class SghirNet17(TorchModel):
         return x
 
 # SghirNet 10 + 3rd skip + drop path
-class SghirNet18(TorchModel):
+class SghirNet18(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2, 
-                device="cuda", name="SghirNet18"):
-        super().__init__(device, name)       
+                 F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2, 
+                 name="SghirNet18"):
+        super().__init__()
+        self.name = name       
         # like a stem
         # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -1130,12 +1112,10 @@ class SghirNet18(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
-        initialize_Glorot_uniform(self)
-        
+        initialize_Glorot_uniform(self)        
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))        
         
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1173,12 +1153,12 @@ def stem_block(in_channels, filters=8, kernel=(1, 64)):
                 nn.BatchNorm2d(filters)
                 )
 
-class SghirNet19(TorchModel):
+class SghirNet19(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet19"):
-        super().__init__(device, name)    
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet19"):
+        super().__init__()
+        self.name = name    
         expansion = F2*3
         # like a stem
         self.conv01 = stem_block(1, F1, (1, kernLength // 4))
@@ -1209,11 +1189,10 @@ class SghirNet19(TorchModel):
         #
         self.dense = LineardWithConstraint(expansion*2*(Samples // 16), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         
         x1 = self.conv01(x)
         x2 = self.conv02(x)
@@ -1254,12 +1233,12 @@ class SghirNet19(TorchModel):
 
 # SghirNet10 + LN between Blocks, 
 # imitating Vision transofrmers
-class SghirNet20(TorchModel):
+class SghirNet20(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet20"):
-        super().__init__(device, name)       
+                 F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet20"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -1292,11 +1271,10 @@ class SghirNet20(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1317,12 +1295,13 @@ class SghirNet20(TorchModel):
 
 
 # SghirNet 10 + 3rd skip + LN 
-class SghirNet21(TorchModel):
+class SghirNet21(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2, 
-                device="cuda", name="SghirNet21"):
-        super().__init__(device, name)       
+                 F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2, 
+                 name="SghirNet21"):
+        super().__init__()  
+        self.name = name      
         # like a stem
         # self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=1.)
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -1359,12 +1338,10 @@ class SghirNet21(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
-        initialize_Glorot_uniform(self)
-        
+        initialize_Glorot_uniform(self)        
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))        
         
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1387,12 +1364,12 @@ class SghirNet21(TorchModel):
 
 
 # SghirNet20 + LN everywhere
-class SghirNet22(TorchModel):
+class SghirNet22(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet22"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet22"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -1423,11 +1400,10 @@ class SghirNet22(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1448,12 +1424,13 @@ class SghirNet22(TorchModel):
 
 
 # SghirNet 21 LN  everywhere
-class SghirNet23(TorchModel):
+class SghirNet23(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2, 
-                device="cuda", name="SghirNet23"):
-        super().__init__(device, name)       
+                 F1=32, F2=16, D=1, dropoutRate=0.5, dropPath_rate=0.2, 
+                 name="SghirNet23"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -1487,12 +1464,10 @@ class SghirNet23(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 8), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
-        initialize_Glorot_uniform(self)
-        
+        initialize_Glorot_uniform(self)        
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))        
         
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1514,12 +1489,12 @@ class SghirNet23(TorchModel):
         return x
 
 # sghirnet10 incremental filters
-class SghirNet24(TorchModel):
+class SghirNet24(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet24"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet24"):
+        super().__init__()
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -1548,11 +1523,10 @@ class SghirNet24(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 2), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
                 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1572,12 +1546,12 @@ class SghirNet24(TorchModel):
         return x
 
 # sghirnet10 decremental filters
-class SghirNet25(TorchModel):
+class SghirNet25(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
-                F1=32, F2=16, D=1, dropoutRate=0.5, device="cuda", 
-                name="SghirNet25"):
-        super().__init__(device, name)       
+                F1=32, F2=16, D=1, dropoutRate=0.5, name="SghirNet25"):
+        super().__init__() 
+        self.name = name       
         # like a stem
         self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
         self.bn   = nn.BatchNorm2d(F1)
@@ -1606,11 +1580,10 @@ class SghirNet25(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples // 64), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
                 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1630,13 +1603,13 @@ class SghirNet25(TorchModel):
         return x
 
 # SghirNet10 + Attention @ last layer
-class SghirNet26(TorchModel):
+class SghirNet26(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, 
-                heads=1, dim=46, 
-                device="cuda", name="SghirNet26"):
-        super().__init__(device, name) 
+                heads=1, dim=46, name="SghirNet26"):
+        super().__init__()
+        self.name = name 
         offset = 0 if Samples % 2 else 1    
         offsetn = int(not offset)
         # like a stem
@@ -1672,12 +1645,11 @@ class SghirNet26(TorchModel):
         out_shape = pos_shape * F2
         self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         # initialize_He_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
                 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1700,13 +1672,13 @@ class SghirNet26(TorchModel):
         return x
 
 # SghirNet10 + 2 Attention Layers
-class SghirNet27(TorchModel):
+class SghirNet27(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, 
-                heads=1, dim=46, 
-                device="cuda", name="SghirNet27"):
-        super().__init__(device, name)       
+                heads=1, dim=46, name="SghirNet27"):
+        super().__init__()
+        self.name = name       
         pos_shape1 = kernLength // 8
         # pos_shape2 = kernLength // 32        
         # like a stem
@@ -1740,12 +1712,11 @@ class SghirNet27(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples * 2), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         # initialize_He_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
                 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1767,13 +1738,13 @@ class SghirNet27(TorchModel):
         return x
 
 # SghirNet26 + MLP after Attention
-class SghirNet28(TorchModel):
+class SghirNet28(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, 
-                heads=1, dim=46, 
-                device="cuda", name="SghirNet26"):
-        super().__init__(device, name)       
+                heads=1, dim=46, name="SghirNet26"):
+        super().__init__()
+        self.name = name       
         offset = 0 if Samples % 2 else 1    
         offsetn = int(not offset)     
         # like a stem
@@ -1811,12 +1782,11 @@ class SghirNet28(TorchModel):
         out_shape = pos_shape * F2
         self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         # initialize_He_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
                 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1842,12 +1812,13 @@ class SghirNet28(TorchModel):
 
 
 # SghirNet 27 + MLP after Attention
-class SghirNet29(TorchModel):
+class SghirNet29(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, 
-                heads=1, dim=46, device="cuda", name="SghirNet29"):
-        super().__init__(device, name)       
+                heads=1, dim=46, name="SghirNet29"):
+        super().__init__()
+        self.name = name       
         pos_shape1 = kernLength // 8
         # pos_shape2 = kernLength // 32        
         # like a stem
@@ -1885,12 +1856,11 @@ class SghirNet29(TorchModel):
         #
         self.dense = LineardWithConstraint((Samples * 2), nb_classes, max_norm=0.5)
 
-        # self.initialize_glorot_uniform()
         initialize_Glorot_uniform(self)
         # initialize_He_uniform(self)
         
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.bn(self.conv(x))
                 
         x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
@@ -1915,13 +1885,13 @@ class SghirNet29(TorchModel):
 
 
 # Complex-features on CMT
-class SghirNet30(TorchModel):
+class SghirNet30(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=8,  dropout_rate=0.25,
                  fs=512, resolution=0.293,frq_band=[7, 70], heads=1,
-                 device='cuda', name='SghirNet30'):
-        super().__init__(device, name)
-
+                 name='SghirNet30'):
+        super().__init__()
+        self.name = name 
         self.fs = fs
         self.resolution = resolution
         self.nfft       = round(fs / resolution)
@@ -1949,10 +1919,10 @@ class SghirNet30(TorchModel):
         
         self.dense = LineardWithConstraint(filters * samples, nb_classes, max_norm=0.5)
 
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.transform(x)
         x = self.do1(self.bn1(self.conv1(x)))
 
@@ -1971,10 +1941,10 @@ class SghirNet30(TorchModel):
         return x 
 
     def transform(self, x):
-      with torch.no_grad():
+        with torch.no_grad():
             samples = x.shape[-1]
             x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
             real = x.real[:,:,:, self.fft_start:self.fft_end]
             imag = x.imag[:,:,:, self.fft_start:self.fft_end]
             x = torch.cat((real, imag), axis=-1)
-      return x
+        return x

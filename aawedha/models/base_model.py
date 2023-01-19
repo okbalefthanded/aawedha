@@ -19,6 +19,13 @@ class Model:
         self.name = name
         self.type = model_type
 
+    def set_model(self, model, engine):
+        if engine == "pytorch":
+            self.model.module = model
+        elif engine == "Keras":
+            self.model = model
+        self.name = model.name        
+
     def compile(self, device, classes):
         khsara, optimizer, metrics, schedule = self.get_compile_configs(device, classes)
         if device != 'TPU':

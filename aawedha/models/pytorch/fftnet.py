@@ -1,17 +1,18 @@
-from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
+from aawedha.models.pytorch.torchdata import reshape_input
 from torch import flatten
 from torch import nn
 import torch.nn.functional as F
 import torch
 
 
-class FFtNet(TorchModel):
+class FFtNet(nn.Module):
 
     def __init__(self, nb_classes=12, Chans=8, kernLength=256, 
-                device="cuda", name="FFtNet"):
+                 name="FFtNet"):
 
-        super().__init__(device=device, name=name)
-        
+        super().__init__()
+        self.name = name        
         self.length = kernLength
         self.conv1 = nn.Conv2d(1, 6, (Chans, 1), bias=False, padding='valid')
         self.bn1   = nn.BatchNorm2d(6)
@@ -22,10 +23,10 @@ class FFtNet(TorchModel):
         self.drop  = nn.Dropout(0.5)
         self.dense2 = nn.Linear(15, nb_classes)
         
-        self.init_weights()   
+        initialize_Glorot_uniform(self)   
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         # 
         x = self.fft_transform(x)       
         #

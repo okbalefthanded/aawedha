@@ -1,9 +1,15 @@
-from aawedha.models.pytorch.samtorch import enable_running_stats, disable_running_stats
-from aawedha.models.pytorch.torch_builders import get_metrics, build_scheduler
-from aawedha.evaluation.evaluation_utils import fit_scale, transform_scale
-from aawedha.models.pytorch.torch_builders import get_optimizer, get_loss
 from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
-from aawedha.models.pytorch.torchdata import data_shapes, make_loader
+from aawedha.models.pytorch.samtorch import enable_running_stats
+from aawedha.models.pytorch.samtorch import disable_running_stats
+from aawedha.models.pytorch.torch_builders import build_callbacks
+from aawedha.models.pytorch.torch_builders import build_scheduler
+from aawedha.models.pytorch.torch_builders import get_optimizer
+from aawedha.models.pytorch.torch_builders import get_metrics
+from aawedha.models.pytorch.torch_builders import get_loss
+from aawedha.evaluation.evaluation_utils import fit_scale
+from aawedha.evaluation.evaluation_utils import transform_scale
+from aawedha.models.pytorch.torchdata import data_shapes
+from aawedha.models.pytorch.torchdata import make_loader
 from torchsummary import summary
 from copy import deepcopy
 import torch.optim.lr_scheduler as lrs
@@ -16,29 +22,31 @@ import pkbar
 
 class TorchModel(nn.Module):
 
-    def __init__(self, device='cuda', name='torchmodel'):
+    def __init__(self, module=None, device='cuda', name='torchmodel'):
         super().__init__()
+        self.module = module
         self.optimizer = None
         self.loss = None
-        self.metrics_list  = []
+        self.metrics_list = []
         self.metrics_names = []
+        self.callbacks = []
         self.scheduler = None
         # self.optimizer_state = None
         self.name = name
         self.history = {}
         self.device = device
-        self.input_shape  = None
+        self.input_shape = None
         self.output_shape = None
         self.mu = None
-        self.sigma = None
+        self.sigma = None  
         self.is_categorical = False 
-        self.is_binary = False     
+        self.is_binary = False   
 
     def compile(self, optimizer='Adam', loss=None,
                 metrics=None, loss_weights=None,
-                scheduler=None, classes=2):
+                scheduler=None, classes=2, callbacks=[]):
         self._compile_regular(optimizer=optimizer, loss=loss, metrics=metrics, 
-                              scheduler=scheduler, classes=classes)
+                              scheduler=scheduler, classes=classes, callbacks=callbacks)
 
     def train_step(self, data):
         """
@@ -49,7 +57,7 @@ class TorchModel(nn.Module):
         self.optimizer.zero_grad()
 
         # forward + backward + optimize
-        outputs = self(inputs)
+        outputs = self.module(inputs)
         loss = self.loss(outputs, labels)
         loss.backward()
         self.optimizer.step()
@@ -67,110 +75,58 @@ class TorchModel(nn.Module):
             callbacks=None):        
         """
         """
-        history, hist = {}, {}
-        train_loader, has_validation, validation_data = self._pre_fit(x, y, batch_size, validation_data, class_weight, shuffle)
-        '''
-        has_validation = True if validation_data else False
+        history, hist  = {}, {}
+        train_loader, has_validation, validation_data = self._pre_fit(x, y, 
+                                                                      batch_size, 
+                                                                      validation_data, 
+                                                                      class_weight, 
+                                                                      shuffle)
 
-        labels_type  = self._labels_type()
-        train_loader = self._create_loader(x, y, shuffle, batch_size)         
-
-        self.set_output_shape()
-        # if isinstance(y, np.ndarray):
-        #     self._set_is_binary(torch.tensor(y))
-        # elif not y:
-        self._set_is_binary(train_loader.dataset.tensors[1])
-        
-        if class_weight: 
-            if isinstance(y, np.ndarray):
-                if y.ndim > 1:
-                    self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
-        
-        [metric.train() for metric in self.metrics_list]
-
-        if self.scheduler:
-            self.scheduler = build_scheduler(train_loader, self.optimizer, self.scheduler)
-
-        if has_validation:
-            if not isinstance(validation_data, torch.utils.data.DataLoader):
-                validation_data = make_loader(validation_data[0], 
-                                              validation_data[1],
-                                              batch_size, shuffle,
-                                              labels_type)
-        '''
         for metric in self.metrics_names:
             hist[metric] = []
             if has_validation:
                 hist[f"val_{metric}"] = []
+        
         progress = None
         if verbose == 2:
             progress = pkbar.Kbar(target=len(train_loader), width=25, always_stateful=True)
 
         hist = self._fit_loop(train_loader, validation_data, has_validation,
-                              epochs, batch_size, hist, progress, verbose)
-        '''
-        for epoch in range(epochs):  # loop over the dataset multiple times
-            running_loss = 0
-            self.reset_metrics()
-            self.train()
-            
-            if verbose == 2:
-                print("Epoch {}/{}".format(epoch+1, epochs))
-            # train step
-            for i, data in enumerate(train_loader, 0):
-                return_metrics = self.train_step(data)
-                running_loss += return_metrics['loss'] / len(train_loader)
-                return_metrics['loss'] = running_loss
-
-                if verbose == 2:
-                    progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
-            
-            # evaluate validation data
-            val_metrics = None
-            if has_validation:
-                val_metrics = self.evaluate(validation_data, batch_size=batch_size, shuffle=False)
-                for metric in val_metrics:
-                    hist[f"val_{metric}"].append(val_metrics[metric])
-
-            # update scheduler 
-            if not self._cyclical_scheduler():
-                self.update_scheduler()
-            
-            if verbose == 2:
-                if has_validation:
-                    progress.add(1, values=[(f"val_{k}", val_metrics[k]) for k in val_metrics])
-                else:
-                    progress.add(1)
-
-            # update history
-            for metric in return_metrics:
-                hist[metric].append(return_metrics[metric]) 
-            '''           
+                              epochs, batch_size, hist, progress, verbose)              
         
         history['history'] = hist
         return history
 
     def _fit_loop(self, train_loader, validation_data, has_validation,
                  epochs, batch_size, hist, progress, verbose):
-        
+        # on_train_begin callbacks
+        # if self.callbacks: self.callbacks.on_train_begin()
+        if self.callbacks: [clbk.on_train_begin() for clbk in self.callbacks] 
+
         for epoch in range(epochs):  # loop over the dataset multiple times
-            running_loss   = 0
-            return_metrics = {}
+            running_loss = 0
             self.reset_metrics()
-            self.train()
-            
+            self.module.train()
+            # on_epoch_begin callbacks
+            if self.callbacks: [clbk.on_epoch_begin() for clbk in self.callbacks]
             if verbose == 2:
                 print("Epoch {}/{}".format(epoch+1, epochs))
             
             # train step
             for i, data in enumerate(train_loader, 0):
+                # on_train_batch_begin callbacks
+                if self.callbacks: [clbk.on_train_batch_begin() for clbk in self.callbacks]
                 return_metrics = self.train_step(data)
-                running_loss += return_metrics['loss'] / len(train_loader)
+                running_loss  += return_metrics['loss'] / len(train_loader)
                 return_metrics['loss'] = running_loss
-
+                # on_train_batch_end callbacks
+                if self.callbacks: [clbk.on_train_batch_end() for clbk in self.callbacks]
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
             
+            # on_epoch_end callbacks
+            if self.callbacks: [clbk.on_epoch_end(self, train_loader, epoch) for clbk in self.callbacks]
+
             # evaluate validation data
             val_metrics = None
             if has_validation:
@@ -191,7 +147,8 @@ class TorchModel(nn.Module):
             # update history
             for metric in return_metrics:
                 hist[metric].append(return_metrics[metric]) 
-        
+        # on_train_end callbacks
+        if self.callbacks: [clbk.on_train_end() for clbk in self.callbacks]
         return hist
 
     def predict(self, x, normalize=False):
@@ -199,15 +156,13 @@ class TorchModel(nn.Module):
         """
         if normalize:
             x = self.normalize(x)
-        self.eval()
+        self.module.eval()
         if isinstance(x, torch.Tensor):
             x_tensor = x.to(self.device)
         else:
             x_tensor = torch.tensor(x, dtype=torch.float32).to(self.device)
-        pred = self(x_tensor)
-        #if self._is_binary():
-        # if pred.ndim == 2:
-        #    if pred.shape[1] == 1:
+        pred = self.module(x_tensor)
+
         if self.is_binary:
             pred = nn.Sigmoid()(pred)
         return pred.cpu().detach().numpy()
@@ -225,11 +180,9 @@ class TorchModel(nn.Module):
             labels_type = self._labels_type()
             test_loader = make_loader(x, y, batch_size, shuffle, labels_type)
 
-        self.eval()
+        self.module.eval()
         self.loss.eval()
         [metric.eval() for metric in self.metrics_list]        
-        # for metric in self.metrics_list:
-        #     metric.eval()
 
         self.reset_metrics()
 
@@ -240,7 +193,7 @@ class TorchModel(nn.Module):
             for i, data in enumerate(test_loader, 0):
                 inputs, labels = data[0].to(self.device), data[1].to(self.device)
                 # calculate outputs by running inputs through the network
-                outputs = self(inputs)
+                outputs = self.module(inputs)
                 loss += self.loss(outputs, labels).item()
 
                 # return_metrics = {'loss': loss.item() / len(test_loader)}
@@ -292,14 +245,7 @@ class TorchModel(nn.Module):
                 if isinstance(m, str):
                     self.metrics_names.append(m)
                 else:
-                    self.metrics_names.append(str(m).lower()[:-2])
-            '''
-            for metric in self.metrics_list:
-                key = str(metric).lower()[:-2]
-                if key == 'auroc':
-                    key = 'auc'
-                self.metrics_names.append(key)    
-            '''            
+                    self.metrics_names.append(str(m).lower()[:-2])       
 
     def set_device(self, device=None):
         if device:
@@ -311,7 +257,7 @@ class TorchModel(nn.Module):
         """Default weights and bias initialization scheme.
         following Glorot uniform method.
         """
-        initialize_Glorot_uniform(self)
+        initialize_Glorot_uniform(self.module)
     
     def set_weights(self, state_dict):
         '''
@@ -323,7 +269,7 @@ class TorchModel(nn.Module):
         if hasattr(self, 'init_weight'):
             self.init_weights()
         else:
-            for layer in self.children():
+            for layer in self.module.children():
                 if isinstance(layer, nn.Sequential):
                     [l.reset_parameters() for l in layer if hasattr(l, 'reset_parameters')]
                 if hasattr(layer, 'module'):
@@ -332,21 +278,14 @@ class TorchModel(nn.Module):
                 if hasattr(layer, 'reset_parameters'):
                     layer.reset_parameters()
         
-        # self.optimizer = get_optimizer(self.optimizer, self.parameters())
-        # print(self.optimizer.state_dict())
         if self.optimizer:
-            self.optimizer.state = collections.defaultdict(dict) # Reset state     
-            # for st in self.optimizer_state:
-            #    self.optimizer.state_dict()[st] = self.optimizer_state[st]
-        
-        # self.state_dict = state_dict
+            self.optimizer.state = collections.defaultdict(dict) # Reset state    
 
     def get_weights(self):
-        return self.state_dict()
+        return self.module.state_dict()
 
     def summary(self, shape=None):
-        """Display the model layers and their input/output shapes.
-        
+        """Display the model layers and their input/output shapes.       
 
         Parameters
         ----------
@@ -359,7 +298,7 @@ class TorchModel(nn.Module):
         elif self.input_shape:
             input_shape = self.input_shape
         if input_shape:
-            summary(self, input_shape, device=self.device)
+            summary(self.module, input_shape, device=self.device)
 
     def save(self, path):
         """Save model
@@ -395,16 +334,16 @@ class TorchModel(nn.Module):
     def set_output_shape(self):
         """Setter for output shape attribute
         """
-        modules = list(self._modules.keys())
+        modules = list(self.module._modules.keys())
         output_index = -2
         if modules[-1] != 'loss':
             output_index = -1
         last_layer = modules[output_index]
-        if hasattr(self._modules[last_layer], 'out_features'):
-            self.output_shape = self._modules[last_layer].out_features
+        if hasattr(self.module._modules[last_layer], 'out_features'):
+            self.output_shape = self.module._modules[last_layer].out_features
         else:
             # Linear with TorchLayers regularizes
-            self.output_shape = self._modules[last_layer].module.out_features
+            self.output_shape = self.module._modules[last_layer].module.out_features
 
     def metrics_to(self, device=None):
         if not device:
@@ -414,21 +353,17 @@ class TorchModel(nn.Module):
     
     def _compile_regular(self, optimizer='Adam', loss=None,
                 metrics=None, loss_weights=None,
-                scheduler=None, classes=2):
-        self.optimizer    = get_optimizer(optimizer, self.parameters())
-        self.loss         = get_loss(loss)
+                scheduler=None, classes=2, callbacks=[]):
+        self.optimizer = get_optimizer(optimizer, self.module.parameters())
+        self.loss      = get_loss(loss)
         self.metrics_list = get_metrics(metrics, classes)
+        self.callbacks = build_callbacks(self, callbacks)
+        self.scheduler = scheduler
         self.set_metrics_names(metrics)
         # transfer to device
-        self.to(self.device)
+        self.module.to(self.device)
         self.loss.to(self.device)
-        [metric.to(self.device) for metric in self.metrics_list]
-        # for metric in self.metrics_list:
-        #     metric.to(self.device)
-        # 
-        # self.optimizer_state = self.optimizer.state_dict()
-        # self.optimizer_state = optimizer
-        self.scheduler = scheduler
+        [metric.to(self.device) for metric in self.metrics_list]        
     
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():
@@ -436,8 +371,6 @@ class TorchModel(nn.Module):
             # torchmetrics requires sparse labels, some losses (eg polyLoss)
             # require categorical labels
             targets = deepcopy(labels)
-            # if targets.shape[1] > 1:
-            #   targets = targets.argmax(axis=1)
             if self.is_binary:
                 outputs = nn.Sigmoid()(outputs)
                 outputs = outputs.squeeze()
@@ -450,16 +383,14 @@ class TorchModel(nn.Module):
                 metric_name = self.metrics_names[i+1]
                 targets = self._labels_to_int(metric_name, targets)
                 metric.update(outputs, targets)
-                # if metric_name == 'auroc':
-                #     metric_name = 'auc'
                 return_metrics[metric_name] = metric.compute().item()
         return return_metrics
-    
-    # def _is_binary(self, labels):
-    #     return labels.unique().max() == 1
-        # return "BCE" in str(type(self.loss))
 
-    def _set_is_binary(self, y):
+    def _set_is_binary(self, loader):
+        if hasattr(loader.dataset, 'tensors'):
+            y = loader.dataset.tensors[1]
+        elif hasattr(loader.dataset, 'data'):
+            y = loader.dataset.targets            
         if self.is_categorical:
             self.is_binary = y.shape[1] == 2
         else:
@@ -471,14 +402,8 @@ class TorchModel(nn.Module):
     
     def _set_auroc_classes(self):
         self.is_categorical = True
-        # set AUROC num_classes to 2
-        # for metric in self.metrics_list:
-        #     metric_name = str(metric).lower()[:-2]
-        #     if metric_name == 'auroc':
-        #         metric.num_classes = 2
 
     def _labels_to_int(self, metric, labels):
-        # if self.is_categorical and metric == 'auroc' or metric == 'auc':
         if self.is_categorical and metric == 'auc':
             return labels.argmax(axis=1).int()
         else:
@@ -489,10 +414,6 @@ class TorchModel(nn.Module):
         if type(self.loss) is nn.BCEWithLogitsLoss:
             labels_type = torch.float32
         return labels_type
-
-    def _reshape_input(self, x):
-        n, h, w = x.shape
-        return x.reshape(n, 1, h, w)
 
     def _create_loader(self, x, y, shuffle=True, batch_size=32):
         labels_type = self._labels_type()  
@@ -509,8 +430,7 @@ class TorchModel(nn.Module):
             if y.ndim > 1:
                 self._set_auroc_classes()
         
-        return train_loader        
-
+        return train_loader    
 
 class SAMTorch(TorchModel):
 
@@ -519,7 +439,7 @@ class SAMTorch(TorchModel):
         
         # first forward-backward step
         enable_running_stats(self)
-        outputs = self(inputs)
+        outputs = self.module(inputs)
                 
         loss = self.loss(outputs, labels)
         loss.backward()
@@ -527,7 +447,7 @@ class SAMTorch(TorchModel):
 
         # second forward-backward step
         disable_running_stats(self)
-        self.loss(self(inputs), labels).backward()
+        self.loss(self.module(inputs), labels).backward()
         self.optimizer.second_step(zero_grad=True)
         
         return_metrics = {'loss': loss.item()}

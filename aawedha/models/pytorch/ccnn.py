@@ -4,7 +4,7 @@
 # 17(2), p. 026028. doi: 10.1088/1741-2552/ab6a67.
 #
 #
-from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.pytorch.torchdata import reshape_input
 from aawedha.models.utils_models import is_a_loss
 from torchlayers.regularization import L2
 from torch import flatten
@@ -13,13 +13,13 @@ import torch.nn.functional as F
 import torch
 
 
-class CCNN(TorchModel):
+class CCNN(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=8,  dropout_rate=0.25, kernLength=10,
                 fs=512, resolution=0.293, l2=0.0001, frq_band=[7, 70], 
-                device='cuda', name='CCNN'):
-        super().__init__(device, name)    
-        
+                name='CCNN'):
+        super().__init__()    
+        self.name = name
         self.fs = fs
         self.resolution = resolution
         self.nfft  = round(fs / resolution)
@@ -57,7 +57,7 @@ class CCNN(TorchModel):
                         nn.init.constant_(module.bias, 0)    
     
     def forward(self, x):
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.transform(x)
         x = self.drop1(F.relu(self.bn1(self.conv1(x))))
         x = self.drop2(F.relu(self.bn2(self.conv2(x))))

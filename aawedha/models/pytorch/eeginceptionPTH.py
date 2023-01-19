@@ -1,5 +1,6 @@
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
-from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.pytorch.torchdata import reshape_input
 from torch import flatten
 from torch import nn
 import torch
@@ -24,10 +25,11 @@ def conv_block(in_channels, conv_type="Conv2D", filters=8, kernel=(1, 64), pad="
                 nn.Dropout(p=dropout_rate)
                 )
 
-class EEGInceptionPTH(TorchModel):
+class EEGInceptionPTH(nn.Module):
 
-    def __init__(self, nb_classes=1, Chans=15, Samples=205, device='cuda', name='EEGInceptionPTH'):
-        super().__init__(device, name)
+    def __init__(self, nb_classes=1, Chans=15, Samples=205, name='EEGInceptionPTH'):
+        super().__init__()
+        self.name = name
         temp_f = 8
         spat_f = 2
         division_rate = 32
@@ -52,10 +54,10 @@ class EEGInceptionPTH(TorchModel):
         self.p4 = nn.AvgPool2d(kernel_size=(1, 2), stride=(1, 2))
         self.dense = nn.Linear(6 * (Samples // division_rate), nb_classes)
 
-        self.init_weights()                
+        initialize_Glorot_uniform(self)              
 
     def forward(self, x):
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         #
         x1 = self.d1(self.c1(x))
         x2 = self.d2(self.c2(x))

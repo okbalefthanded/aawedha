@@ -1,13 +1,14 @@
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
-from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.pytorch.torchdata import reshape_input
 from torch.nn.functional import elu
 from torch import flatten
 from torch import nn
 
 
 # based on the Keras implementation by the EEGnet authors
-class DeepConvNetPTH(TorchModel):
+class DeepConvNetPTH(nn.Module):
     """ Pytorch implementation of the Deep Convolutional Network as described in
     Schirrmeister et. al. (2017), Human Brain Mapping.
 
@@ -31,8 +32,9 @@ class DeepConvNetPTH(TorchModel):
 
     """
     def __init__(self, nb_classes, Chans=64, Samples=256,
-                dropoutRate=0.5, device="cuda", name="DeepConvNetPTH"):
-        super().__init__(device, name)
+                dropoutRate=0.5, name="DeepConvNetPTH"):
+        super().__init__()
+        self.name = name
         division_rate = ((Samples - 16) // 8) - 1
         # block1
         self.conv = Conv2dWithConstraint(1, 25, (1,5), bias=False, max_norm=2., axis=(0,1,2))
@@ -58,10 +60,10 @@ class DeepConvNetPTH(TorchModel):
         #
         self.dense = LineardWithConstraint(200 * (Samples // division_rate), nb_classes, max_norm=0.5)
         
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):        
-        x = self._reshape_input(x)
+        x = reshape_input(x)
         x = self.do1(self.pool1(elu(self.bn1(self.conv1(self.conv(x))))))
         x = self.do2(self.pool2(elu(self.bn2(self.conv2(x)))))
         x = self.do3(self.pool3(elu(self.bn3(self.conv3(x)))))

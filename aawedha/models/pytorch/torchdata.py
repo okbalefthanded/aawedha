@@ -27,3 +27,20 @@ def make_loader(x, y, batch_size=32, shuffle=True, labels_type=torch.long):
                                              batch_size=batch_size, 
                                              shuffle=shuffle)
     return loader
+
+def reshape_input(x):
+    """Reshape Torch Tensor from 3D to 4D:
+    NHW -> N1HW
+
+    Parameters
+    ----------
+    x : Torch Tensor
+        input data to a model.
+
+    Returns
+    -------
+    Torch Tensor
+        input data to model.
+    """
+    n, h, w = x.shape
+    return x.reshape(n, 1, h, w)

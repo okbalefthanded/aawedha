@@ -1,21 +1,21 @@
+from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
-from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.pytorch.torchdata import reshape_input
 from aawedha.layers.cmt import Attention, Mlp
 from torch import nn, flatten
 import torch.nn.functional as F
 import torch
 
 
-class EEGNat(TorchModel):
+class EEGNat(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128,  
                  F1=4, D=2, kernLength=64, heads=1, dropout=0.5, 
-                 device="cuda", name="EEGNat"):
-
-        super().__init__(device=device, name=name)
-        regRate = .25
-        
+                 name="EEGNat"):
+        super().__init__()
+        self.name = name
+        regRate = .25        
         F2 = F1*D
         # EEGNET
         self.conv1 = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -40,10 +40,10 @@ class EEGNat(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*pos_shape, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)        
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.elu(x)
@@ -61,15 +61,15 @@ class EEGNat(TorchModel):
         return x
 
 
-class EEGNat2(TorchModel):
+class EEGNat2(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128, 
                   dropout=0.5, F1=4, D=2, kernLength=64, heads=1,
-                  device="cuda", name="EEGNat2"):
+                  name="EEGNat2"):
 
-        super().__init__(device=device, name=name)
-        regRate = .25
-        
+        super().__init__()
+        self.name = name
+        regRate = .25        
         F2 = F1*D
         # EEGNET
         self.conv1 = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
@@ -96,10 +96,10 @@ class EEGNat2(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*pos_shape, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.elu(x)
@@ -117,13 +117,13 @@ class EEGNat2(TorchModel):
         x = self.dense(x)
         return x
 
-class EEGNat3(TorchModel):
+class EEGNat3(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128,
                  dropout=0.5, F1=4, D=2, kernLength=64, heads=1,
-                 device="cuda", name="EEGNat"):
-
-        super().__init__(device=device, name=name)
+                 name="EEGNat"):
+        super().__init__()
+        self.name = name
         regRate = .25
         F2 = F1*D
         # EEGNET
@@ -155,10 +155,10 @@ class EEGNat3(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*pos_shape, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.elu(x)
@@ -178,13 +178,14 @@ class EEGNat3(TorchModel):
         return x
 
 
-class EEGNat4(TorchModel):
+class EEGNat4(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128, 
                  F1=4, D=2, kernLength=64, heads=1,
-                 dropout=0.5, device="cuda", name="EEGNat"):
+                 dropout=0.5, name="EEGNat"):
 
-        super().__init__(device=device, name=name)
+        super().__init__()
+        self.name = name
         regRate = .25
         F2 = F1*D
         # EEGNET
@@ -221,10 +222,10 @@ class EEGNat4(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*pos_shape, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.elu(x)
@@ -246,13 +247,13 @@ class EEGNat4(TorchModel):
         return x
         
 # EEGNat with LN and GELU   
-class EEGNat5(TorchModel):
+class EEGNat5(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128,  
                  F1=4, D=2, kernLength=64, heads=1, dropout=0.5, 
-                 device="cuda", name="EEGNat5"):
-
-        super().__init__(device=device, name=name)
+                 name="EEGNat5"):
+        super().__init__()
+        self.name = name
         regRate = .25        
         F2 = F1*D
         # EEGNET
@@ -281,10 +282,10 @@ class EEGNat5(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*pos_shape, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.gelu(x)
@@ -302,13 +303,13 @@ class EEGNat5(TorchModel):
         return x
 
 
-class EEGNat6(TorchModel):
+class EEGNat6(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128,  
                  F1=4, D=2, kernLength=64, heads=1, dropout=0.5, 
-                 device="cuda", name="EEGNat6"):
-
-        super().__init__(device=device, name=name)
+                 name="EEGNat6"):
+        super().__init__()
+        self.name = name
         regRate = .25        
         F2 = F1*D
         # EEGNET
@@ -339,10 +340,10 @@ class EEGNat6(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*pos_shape, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.gelu(x)
@@ -360,13 +361,14 @@ class EEGNat6(TorchModel):
         x = self.dense(x)
         return x
 
-class EEGNat7(TorchModel):
+class EEGNat7(nn.Module):
 
     def __init__(self, nb_classes, Chans=64, Samples=128,  
                  F1=4, D=2, kernLength=64, heads=1, dropout=0.5, 
-                 device="cuda", name="EEGNat7"):
+                 name="EEGNat7"):
 
-        super().__init__(device=device, name=name)
+        super().__init__()
+        self.name = name
         regRate = .25        
         F2 = F1*D
         # EEGNET
@@ -400,10 +402,10 @@ class EEGNat7(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*pos_shape, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.gelu(x)
@@ -421,13 +423,14 @@ class EEGNat7(TorchModel):
         x = self.dense(x)
         return x
 
-class EEGNat8(TorchModel):
+class EEGNat8(nn.Mddule):
 
     def __init__(self, nb_classes, Chans=64, Samples=128,  
                  F1=4, D=2, kernLength=64, heads=1, dropout=0.5, 
-                 device="cuda", name="EEGNat8"):
+                 name="EEGNat8"):
 
-        super().__init__(device=device, name=name)
+        super().__init__()
+        self.name = name
         regRate = .25        
         F2 = F1*D
         # EEGNET
@@ -465,10 +468,10 @@ class EEGNat8(TorchModel):
         #
         self.dense = LineardWithConstraint(F2*pos_shape, nb_classes, max_norm=regRate)
         #
-        self.init_weights()
+        initialize_Glorot_uniform(self)
 
     def forward(self, x):
-        x = self._reshape_input(x)     
+        x = reshape_input(x)     
         x = self.bn1(self.conv1(x))
         x = self.bn2(self.conv2(x))   
         x = F.gelu(x)

@@ -132,10 +132,10 @@ class Evaluation:
                  log_level='debug', log_name=None, debug=False):
         """
         """
-        self.dataset = dataset
+        self.dataset  = dataset
         self.settings = Settings(partition, folds, engine, verbose, 0, debug)        
-        self.learner = Model(model, normalize=normalize)
-        self.score = Score()      
+        self.learner  = Model(model, normalize=normalize)
+        self.score    = Score()      
         self.n_subjects = self._get_n_subjects()
         self.log = log
         self.logger = None        
@@ -235,9 +235,9 @@ class Evaluation:
             self.settings.fit_config = model_config['fit']
             if 'paradigm_metrics' in model_config['compile']:
                 self.settings.set_paradigm_metrics(model_config['compile']['paradigm_metrics'])
-
-        self.learner.model = model
-        self.learner.name = model.name
+        self.learner.set_model(model, self.settings.engine)
+        # self.learner.model = model
+        # self.learner.name = model.name
         self.learner.set_type()
         self.reset_weights()   
         if self.settings.engine == 'pytorch':

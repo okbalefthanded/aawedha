@@ -3,14 +3,14 @@
 # networks for BCI across more people,” J. Neural Eng., vol. 17, no. 5, p. 056008, Oct. 2020.
 # Adapted from official code implementation
 # https://github.com/SPOClab-ca/ThinkerInvariance
-from aawedha.models.pytorch.torchmodel import TorchModel
-import torch
+from aawedha.models.pytorch.torchdata import reshape_input
 from torch.nn import Module, Sequential
 from torch.nn import Flatten, Linear, Dropout2d, BatchNorm2d, Conv2d
 from torch.nn import LeakyReLU, BatchNorm1d, MaxPool2d, Dropout, Conv1d
 from torch.nn import AdaptiveAvgPool1d, init, ELU
 from torch.nn.utils import weight_norm
 from math import ceil
+import torch
 
 
 class Expand(Module):
@@ -276,12 +276,13 @@ class _tidnet_features(Module):
         return self.extract_features(x)
 
 
-class TIDNet(TorchModel):
+class TIDNet(Module):
 
     def __init__(self, targets=4, s_growth=24, t_filters=32, channels=22, samples=1500, 
                  do=0.4, pooling=15, temp_layers=2, spat_layers=2, 
                  temp_span=0.05, bottleneck=3, summary=-1, **kwargs):
         super().__init__()
+        self.name = 'TidNet'
         self.classes = targets
         self.channels = channels
         self.samples = samples
@@ -304,8 +305,7 @@ class TIDNet(TorchModel):
         return Sequential(Flatten(), classifier)
 
     def forward(self, x, **kwargs):
-        n, h, w = x.shape
-        x = x.reshape(n, 1, h, w)
+        x = reshape_input(x)
         x = self.dscnn(x)
         prediction = self.classify(x)
         return prediction
