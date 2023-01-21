@@ -134,7 +134,7 @@ class Evaluation:
         """
         self.dataset  = dataset
         self.settings = Settings(partition, folds, engine, verbose, 0, debug)        
-        self.learner  = Model(model, normalize=normalize)
+        self.learner  = Model(model, normalize=normalize, model_type=engine)        
         self.score    = Score()      
         self.n_subjects = self._get_n_subjects()
         self.log = log
@@ -373,7 +373,7 @@ class Evaluation:
         """reset model's weights to initial state (model's creation state)
         """
         self.learner.reset_weights()
-
+    
     def _equal_subjects(self):
         """Test whether dataset's train_epochs and test_epochs has same number
         of subjects
@@ -413,7 +413,7 @@ class Evaluation:
         Sets model_compiled attribute to true after successful model
             compilation
         """
-        device = get_device(self.learner.config)
+        device  = get_device(self.learner.config)
         classes = self._get_classes()
         self.learner.compile(device, classes)
         self.score.build(self.learner.model.metrics_names)

@@ -387,10 +387,13 @@ class TorchModel(nn.Module):
         return return_metrics
 
     def _set_is_binary(self, loader):
-        if hasattr(loader.dataset, 'tensors'):
-            y = loader.dataset.tensors[1]
-        elif hasattr(loader.dataset, 'data'):
-            y = loader.dataset.targets            
+        if isinstance(loader, torch.Tensor):
+            y = loader
+        else:
+            if hasattr(loader.dataset, 'tensors'):
+                y = loader.dataset.tensors[1]
+            elif hasattr(loader.dataset, 'data'):
+                y = loader.dataset.targets            
         if self.is_categorical:
             self.is_binary = y.shape[1] == 2
         else:

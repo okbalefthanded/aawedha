@@ -143,8 +143,23 @@ def load_model(filepath):
     return model
 
 def inference_time(model, device, batch=1):
+    """Calculate inference time of a given model for a defined tensor.
+
+    Parameters
+    ----------
+    model : Keras Model | Pytorch Module
+        trained model
+    device : str
+        compute hardware : {CPU | GPU | TPU}
+    batch : int, optional
+        test data batch size
+
+    Returns
+    -------
+    str
+        inference time in seconds.
     """
-    """
+    it = None
     model_type = model_lib(type(model)) 
     if model_type == 'keras':
         it =  it_tf(model, batch)
@@ -153,15 +168,60 @@ def inference_time(model, device, batch=1):
     return it.total_seconds()
 
 def it_tf(model, batch=1):
+    """Calculate inference time of a TensorFlow/Keras Model 
+
+    Parameters
+    ----------
+    model : TensorFlow/Keras model
+        trained model
+    batch : int, optional
+        test data batch size, by default 1
+
+    Returns
+    -------
+    str
+        inference time in seconds
+    """
     tensor = tf.ones((batch, *model.inputs[0].shape[1:]))    
     return elapsed_time(model, tensor)
 
 def it_pth(model, device, batch=1):
+    """Calculate inference time of a Pytorch Model 
+
+    Parameters
+    ----------
+    model : Pytorch model as nn.Module instance.
+        trained Pytorch Model
+    device : str | torch device
+        compute hardware
+    batch : int, optional
+        test data batch size, by default 1
+
+    Returns
+    -------
+    str
+        inference time in seconds
+    """
     model.to(device)
     tensor = torch.ones(batch, *model.input_shape, device=device)    
     return elapsed_time(model, tensor)
 
 def elapsed_time(model, tensor):
+    """Estimate elapsed time passed taken by the model to 
+    make prediction on tensor.
+
+    Parameters
+    ----------
+    model : TensorFlow/Keras model | Pytorch Model as nn.Module
+        trained model
+    tensor : TensorFlow Tensor | Torch Tensor
+        a dummy Tensor of ones with shape similar to model input.
+
+    Returns
+    -------
+    timedelta
+        duration of model prediction.
+    """
     start = timer()
     pred = model.predict(tensor)
     end = timer()
@@ -174,5 +234,10 @@ def is_a_loss(mod):
     ----------
     mod : nn.Module instance
         a pytorch nn module
+
+    Returns
+    -------
+    bool
+        True if the module is a loss, False otherwise.
     """
     return any([isinstance(mod, loss) for _, loss in losses.items()])

@@ -1,5 +1,6 @@
 from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
 from aawedha.evaluation.evaluation_utils import metrics_by_lib
+from aawedha.models.pytorch.torchmodel import TorchModel
 from aawedha.models.utils_models import model_lib
 from aawedha.utils.utils import init_TPU
 import tensorflow as tf
@@ -10,7 +11,7 @@ class Model:
     def __init__(self, model=None, compiled=False, weights={},
                 config={}, history=[], normalize=True,
                 name=None, model_type=None):
-        self.model = model
+        self.model = self._init_model(model, model_type)
         self.compiled = compiled
         self.initial_weights = weights
         self.config = config
@@ -27,6 +28,16 @@ class Model:
         self.name = model.name        
 
     def compile(self, device, classes):
+        """Compile model: create training configuration objects
+        from description
+
+        Parameters
+        ----------
+        device : str
+            compute hardware: {CPU | GPU | TPU}
+        classes : int
+            number of classes in the dataset to be trained on
+        """
         khsara, optimizer, metrics, schedule = self.get_compile_configs(device, classes)
         if device != 'TPU':
             if self.type == 'keras':
@@ -136,6 +147,10 @@ class Model:
             raise NotImplementedError
         else:
             return self.model.output_shape
+
+    def _init_model(self, model, model_type):
+        if model_type == "pytorch":
+            self.model = TorchModel(module=model)
     
     def _compile_keras(self, khsara, optimizer, metrics):
         self.model.compile(loss=khsara,

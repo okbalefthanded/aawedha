@@ -137,5 +137,6 @@ def build_callbacks(model, callbacks_list):
             callback_instance = available_callbacks[clbk](model=model)    
         else:
             callback_instance = clbk
-    clbks.append(callback_instance)
+        if callback_instance:
+            clbks.append(callback_instance)
     return clbks   
