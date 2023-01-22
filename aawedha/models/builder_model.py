@@ -1,10 +1,11 @@
 from aawedha.models.pytorch.torchmodel import TorchModel
 from aawedha.models.pytorch.torch_swa import SWA
+from aawedha.models.pytorch.torch_twa import TWA
 
 train_strategy = {
     'regular': TorchModel,
     'swa': SWA,
-    'twa': None,
+    'twa': TWA,
     'sam': None,
     'asam': None,
     'wasam': None
