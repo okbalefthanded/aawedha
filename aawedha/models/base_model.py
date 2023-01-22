@@ -1,17 +1,19 @@
 from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
 from aawedha.evaluation.evaluation_utils import metrics_by_lib
-from aawedha.models.pytorch.torchmodel import TorchModel
+# from aawedha.models.pytorch.torchmodel import TorchModel
+from aawedha.models.builder_model import build_learner
 from aawedha.models.utils_models import model_lib
 from aawedha.utils.utils import init_TPU
 import tensorflow as tf
 
 
-class Model:
+class Learner:
 
     def __init__(self, model=None, compiled=False, weights={},
                 config={}, history=[], normalize=True,
                 name=None, model_type=None):
-        self.model = self._init_model(model, model_type)
+        # self._init_model(model, model_type)
+        self.model = model        
         self.compiled = compiled
         self.initial_weights = weights
         self.config = config
@@ -22,10 +24,12 @@ class Model:
 
     def set_model(self, model, engine):
         if engine == "pytorch":
-            self.model.module = model
+            if not self.model:
+                self.model = build_learner(self.config['compile'])
+                self.model.module = model
         elif engine == "Keras":
             self.model = model
-        self.name = model.name        
+        self.name = model.name
 
     def compile(self, device, classes):
         """Compile model: create training configuration objects
@@ -148,9 +152,9 @@ class Model:
         else:
             return self.model.output_shape
 
-    def _init_model(self, model, model_type):
-        if model_type == "pytorch":
-            self.model = TorchModel(module=model)
+    # def _init_model(self, model, model_type):
+    #     if model_type == "pytorch":
+    #         self.model = TorchModel(module=model)
     
     def _compile_keras(self, khsara, optimizer, metrics):
         self.model.compile(loss=khsara,

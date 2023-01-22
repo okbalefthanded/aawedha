@@ -40,6 +40,7 @@ available_callbacks = {
     'none':  NotImplemented,
     }
 
+
 def get_optimizer(optimizer, opt_params):
     """
     """

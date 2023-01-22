@@ -8,7 +8,7 @@ from aawedha.models.utils_models import load_model
 from aawedha.utils.utils import make_folders, cwd
 from aawedha.evaluation.settings import Settings
 from aawedha.utils.utils import get_gpu_name
-from aawedha.models.base_model import Model
+from aawedha.models.base_model import Learner
 from aawedha.utils.utils import get_device
 from aawedha.evaluation.score import Score
 from aawedha.utils.utils import time_now
@@ -134,7 +134,7 @@ class Evaluation:
         """
         self.dataset  = dataset
         self.settings = Settings(partition, folds, engine, verbose, 0, debug)        
-        self.learner  = Model(model, normalize=normalize, model_type=engine)        
+        self.learner  = Learner(model, normalize=normalize, model_type=engine)        
         self.score    = Score()      
         self.n_subjects = self._get_n_subjects()
         self.log = log
@@ -346,7 +346,7 @@ class Evaluation:
             chk = CheckPoint.load_checkpoint()
         
         if chk:
-            self.learner = Model(load_model(chk.check_path), 
+            self.learner = Learner(load_model(chk.check_path), 
                                   compiled=chk.learner.compiled, 
                                   weights=chk.learner.initial_weights, 
                                   config=chk.learner.config, 
@@ -364,7 +364,7 @@ class Evaluation:
                 self.mode = chk.mode
                 self.best_kept = chk.best_kept
         else:        
-            self.learner = Model(model=None)
+            self.learner = Learner(model=None)
             self.score = Score()  
 
         return chk
