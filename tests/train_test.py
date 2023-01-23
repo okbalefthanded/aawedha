@@ -37,11 +37,11 @@ def load_data():
 def make_model(channels, samples, n_classes):
     return EEGNetTorch(nb_classes = n_classes, Chans = channels, Samples = samples, 
                    dropoutRate = 0.5, kernLength = 32, F1 = 8, D = 2, F2 = 16, 
-                   dropoutType = 'Dropout', device='cpu')
+                   dropoutType = 'Dropout')
 
 
 def process_evaluation(evl, model=None):    
-    config = {}
+    config  = {}
     compile = {'loss': 'sparse_categorical_crossentropy',
                'optimizer': 'Adam',
                'metrics': ['accuracy']
@@ -51,9 +51,8 @@ def process_evaluation(evl, model=None):
            'callbacks': []
            }
     config['compile'] = compile
-    config['fit'] = fit
-
-    config['device'] = 'cpu'
+    config['fit']     = fit
+    config['device']  = 'cpu'
 
     evl.set_model(model=model, model_config=config)
     evl.run_evaluation(selection=0)    
@@ -66,7 +65,9 @@ def test_single_subject():
     os.mkdir("data")
     # load data
     data = create_dataset()
-    subjects, samples, channels, n_classes = data.epochs.shape
+    data.print_shapes()
+    subjects, samples, channels, trials = data.epochs.shape
+    classes = data.get_n_classes()
     # define en evaluation
     evl = Train(dataset=data, verbose=0, engine='pytorch')
     # set model

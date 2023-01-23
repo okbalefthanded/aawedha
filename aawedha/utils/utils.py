@@ -1,6 +1,7 @@
 from pynvml import *
 from tensorflow.keras import backend as K
 from aawedha.analysis.utils import isfloat
+from pathlib import Path
 import tensorflow as tf
 import pandas as pd
 import numpy as np
@@ -75,7 +76,6 @@ def init_TPU():
     strategy = tf.distribute.TPUStrategy(resolver)
     return strategy
 
-
 def log_to_csv(filepath, folder=''):
     """Convert log file into a csv file of results only
 
@@ -144,10 +144,22 @@ def unzip_files(zip_files, store_path):
         folder where to extract zipped files.
     """
     for zipf in zip_files:
-        zip_ref = zipfile.ZipFile(zipf) # create zipfile object
-        zip_ref.extractall(store_path) # extract file to dir
-        zip_ref.close() # close file
+        unzip_single_file(store_path, zipf)
+        # zip_ref = zipfile.ZipFile(zipf) # create zipfile object
+        # zip_ref.extractall(store_path)  # extract file to dir
+        # zip_ref.close() # close file
         os.remove(zipf) # delete zipped file
+
+
+def unzip_single_file(path, compressed_file):
+    save_dir = Path(path)  
+    zip_file = zipfile.ZipFile(compressed_file, 'r')
+    for files in zip_file.namelist():
+        data = zip_file.read(files)
+        file_path = save_dir / Path(files).name
+        file_path.write_bytes(data)
+    zip_file.close()
+
 
 def untar_files(tar_files, store_path):
     """Untar compressed files and delete tar files.

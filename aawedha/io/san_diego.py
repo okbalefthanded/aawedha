@@ -2,9 +2,11 @@ from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass
 from scipy.io import loadmat
+from aawedha.utils.utils import unzip_files
 import aawedha.utils.network as network
 import numpy as np
 import glob
+import os
 
 
 class SanDiego(DataSet):
@@ -119,7 +121,7 @@ class SanDiego(DataSet):
         y : nd array (subjects x trials)
             class labels for the entire set or train/test phase
         """
-        list_of_files = sorted(glob.glob(path + 's*.mat'))
+        list_of_files = sorted(glob.glob(os.path.join(path, 's*.mat')))
         ep = epoch_duration
         epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
         n_subjects = 10
@@ -141,7 +143,10 @@ class SanDiego(DataSet):
             else:
                 # epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
                 # epoch_duration = np.round(np.array(ep) * self.fs).astype(int)
-                eeg = eeg[onset:onset + epoch_duration, :, :, :]
+                start, end = 0, epoch_duration
+                if epoch_duration.nsize >= 2:
+                    start, end = epoch_duration[0], epoch_duration[1] 
+                eeg = eeg[onset+start:onset+end, :, :, :]
                 samples, channels, blocks, targets = eeg.shape
                 y = np.tile(np.arange(1, targets + 1), (blocks, 1))
                 y = y.reshape((1, blocks * targets), order='F')
@@ -164,7 +169,11 @@ class SanDiego(DataSet):
             folder path where raw data will be stored, by default None. data will be stored in working path.
         """
         ftp_client = network.connect_ftp(self.url)
-        network.download_ftp_folder(ftp_client, 'pub/cca_ssvep', store_path)
+        # network.download_ftp_folder(ftp_client, 'pub/cca_ssvep', store_path)
+        network.download_ftp_folder(ftp_client, 'pub', store_path, only_files='cca_ssvep.zip')
+        # unzip
+        zip_files = [f"{store_path}/cca_ssvep.zip"]
+        unzip_files(zip_files, store_path)
 
     def _get_events(self):
         """Attaches the experiments paradigm frequencies to

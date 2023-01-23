@@ -98,6 +98,7 @@ def download_ftp_folder(ftp, folder, store_path, only_files=None, pattern=None):
         all files by extension or name to fetch and download from remote folder, default None download all 
         files.    
     """
+    inside_wd = False
     if only_files:
         if isinstance(only_files, list):
             files = [f"{folder}/{f}" for f in only_files]
@@ -105,11 +106,21 @@ def download_ftp_folder(ftp, folder, store_path, only_files=None, pattern=None):
             files = [f"{folder}/{only_files}"]
     else:
         files = ftp_fetch_folder(ftp, folder, pattern)
+        inside_wd = True
     
+    if not inside_wd:
+      ftp.cwd(folder)
+      
     for f in files:
-        fpath = os.path.join(store_path, f)
+        fname = f
+        if not inside_wd:
+          fname = f.split('/')[-1]
+        fpath = os.path.join(store_path, fname)
         print(f"Storing file : {f} in {store_path}")
-        ftp.retrbinary("RETR " + f, open(fpath, 'wb').write)
+        ftp.retrbinary("RETR " + fname, open(fpath, 'wb').write)
+        # ftp.retrbinary("RETR " + fname, open(fpath, 'wb').write)
+        # ftp.retrbinary("RETR " + f, open(f, 'wb').write)
+        # ftp.retrbinary("RETR " + f, open(fpath, 'wb').write)
 
 
 def check_size(ftp, path, remote_folder):
