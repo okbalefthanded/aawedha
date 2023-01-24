@@ -42,12 +42,14 @@ class Learner:
         classes : int
             number of classes in the dataset to be trained on
         """
+        devices = {'CPU': 'cpu', 'GPU': 'cuda'}
         khsara, optimizer, metrics, schedule = self.get_compile_configs(device, classes)
         if device != 'TPU':
             if self.type == 'keras':
                 self._compile_keras(khsara, optimizer, metrics)
             else:
-                self.model.set_device(device)
+
+                self.model.set_device(devices[device])
                 self._compile_pytorch(khsara, optimizer, metrics, schedule, classes)
         else:
             self._compile_for_tpu(khsara, optimizer, classes)

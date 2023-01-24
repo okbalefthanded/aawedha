@@ -248,7 +248,10 @@ class TorchModel(nn.Module):
                     self.metrics_names.append(str(m).lower()[:-2])       
 
     def set_device(self, device=None):
+        devices = ['cuda', 'cpu']
         if device:
+            if device not in devices:
+                raise NotImplementedError
             self.device = device
         else:
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
