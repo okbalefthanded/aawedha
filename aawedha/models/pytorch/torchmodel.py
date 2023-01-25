@@ -364,9 +364,14 @@ class TorchModel(nn.Module):
         self.scheduler = scheduler
         self.set_metrics_names(metrics)
         # transfer to device
+        self._to_device()
+
+    def _to_device(self):
+        """Transfer module, loss and metrics to compute device.
+        """
         self.module.to(self.device)
         self.loss.to(self.device)
-        [metric.to(self.device) for metric in self.metrics_list]        
+        [metric.to(self.device) for metric in self.metrics_list]    
     
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():

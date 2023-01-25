@@ -1,9 +1,8 @@
 # Implements SAM (Sharpness Awara Minimization) and Adaptive SAM
 # code taken from : https://github.com/davda54/sam
-
+# from aawedha.models.pytorch.torchmodel import TorchModel
 import torch
 import torch.nn as nn
-
 
 def disable_running_stats(model):
     def _disable(module):
@@ -28,7 +27,6 @@ class SAM(torch.optim.Optimizer):
 
         defaults = dict(rho=rho, adaptive=adaptive, **kwargs)
         super(SAM, self).__init__(params, defaults)
-
         self.base_optimizer = base_optimizer(self.param_groups, **kwargs)
         self.param_groups = self.base_optimizer.param_groups
 
@@ -81,3 +79,5 @@ class SAM(torch.optim.Optimizer):
     def load_state_dict(self, state_dict):
         super().load_state_dict(state_dict)
         self.base_optimizer.param_groups = self.param_groups
+
+

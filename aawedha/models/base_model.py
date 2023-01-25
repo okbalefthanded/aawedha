@@ -48,8 +48,7 @@ class Learner:
             if self.type == 'keras':
                 self._compile_keras(khsara, optimizer, metrics)
             else:
-
-                self.model.set_device(devices[device])
+                self.model.set_device(devices[device.upper()])
                 self._compile_pytorch(khsara, optimizer, metrics, schedule, classes)
         else:
             self._compile_for_tpu(khsara, optimizer, classes)

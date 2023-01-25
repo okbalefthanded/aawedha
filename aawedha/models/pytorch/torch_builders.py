@@ -2,6 +2,7 @@
 #from aawedha.loss.focal_loss import FocalLoss
 #from aawedha.loss.poly_loss import PolyLoss
 import aawedha.loss.torch_loss as tl
+from aawedha.models.pytorch.samtorch import SAM
 from aawedha.optimizers.adan import Adan
 from libauc.losses import AUCMLoss
 from libauc.optimizers import PESG
@@ -33,7 +34,8 @@ available_metrics = {
 custom_opt = {
     'Adan': Adan,
     'Ranger': Ranger21,
-    'PESG' : PESG
+    'PESG' : PESG,
+    'Sam': SAM
 }
 
 available_callbacks = {
@@ -70,7 +72,7 @@ def get_loss(loss):
             raise ModuleNotFoundError
     elif isinstance(loss, list):
         loss_id = loss[0]
-        params = loss[1]
+        params  = loss[1]
         return losses[loss_id](**params)
     elif isinstance(loss, nn.Module):
         return loss
@@ -83,14 +85,7 @@ def get_metrics(metrics, classes):
     
     for metric in metrics:
         if isinstance(metric, str):
-            # quick hack, FIXME
             selected_metrics.append(available_metrics[metric](task=task, num_classes=classes))
-            '''
-            if metric == 'mcc':
-                selected_metrics.append(available_metrics[metric](num_classes=2))    
-            else:
-                selected_metrics.append(available_metrics[metric]())
-            '''
         else:
             selected_metrics.append(metric)
     return selected_metrics
