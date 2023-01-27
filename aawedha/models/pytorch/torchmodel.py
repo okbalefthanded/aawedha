@@ -46,7 +46,8 @@ class TorchModel(nn.Module):
                 metrics=None, loss_weights=None,
                 scheduler=None, classes=2, callbacks=[]):
         self._compile_regular(optimizer=optimizer, loss=loss, metrics=metrics, 
-                              scheduler=scheduler, classes=classes, callbacks=callbacks)
+                              scheduler=scheduler, classes=classes, 
+                              callbacks=callbacks)
 
     def train_step(self, data):
         """

@@ -8,26 +8,69 @@ import tensorflow as tf
 
 
 class Learner:
-
+    """Wrapper class to unify training and inference operations for different
+    Frameworks.
+    """
     def __init__(self, model=None, compiled=False, weights={},
                 config={}, history=[], normalize=True,
                 name=None, model_type=None):
+        """Constructor
+        initiliaze Learner object with empty attributes.
+        The object update will be made at compile method call.
+
+        Parameters
+        ----------
+        model : Keras Model | TorchModel, optional
+            the model instance that will be trained, by default None
+        compiled : bool, optional
+            True if the model is compiled, by default False
+        weights : {list, dict}, optional
+            the model's weights at creation, used to keep the same start 
+            point in later evaluations.
+            - List: Keras model initial weights.
+            - dict : TorchModel module initial state.
+            by default {}
+        config : dict, optional
+            compile and training configuration, by default {}
+        history : a list of : {Keras History object, dict} optional
+            Record of training/validation metrics and loss values per epoch, by default []
+            - History object: if the model is a Keras Model object.
+            - dict: if the model is a TorchModel object.
+        normalize : bool, optional
+            if True, normalize inputs before training and evaluation, by default True
+        name : str, optional
+            model name, by default None
+        model_type :  {'keras', 'pytorch'}, optional
+            model framework, by default None
+        """
         # self._init_model(model, model_type)
-        self.model = model        
-        self.compiled = compiled
-        self.initial_weights = weights
-        self.config = config
-        self.history = history
-        self.do_normalize = normalize
+        self.model    = model        
+        self.compiled = compiled        
+        self.config   = config
+        self.history  = history
         self.name = name
         self.type = model_type
+        self.initial_weights = weights
+        self.do_normalize    = normalize        
 
     def set_model(self, model, engine):
+        """model setter
+        - Keras   : assign the model to Learner model attribute
+        - Pytorch : create a TorchModel (or subclass) object, then assign model to
+        the TorchModel module attribute.
+
+        Parameters
+        ----------
+        model : {Keras Model, Pytorch nn Module}
+            model object for training and evalution.
+        engine : {'keras', 'pytorch'}
+            model framework.
+        """
         if engine == "pytorch":
             if not self.model:
                 self.model = build_learner(self.config['compile'])
                 self.model.module = model
-        elif engine == "Keras":
+        elif engine == "keras":
             self.model = model
         self.name = model.name
 
@@ -52,15 +95,54 @@ class Learner:
                 self._compile_pytorch(khsara, optimizer, metrics, schedule, classes)
         else:
             self._compile_for_tpu(khsara, optimizer, classes)
-        self.compiled = True    
+        self.compiled = True
 
     def fit(self, x, y, batch_size, epochs, steps_per_epoch, 
             verbose, validation_data, class_weight, 
             callbacks):
-        return self.model.fit(x=x, y=y, batch_size=batch_size,
-                       epochs=epochs, steps_per_epoch=steps_per_epoch,
-                       verbose=verbose, validation_data=validation_data,
-                        class_weight=class_weight, callbacks=callbacks)
+        """Trains the model with a similar Keras fit method.
+
+        Parameters
+        ----------
+        x : {Numpy Array, PyTorch DataLoader} 
+            Training data
+        y : {Numpy Array, None}
+            Label data.
+            (None in case of x is PyTorch DataLoader)
+        batch_size : int
+            number of samples per one training step
+        epochs : int
+            number of training epochs.
+        steps_per_epoch : {int, None}
+            used mainly for training Keras Models in TPUs.
+        verbose : {0, 1, 2}
+            print training progress per step.
+            0 : silent
+            1 : progress bar
+            2 : one line per epoch
+        validation_data : {None, Numpy Array, Pytorch Loader}
+            data to test model on after each epoch end.
+            if None, no validation.
+        class_weight : dict
+            class weights mapping.
+        callbacks : list of callback objects
+            methods to be called only during training.
+
+        Returns
+        -------
+        history : {Keras History object, dict} optional
+            Record of training/validation metrics and loss values per epoch, by default []
+            - History object: if the model is a Keras Model object.
+            - dict: if the model is a TorchModel object.
+        """
+        return self.model.fit(x=x, y=y, 
+                              batch_size=batch_size,
+                              epochs=epochs, 
+                              steps_per_epoch=steps_per_epoch,
+                              verbose=verbose, 
+                              validation_data=validation_data,
+                              class_weight=class_weight, 
+                              callbacks=callbacks)
 
     def predict(self, X):
         preds = []
