@@ -66,6 +66,7 @@ def test_single_subject():
     if not os.path.exists("data"):
         os.mkdir("data")
     # load data
+    data = create_dataset()
     if not isinstance(data, DataSet):
         data = load_data()
     data.print_shapes()
