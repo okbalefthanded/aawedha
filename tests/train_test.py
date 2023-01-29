@@ -2,6 +2,7 @@ from aawedha.models.pytorch.eegnettorch import EEGNetTorch
 from aawedha.io.bci_comp_iv_2a import Comp_IV_2a
 from aawedha.evaluation.train import Train
 from aawedha.utils.utils import set_seed
+from aawedha.io.base import DataSet
 import numpy as np
 import pytest
 import random
