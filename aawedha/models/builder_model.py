@@ -1,13 +1,13 @@
 from aawedha.models.pytorch.torchmodel import TorchModel
 from aawedha.models.pytorch.torchmodel import SAMTorch
+from aawedha.models.pytorch.torch_twa import TwaTrain
 from aawedha.models.pytorch.torch_swa import SWA
-from aawedha.models.pytorch.torch_twa import TWA
 
 
 train_strategy = {
     'regular': TorchModel,
     'swa': SWA,
-    'twa': TWA,
+    'twa': TwaTrain,
     'sam': SAMTorch,
     'asam': None,
     'wasam': None
