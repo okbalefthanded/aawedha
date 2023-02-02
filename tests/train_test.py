@@ -72,7 +72,7 @@ def test_single_subject():
         data = load_data()
     data.print_shapes()
     subjects, samples, channels, trials = data.epochs.shape
-    classes = data.get_n_classes()
+    n_classes = data.get_n_classes()
     # define en evaluation
     evl = Train(dataset=data, verbose=0, engine='pytorch')
     # set model
