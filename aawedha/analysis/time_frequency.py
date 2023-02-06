@@ -53,7 +53,8 @@ def spectral_power(data, subject=0, channel='POz'):
 
     nyquist = data.fs / 2
     # frequencies = np.linspace(0, nyquist, np.floor(samples/2).astype(int)+1)
-    frequencies = np.arange(0, nyquist, data.fs/samples)
+    # frequencies = np.arange(0, nyquist, data.fs/samples)
+    frequencies = np.round(np.arange(0, nyquist, data.fs/samples), 14)
 
     # trials_per_class = np.round(trials / ev_count).astype(int)
     # power = np.zeros((len(frequencies), trials_per_class))

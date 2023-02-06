@@ -14,7 +14,7 @@ def harmonics_idx(freqs, event, h):
         ff = np.zeros((3))
     else:
         event = float(event)
-        ff = np.array([event*ev for ev in range(1, h+1)])
+        ff = np.array([np.round(event*ev, 14) for ev in range(1, h+1)])
     f_idx = np.logical_or.reduce([freqs == f for f in ff.tolist()])
     return f_idx
 
