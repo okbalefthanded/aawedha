@@ -1,5 +1,7 @@
 from aawedha.models.pytorch.torchmodel import TorchModel
 from aawedha.models.pytorch.twa import TWA
+import torch
+
 
 class TwaTrain(TorchModel):
 
@@ -24,7 +26,8 @@ class TwaTrain(TorchModel):
         loss = self.loss(outputs, labels)
         loss.backward()
         if epoch > self.twa_end:
-            self.twa_model.update_parameters(self.module)
+            # self.twa_model.update_parameters(self.module)
+            self.twa.update_parameters(self.module)
         self.optimizer.step()
         
         if self._cyclical_scheduler():
@@ -80,12 +83,13 @@ class TwaTrain(TorchModel):
             # update history
             for metric in return_metrics:
                 hist[metric].append(return_metrics[metric])
-        if epoch == self.twa_end:
-            self.twa.fit_subspace()
-            self.init_lr()           
+        
+            if epoch == self.twa_end:
+                self.twa.fit_subspace()
+                self.init_lr()           
             
-        if epoch >= self.twa_start and epoch < self.twa_end:
-            self.twa.collect_solutions(self.module)
+            if epoch >= self.twa_start and epoch < self.twa_end:
+                self.twa.collect_solutions(self.module)
         
         return hist
         
