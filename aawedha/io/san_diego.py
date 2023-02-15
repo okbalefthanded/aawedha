@@ -144,8 +144,9 @@ class SanDiego(DataSet):
                 # epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
                 # epoch_duration = np.round(np.array(ep) * self.fs).astype(int)
                 start, end = 0, epoch_duration
-                if epoch_duration.nsize >= 2:
-                    start, end = epoch_duration[0], epoch_duration[1] 
+                if isinstance(epoch_duration, np.ndarray): 
+                    if epoch_duration.nsize >= 2:
+                        start, end = epoch_duration[0], epoch_duration[1] 
                 eeg = eeg[onset+start:onset+end, :, :, :]
                 samples, channels, blocks, targets = eeg.shape
                 y = np.tile(np.arange(1, targets + 1), (blocks, 1))

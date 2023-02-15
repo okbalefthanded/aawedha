@@ -68,8 +68,8 @@ class TwaTrain(TorchModel):
             # evaluate validation data
             val_metrics = None
             if has_validation:
-                val_metrics = self.evaluate(
-                    validation_data, batch_size=batch_size, shuffle=False, use_default=use_default)
+                # val_metrics = self.evaluate(validation_data, batch_size=batch_size, shuffle=False, use_default=use_default)
+                val_metrics = self.evaluate(validation_data, batch_size=batch_size, shuffle=False)
                 for metric in val_metrics:
                     hist[f"val_{metric}"].append(val_metrics[metric])
 

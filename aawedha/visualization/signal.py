@@ -142,7 +142,7 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2,
         chs = data.ch_names
     else:
         chs = channel
-
+    title = data.title
     if type(channel) is list or channel == 'all':
         if len(stimuli) == 1:
             for ch in range(len(pwr[0])):
@@ -158,7 +158,7 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2,
                 plt.ylim(0, ylim)
                 plt.xlabel('Frequnecy [HZ]')
                 plt.ylabel('Power Spectrum')
-                plt.title(f'Subject: {subject + 1} Frequency: {stimuli[0]}, at {chs[ch]}')
+                plt.title(f' {title} Subject: {subject + 1} Frequency: {stimuli[0]}, at {chs[ch]}')
     else:
         if subject == 'all':
                 subject = "Grand Average"
@@ -177,7 +177,7 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2,
             plt.ylim(0, ylim)
             plt.xlabel('Frequnecy [HZ]')
             plt.ylabel('Power Spectrum')
-            plt.title(f'Subject: {subject} Frequency: {stimuli[fr]}, at {channel}')
+            plt.title(f' {title} Subject: {subject} Frequency: {stimuli[fr]}, at {channel}')
     if save:
         if not savefolder:
             if not os.path.exists("savedfigs"):
