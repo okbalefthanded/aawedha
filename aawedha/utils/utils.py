@@ -39,7 +39,7 @@ def get_gpu_name():
     """
     nvmlInit()
     handle = nvmlDeviceGetHandleByIndex(0)
-    name = nvmlDeviceGetName(handle).decode('UTF-8')
+    name = nvmlDeviceGetName(handle)
     nvmlShutdown()
     return name
 
