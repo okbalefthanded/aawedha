@@ -261,7 +261,10 @@ class TorchModel(nn.Module):
         """Default weights and bias initialization scheme.
         following Glorot uniform method.
         """
-        initialize_Glorot_uniform(self.module)
+        if 'init_weights' in self.module.__dict__:
+            self.module.init_weights()
+        else:
+            initialize_Glorot_uniform(self.module)
     
     def set_weights(self, state_dict):
         '''

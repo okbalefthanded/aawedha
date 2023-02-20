@@ -14,7 +14,7 @@ class SuperCCNN(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=8,  dropout_rate=0.25, kernLength=10,
                 fs=512, resolution=0.293, l2=0.0001, frq_band=[7, 70], 
-                name='SuperCCNN'):
+                num_experts=4, name='SuperCCNN'):
         super().__init__()    
         self.name = name
         self.fs = fs
@@ -27,11 +27,11 @@ class SuperCCNN(nn.Module):
         out_features = (samples - (kernLength-1) - 1) + 1 
         filters = 2*Chans
 
-        self.conv1 = CondConv(1, filters, (Chans, 1), bias=False, groups=1, padding="valid", num_experts=4)
+        self.conv1 = CondConv(1, filters, (Chans, 1), bias=False, groups=1, padding="valid", num_experts=num_experts)
         self.ln1   = nn.LayerNorm([filters, 1, samples])
         self.drop1 = nn.Dropout(dropout_rate)
         
-        self.conv2 = CondConv(filters, filters, (1, kernLength), bias=False, groups=1, padding="valid", num_experts=4)
+        self.conv2 = CondConv(filters, filters, (1, kernLength), bias=False, groups=1, padding="valid", num_experts=num_experts)
         self.ln2   = nn.LayerNorm([filters, 1, out_features])
         self.drop2 = nn.Dropout(dropout_rate)
         
