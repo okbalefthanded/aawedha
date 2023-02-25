@@ -315,7 +315,7 @@ class TorchModel(nn.Module):
         path : str
             saved model path
         """
-        torch.save(self, path)  
+        torch.save(self, path)
 
     def set_scale(self, x):
         """

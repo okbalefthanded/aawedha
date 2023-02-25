@@ -1,6 +1,7 @@
 from aawedha.models.pytorch.torchdata import make_loader
 from aawedha.models.pytorch.torchmodel import TorchModel
 from torch.optim.swa_utils import SWALR
+import aawedha.models.pytorch.swa_utils as swa_utils
 import torch.nn as nn
 import torch
 import pkbar
@@ -61,8 +62,8 @@ class SWA(TorchModel):
                 if not self._cyclical_scheduler():
                     self.update_scheduler()
 
-            torch.optim.swa_utils.update_bn(
-                train_loader, self.swa_model, device=self.device)
+            # torch.optim.swa_utils.update_bn(train_loader, self.swa_model, device=self.device)
+            swa_utils.update_bn(train_loader, self.swa_model, device=self.device)
 
             # evaluate validation data
             val_metrics = None
@@ -106,7 +107,8 @@ class SWA(TorchModel):
         return pred.cpu().detach().numpy()
 
     def set_swa_model(self):
-        self.swa_model = torch.optim.swa_utils.AveragedModel(self.module)
+        # self.swa_model = torch.optim.swa_utils.AveragedModel(self.module)
+        self.swa_model = swa_utils.AveragedModel(self.module)
 
     def evaluate(self, x, y=None, batch_size=32, verbose=0, normalize=False,
                  shuffle=False, return_dict=True, use_default=False):
