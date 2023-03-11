@@ -1,6 +1,4 @@
 from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
-from aawedha.models.pytorch.samtorch import enable_running_stats
-from aawedha.models.pytorch.samtorch import disable_running_stats
 from aawedha.models.pytorch.torch_builders import build_callbacks
 from aawedha.models.pytorch.torch_builders import build_scheduler
 from aawedha.models.pytorch.torch_builders import get_optimizer
@@ -446,26 +444,3 @@ class TorchModel(nn.Module):
                 self._set_auroc_classes()
         
         return train_loader    
-
-class SAMTorch(TorchModel):
-
-    def train_step(self, data):
-        inputs, labels = data[0].to(self.device), data[1].to(self.device)
-        
-        # first forward-backward step
-        enable_running_stats(self)
-        outputs = self.module(inputs)
-                
-        loss = self.loss(outputs, labels)
-        loss.backward()
-        self.optimizer.first_step(zero_grad=True)
-
-        # second forward-backward step
-        disable_running_stats(self)
-        self.loss(self.module(inputs), labels).backward()
-        self.optimizer.second_step(zero_grad=True)
-        
-        return_metrics = {'loss': loss.item()}
-        return_metrics = self._compute_metrics(return_metrics, outputs, labels)
-    
-        return return_metrics

@@ -1,8 +1,8 @@
 from aawedha.models.pytorch.torchmodel import TorchModel
-from aawedha.models.pytorch.torchmodel import SAMTorch
+from aawedha.models.pytorch.torch_sam import SAMTorch
 from aawedha.models.pytorch.torch_twa import TwaTrain
+from aawedha.models.pytorch.torch_sam import Wasam2
 from aawedha.models.pytorch.torch_swa import SWA
-
 
 train_strategy = {
     'regular': TorchModel,
@@ -10,7 +10,7 @@ train_strategy = {
     'twa': TwaTrain,
     'sam': SAMTorch,
     'asam': None,
-    'wasam': None
+    'wasam': Wasam2
 }
 
 def build_learner(compile_config):

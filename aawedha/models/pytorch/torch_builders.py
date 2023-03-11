@@ -2,6 +2,7 @@
 #from aawedha.loss.focal_loss import FocalLoss
 #from aawedha.loss.poly_loss import PolyLoss
 import aawedha.loss.torch_loss as tl
+from aawedha.models.pytorch.wasamtorch import WASAM
 from aawedha.models.pytorch.samtorch import SAM
 from aawedha.optimizers.adan import Adan
 from libauc.losses import AUCMLoss
@@ -39,7 +40,8 @@ custom_opt = {
 }
 
 wrapped_opt = {
-    'Sam': SAM
+    'Sam': SAM,
+    'Wasam' : WASAM
 }
 
 available_callbacks = {
