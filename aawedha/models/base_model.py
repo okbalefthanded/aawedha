@@ -332,7 +332,8 @@ class Learner:
                 self.model.optimizer._weights[-1] = []
 
     def _reset_state_pytorch(self):
-        if not self.initial_weights: 
-            self.initial_weights['model_weights'] = self.model.get_weights()
-        else:
-            self.model.set_weights(self.initial_weights['model_weights'])
+        # if not self.initial_weights: 
+        #     self.initial_weights['model_weights'] = self.model.get_weights()
+        # else:
+        #     self.model.set_weights(self.initial_weights['model_weights'])
+        self.model.set_weights()

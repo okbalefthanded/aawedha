@@ -5,8 +5,6 @@ from scipy.io import loadmat
 from aawedha.utils.utils import unzip_files
 import aawedha.utils.network as network
 import numpy as np
-import glob
-import os
 
 
 class SanDiego(DataSet):
@@ -121,15 +119,14 @@ class SanDiego(DataSet):
         y : nd array (subjects x trials)
             class labels for the entire set or train/test phase
         """
-        list_of_files = sorted(glob.glob(os.path.join(path, 's*.mat')))
         ep = epoch_duration
         epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
         n_subjects = 10
         X, Y = [], []
         stimulation = 4
         onset = 39  # onset in samples
-        for subj in range(n_subjects):
-            data = loadmat(list_of_files[subj])
+        for subj in range(1, n_subjects+1):
+            data = loadmat(f"{path}/s{subj}.mat")
             # samples, channels, trials, targets
             eeg = data['eeg'].transpose((2, 1, 3, 0))
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)

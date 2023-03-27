@@ -264,7 +264,8 @@ class TorchModel(nn.Module):
         else:
             initialize_Glorot_uniform(self.module)
     
-    def set_weights(self, state_dict):
+    # def set_weights(self, state_dict):
+    def set_weights(self):
         '''
         with torch.no_grad():
             for layer in self.state_dict():

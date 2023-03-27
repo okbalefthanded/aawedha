@@ -161,7 +161,7 @@ class SingleSubject(BenchMark):
                     split_perf[m] = paradigm_perf[m]
             subj_results.append(split_perf)
             del split
-            self.learner.reset_weights()
+            # self.learner.reset_weights() # uncessary, the reset_weights is called in _eval_model()
 
         subj_results = aggregate_results(subj_results)
         return subj_results
@@ -336,7 +336,7 @@ class SingleSubject(BenchMark):
         folds = []
 
         if stg == 'Kfold':
-            cv = KFold(n_splits=nfolds).split(t)
+            cv = KFold(n_splits=nfolds, shuffle=True).split(t)
         elif stg == 'Stratified':
             if type(subj) is int:
                 y = self.dataset.y[subj]

@@ -28,11 +28,11 @@ class SuperCCNN(nn.Module):
         filters = 2*Chans
 
         self.conv1 = CondConv(1, filters, (Chans, 1), bias=False, groups=1, padding="valid", num_experts=num_experts)
-        self.ln1   = nn.LayerNorm([filters, 1, samples])
+        self.ln1   = nn.BatchNorm2d(filters) # nn.LayerNorm([filters, 1, samples])
         self.drop1 = nn.Dropout(dropout_rate)
         
         self.conv2 = CondConv(filters, filters, (1, kernLength), bias=False, groups=1, padding="valid", num_experts=num_experts)
-        self.ln2   = nn.LayerNorm([filters, 1, out_features])
+        self.ln2   = nn.BatchNorm2d(filters) # nn.LayerNorm([filters, 1, out_features])
         self.drop2 = nn.Dropout(dropout_rate)
         
         self.fc    = L2(nn.Linear(filters * out_features, nb_classes), weight_decay=l2)
