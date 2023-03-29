@@ -36,7 +36,7 @@ class Perturbations(DataSet):
     def generate_set(self, load_path=None, 
                      download=False,
                      ch=None,
-                     downsample=4,
+                     downsample=1,
                      epoch=3,
                      band=[5.0, 45.0],
                      order=6, save=True, 
@@ -90,8 +90,8 @@ class Perturbations(DataSet):
             length.
             default : 0.1
         """
-        offline = load_path + '/OFFLINE'
-        online = load_path + '/ONLINE'
+        offline = f"{load_path}/OFFLINE"
+        online  = f"{load_path}/ONLINE"
 
         if download:
             self.download_raw(load_path)
@@ -121,7 +121,7 @@ class Perturbations(DataSet):
         if save:
             self.save_set(save_folder, fname)
 
-    def load_raw(self, path=None, ch=None, downsample=4, mode='', epoch_duration=3,
+    def load_raw(self, path=None, ch=None, downsample=1, mode='', epoch_duration=3,
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
         """Read and process raw data into structured arrays
@@ -167,21 +167,21 @@ class Perturbations(DataSet):
         ep = epoch_duration
         epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
         X, Y = [], []
-        # augmented = 0
+
         factor = 1
         if downsample:
-            factor = 4
+            factor = downsample
 
         if ch:
             eeg_channels = self.select_channels(ch)
         else:
             eeg_channels = self._get_eeg_channels()
-        # onset = 0
+
         if mode == 'train':
-            path = path + '/*mat'
+            path = f"{path}/*mat"
             mode_key = 'circle_order'
         else:
-            path = path + '/*control.mat'
+            path = f"{path}/*control.mat"
             mode_key = 'subject_selection_vector'
         files_list = glob.glob(path)
         stimulation = 3
@@ -189,12 +189,6 @@ class Perturbations(DataSet):
             data = loadmat(f)
             x = data['data_matrix'][eeg_channels, ::factor, :].transpose((1, 0, 2))
             y = data[mode_key].squeeze().astype(int)
-            '''
-            if mode == 'train':
-                y = data['circle_order'].squeeze()
-            else:
-                y = data['subject_selection_vector'].squeeze()
-            '''
             x = bandpass(x, band=band, fs=self.fs, order=order)
             if augment:
                 # stimulation = 3
@@ -208,7 +202,6 @@ class Perturbations(DataSet):
                 y = np.tile(y, len(v))
                 del v
             else:
-                # epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
                 x = x[:epoch_duration, :, :]
 
             X.append(x)

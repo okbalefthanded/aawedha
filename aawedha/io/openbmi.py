@@ -48,8 +48,8 @@ class OpenBMISSVEP(DataSet):
                      order=6, save_folder=None,
                      fname=None,
                      augment=False,
-                     channels=None,
-                     downsample=None,
+                     ch=None,
+                     downsample=5,
                      method='divide',
                      slide=0.1):
         """Main method for creating and saving DataSet objects and files:
@@ -105,7 +105,7 @@ class OpenBMISSVEP(DataSet):
             self.fs = self.fs // int(downsample)
 
         epochs, y, events = self.load_raw(load_path, 'train', epoch,
-                                          band, order, channels,
+                                          band, order, ch,
                                           augment, downsample,
                                           method, slide
                                           )
@@ -114,7 +114,7 @@ class OpenBMISSVEP(DataSet):
         self.events = events
 
         epochs, y, events = self.load_raw(load_path, 'test', epoch,
-                                          band, order, channels,
+                                          band, order, ch,
                                           augment, downsample,
                                           method, slide
                                           )
@@ -122,8 +122,8 @@ class OpenBMISSVEP(DataSet):
         self.test_y = y
         self.test_events = events
 
-        if channels:
-            self.ch_names = [self.ch_names[ch] for ch in self._get_channels(channels)]
+        if ch:
+            self.ch_names = [self.ch_names[ch] for ch in self._get_channels(ch)]
 
         self.subjects = self._get_subjects(n_subjects=54)
         self.paradigm = self._get_paradigm()

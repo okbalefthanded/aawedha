@@ -194,6 +194,34 @@ class Exoskeleton(DataSet):
         fname = f"{store_path}/master.zip"
         unzip_files([fname], store_path)
 
+    def to_sync(self):
+        """Keep epochs with frequency stimulation and 
+        discard idle state trials.
+        """
+        self.y_orig = self.y[:]
+        self.events_orig = self.events  
+        if isinstance(self.epochs, list):
+            for i, yy in enumerate(self.y):
+                    tmp_idx = self.events[i] != 'idle'
+                    self.epochs[i] = self.epochs[i][:,:,tmp_idx]
+                    self.y[i] = yy[tmp_idx] - 1
+        else:
+            y_idx = (self.events != 'idle').squeeze()
+            self.epochs = self.epochs[:, :, :, y_idx]
+            self.y = self.y[:, y_idx] - 1
+         
+        if hasattr(self, 'test_epochs'):
+            self.test_y_orig = self.test_y[:]
+            self.testevent_orig = self.test_events[:]            
+            if isinstance(self.test_epochs, list):
+                for i, yy in enumerate(self.test_y):
+                    tmp_idx = self.test_events[i] != 'idle'
+                    self.test_epochs[i] = self.test_epochs[i][:,:,tmp_idx]
+                    self.test_y[i] = yy[tmp_idx] - 1
+            else:
+                self.test_y = np.zeros_like(self.test_y)
+                self.test_y[self.test_events != 'idle'] = 1.
+
     def _get_epoched(self, files=[], records=[],
                      epoch=[2, 5], band=[5., 45.],
                      order=6, augment=False,

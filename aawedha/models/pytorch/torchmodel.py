@@ -272,8 +272,9 @@ class TorchModel(nn.Module):
                 self.state_dict()[layer] = state_dict[layer]
         '''
         # TODO: for custom modules
-        if hasattr(self, 'init_weight'):
-            self.init_weights()
+        if hasattr(self.module, 'init_weight'):
+            # self.init_weights()
+            self.module.init_weights()
         else:
             for layer in self.module.children():
                 if isinstance(layer, nn.Sequential):
