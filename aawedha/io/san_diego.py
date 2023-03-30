@@ -28,7 +28,7 @@ class SanDiego(DataSet):
     def generate_set(self, load_path=None,
                      download=False,
                      epoch=4, band=[5.0, 45.0],
-                     order=6, save=True, 
+                     order=6, save=True, ch=None,
                      save_folder=None,
                      fname=None,
                      augment=False, method='divide',
@@ -76,14 +76,14 @@ class SanDiego(DataSet):
         if download:
             self.download_raw(load_path)
 
-        self.epochs, self.y = self.load_raw(load_path, epoch, band, order, augment, method, slide)
+        self.epochs, self.y = self.load_raw(load_path, ch, epoch, band, order, augment, method, slide)
         self.subjects = self._get_subjects(n_subjects=10)
         self.paradigm = self._get_paradigm()
         self.events = self._get_events()
         if save:
             self.save_set(save_folder, fname)
 
-    def load_raw(self, path=None, epoch_duration=4,
+    def load_raw(self, path=None, ch=None, epoch_duration=4,
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
         """Read and process raw data into structured arrays
@@ -119,6 +119,10 @@ class SanDiego(DataSet):
         y : nd array (subjects x trials)
             class labels for the entire set or train/test phase
         """
+        if ch:
+            chans = self.select_channels(ch)
+        else:
+            chans = range(len(self.ch_names))
         ep = epoch_duration
         epoch_duration = np.round(np.array(epoch_duration) * self.fs).astype(int)
         n_subjects = 10
@@ -129,6 +133,7 @@ class SanDiego(DataSet):
             data = loadmat(f"{path}/s{subj}.mat")
             # samples, channels, trials, targets
             eeg = data['eeg'].transpose((2, 1, 3, 0))
+            eeg = eeg[:, chans, :, :]
             eeg = bandpass(eeg, band=band, fs=self.fs, order=order)
             if augment:
                 v = self._get_augmented_epoched(eeg, ep, stimulation, onset, slide, method)

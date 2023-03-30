@@ -786,9 +786,10 @@ class Evaluation:
         columns.extend(['Avg', 'Std', 'Sem'])
         date = time_now()
         results = self.score.results
+        model = self.learner.model.name
         for metric in metrics:
             if metric == 'viz':
                 continue
             index_name = f"{self.learner.model.name} / {metric}"
-            fname = f"{folder}/{evl}_{dataset}_{metric}_{date}.csv"
+            fname = f"{folder}/{evl}_{dataset}_{model}_{metric}_{date}.csv"
             save_metric_csv(results[metric], rows, columns, fname, index_name)

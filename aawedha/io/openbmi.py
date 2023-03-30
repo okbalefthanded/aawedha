@@ -43,9 +43,11 @@ class OpenBMISSVEP(DataSet):
 
     def generate_set(self, load_path=None,
                      download=False,
+                     save_folder=None,
                      epoch=[0, 4],
                      band=[4.0, 45.0],
-                     order=6, save_folder=None,
+                     order=6, 
+                     save=True,
                      fname=None,
                      augment=False,
                      ch=None,
@@ -127,7 +129,8 @@ class OpenBMISSVEP(DataSet):
 
         self.subjects = self._get_subjects(n_subjects=54)
         self.paradigm = self._get_paradigm()
-        self.save_set(save_folder,fname)
+        if save:
+            self.save_set(save_folder,fname)
 
     def load_raw(self, path=None, mode='', epoch_duration=[0, 4],
                  band=[4.0, 45.0], order=6, ch=None,

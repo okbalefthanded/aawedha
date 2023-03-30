@@ -47,6 +47,7 @@ class Exoskeleton(DataSet):
 
     def generate_set(self, load_path=None,
                      download=False,
+                     ch=None,
                      epoch=[2, 5],
                      band=[5., 45.],
                      order=6,
@@ -121,7 +122,7 @@ class Exoskeleton(DataSet):
         if save:    
             self.save_set(save_folder, fname)
 
-    def load_raw(self, path=None, mode='', epoch_duration=[2, 5],
+    def load_raw(self, path=None, ch=None, mode='', epoch_duration=[2, 5],
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
         """Read and process raw data into structured arrays
@@ -162,10 +163,13 @@ class Exoskeleton(DataSet):
             trials is not a fixed number, it varies according to subjects sessions
         """
         if os.path.isdir(f"{path}/dataset-ssvep-exoskeleton"):
-            files_list = sorted(glob.glob(path + '/dataset-ssvep-exoskeleton-master/s*'))
+            files_list = sorted(glob.glob(f"{path}/dataset-ssvep-exoskeleton-master/s*"))
         else:
-            files_list = sorted(glob.glob(path + '/s*'))
-        
+            files_list = sorted(glob.glob(f"{path}/s*"))
+        if ch:
+            chans = self.select_channels(ch)
+        else:
+            chans = range(len(self.ch_names))
         n_subjects = 12
         X, Y = [], []
         for subj in range(n_subjects):
@@ -174,7 +178,7 @@ class Exoskeleton(DataSet):
                 records = np.arange(0, len(session) - 1).tolist()
             elif mode == 'test':
                 records = [len(session) - 1]
-            x, y = self._get_epoched(session, records,
+            x, y = self._get_epoched(session, records, chans,
                                      epoch_duration, band,
                                      order, augment, method, slide)
             X.append(x.astype(np.float32))
@@ -223,7 +227,7 @@ class Exoskeleton(DataSet):
                 self.test_y[self.test_events != 'idle'] = 1.
 
     def _get_epoched(self, files=[], records=[],
-                     epoch=[2, 5], band=[5., 45.],
+                     ch=None, epoch=[2, 5], band=[5., 45.],
                      order=6, augment=False,
                      method='divide', slide=0.1):
         """Extract epochs from raw continuous EEG file
@@ -273,8 +277,8 @@ class Exoskeleton(DataSet):
         for sess in records:
             f = gzip.open(files[sess], 'rb')
             df = pickle.load(f, encoding='latin1')
-            raw_signal = df['raw_signal'] * 1000  # (samples x channels)
-            event_pos = df['event_pos'].reshape((df['event_pos'].shape[0]))
+            raw_signal = df['raw_signal'][:, ch] * 1000  # (samples x channels)
+            event_pos  = df['event_pos'].reshape((df['event_pos'].shape[0]))
             event_type = df['event_type'].reshape((df['event_type'].shape[0]))
             desc_idx = np.logical_or.reduce([event_type == lb for lb in labels])
             desc = event_type[desc_idx].astype(int)
