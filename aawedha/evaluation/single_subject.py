@@ -41,7 +41,7 @@ class SingleSubject(BenchMark):
         
             self.settings.folds = self.get_folds(nfolds, n_trials, train_phase,
                                     val_phase, test_phase, strategy)
-
+            
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
         """Generate folds following a KFold cross-validation strategy
 
@@ -247,6 +247,7 @@ class SingleSubject(BenchMark):
             Y_train = y
         
         X_val, Y_val = None, None
+        
         if indie: # independent Test set            
             X_test = self.dataset.test_epochs[subj]
             # _, _, _, channels_format = self._get_fit_configs()
@@ -261,7 +262,7 @@ class SingleSubject(BenchMark):
             if self.settings.partition and len(self.settings.partition) == 2:
                 X_val = x[folds[_val]]
                 Y_val = y[folds[_val]]
-            Y_test = self.dataset.test_y[subj][:].astype(int)
+            Y_test = self.dataset.test_y[subj][:]
         else:
             if len(self.settings.partition) == 2:
                 X_test = x[folds[_val]]

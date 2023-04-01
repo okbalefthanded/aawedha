@@ -469,7 +469,8 @@ class Evaluation:
         if X_val is None:
             val = None
         else:            
-            X_val = self.learner.normalize(X_val)
+            if self.learner.do_normalize:
+                X_val = self.learner.normalize(X_val)
             val = (X_val, Y_val)
 
         history = {}
@@ -523,8 +524,8 @@ class Evaluation:
         """
         eval_perf = []
         X_train, Y_train = split['X_train'], split['Y_train']
-        X_test, Y_test = split['X_test'], split['Y_test']
-        X_val, Y_val = split['X_val'], split['Y_val']
+        X_test, Y_test   = split['X_test'], split['Y_test']
+        X_val, Y_val     = split['X_val'], split['Y_val']
         #
         cws = class_weights(Y_train)
         # evaluate model on subj on all folds
