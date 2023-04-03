@@ -47,14 +47,15 @@ class BenchMark(Evaluation):
         self.score.results_reports(eval_results, classes, {self._eval_type(): list(operations)})        
         self._post_operations(savecsv, csvfolder)
 
+        return self
+
     def execute(self, operations, check, pointer):
         """Execute the evaluations on specified folds in operations.
 
         Parameters
         ----------
         operations : Iterable
-            range | list, specify index of folds to evaluate.
-        
+            range | list, specify index of folds to evaluate.        
        
         check : bool
             if True, sets evaluation checkpoint for future operation resume,
@@ -83,6 +84,7 @@ class BenchMark(Evaluation):
 
             if check:
                 pointer.set_checkpoint(op + 1, self.learner.model, op_results)
+        
         return eval_results
 
     def get_operations(self, selection=None):

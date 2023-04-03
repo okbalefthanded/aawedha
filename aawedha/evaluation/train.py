@@ -65,6 +65,8 @@ class Train(Evaluation):
         # save training history as a DataFrame
         if save_history:
           self._save_history(folder=folder)
+        
+        return self
 
     def _select_trials(self, new_labels=None, events=None):
         """Keep a subset of trials for training
@@ -103,7 +105,7 @@ class Train(Evaluation):
             performance results
         """
         split = self._split_data(selection, val_size)
-        rets = self._eval_split(split)
+        rets  = self._eval_split(split)
         return rets
 
     def _split_data(self, selection=None, val_size=0.1):
@@ -186,7 +188,7 @@ class Train(Evaluation):
             if not os.path.isdir('trained/history'):
                 os.mkdir('trained/history')
             folder = 'trained/history'
-        fname = os.path.join(folder, '_'.join([self.learner.model.name, date]))
+        fname = os.path.join(folder, '_'.join([self.learner.name, date]))
         df = pd.DataFrame(self.learner.history[-1])
         df.to_csv(fname, encoding='utf-8')
         

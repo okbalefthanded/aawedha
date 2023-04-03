@@ -45,8 +45,8 @@ class CrossSubject(BenchMark):
                 f'Parition exceeds subjects count, use a different parition')
 
         train_phase, val_phase, test_phase = self._phases_partiton()
-
-        self.settings.folds = self.get_folds(nfolds, train_phase, val_phase, 
+        self.settings.nfolds = nfolds
+        self.settings.folds  = self.get_folds(nfolds, train_phase, val_phase, 
                                              test_phase, exclude_subj=excl)
 
     def get_folds(self, nfolds, tr, vl, ts, exclude_subj=True):
@@ -118,9 +118,9 @@ class CrossSubject(BenchMark):
             folds performance
         """
         split = self._split_set(op)
-        rets = self._eval_split(split)
+        rets  = self._eval_split(split)
         del split 
-        self.learner.reset_weights()
+        # self.learner.reset_weights()
         return rets
 
     def _split_set(self, fold):
@@ -193,7 +193,7 @@ class CrossSubject(BenchMark):
         return X, Y
 
     def _total_operations(self):
-        return len(self.settings.folds)
+        return self.settings.nfolds
 
     def _eval_type(self):
         return "Fold"

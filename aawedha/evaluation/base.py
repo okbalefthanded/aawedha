@@ -127,14 +127,16 @@ class Evaluation:
 
     """
 
-    def __init__(self, dataset=None, model=None, partition=None, folds=None,
-                 verbose=2, engine="pytorch", normalize=True, log=False,   
+    def __init__(self, dataset=None, model=None, model_config=None, partition=None, 
+                 folds=None, verbose=2, engine="pytorch", normalize=True, log=False,   
                  log_level='debug', log_name=None, debug=False):
         """
         """
         self.dataset  = dataset
         self.settings = Settings(partition, folds, engine, verbose, 0, debug)        
-        self.learner  = Learner(model, normalize=normalize, model_type=engine)        
+        self.learner  = Learner(model=None, normalize=normalize, model_type=engine)
+        if model and model_config:
+            self.set_model(model, model_config)        
         self.score    = Score()      
         self.n_subjects = self._get_n_subjects()
         self.log = log
@@ -751,12 +753,13 @@ class Evaluation:
         ----------
         folder : str
             results files will be stored inside folder, if None, a default folder inside aawedha is used.
-        """
-        root = cwd()
+        """        
         if not folder:
+            root = cwd()
             folder = f'{root}/results'
-            if not os.path.isdir(folder):
-                os.mkdir(folder)
+            
+        if not os.path.isdir(folder):
+            os.mkdir(folder)            
 
         metrics = list(self.score.results)
         [metrics.remove(elem) for elem in ["probs", "confusion"]]
@@ -787,7 +790,7 @@ class Evaluation:
         columns.extend(['Avg', 'Std', 'Sem'])
         date = time_now()
         results = self.score.results
-        model = self.learner.model.name
+        model = self.learner.name
         for metric in metrics:
             if metric == 'viz':
                 continue

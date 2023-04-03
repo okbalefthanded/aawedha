@@ -1,6 +1,5 @@
 from aawedha.optimizers.utils_optimizers import optimizer_lib, get_optimizer
 from aawedha.evaluation.evaluation_utils import metrics_by_lib
-# from aawedha.models.pytorch.torchmodel import TorchModel
 from aawedha.models.builder_model import build_learner
 from aawedha.models.utils_models import model_lib
 from aawedha.utils.utils import init_TPU
@@ -43,7 +42,6 @@ class Learner:
         model_type :  {'keras', 'pytorch'}, optional
             model framework, by default None
         """
-        # self._init_model(model, model_type)
         self.model    = model        
         self.compiled = compiled        
         self.config   = config
@@ -70,6 +68,7 @@ class Learner:
             if not self.model:
                 self.model = build_learner(self.config['compile'])
                 self.model.module = model
+                self.model.name   = model.name
         elif engine == "keras":
             self.model = model
         self.name = model.name
@@ -235,10 +234,6 @@ class Learner:
             raise NotImplementedError
         else:
             return self.model.output_shape
-
-    # def _init_model(self, model, model_type):
-    #     if model_type == "pytorch":
-    #         self.model = TorchModel(module=model)
     
     def _compile_keras(self, khsara, optimizer, metrics):
         self.model.compile(loss=khsara,

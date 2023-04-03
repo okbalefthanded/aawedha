@@ -143,12 +143,6 @@ class SingleSubject(BenchMark):
 
         subj_results = []
         
-        '''
-        if isinstance(self.dataset.epochs, list):
-            folds_range = range(len(self.settings.folds[0]))
-        else:
-            folds_range = range(len(self.settings.folds))
-        '''
         folds_range = range(self.settings.nfolds)
 
         for fold in folds_range:
