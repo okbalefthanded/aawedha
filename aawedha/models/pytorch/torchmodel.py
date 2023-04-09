@@ -272,7 +272,7 @@ class TorchModel(nn.Module):
                 self.state_dict()[layer] = state_dict[layer]
         '''
         # TODO: for custom modules
-        if hasattr(self.module, 'init_weight'):
+        if hasattr(self.module, 'init_weights'):
             # self.init_weights()
             self.module.init_weights()
         else:
@@ -287,7 +287,11 @@ class TorchModel(nn.Module):
         
         if self.optimizer:
             self.optimizer.state = collections.defaultdict(dict) # Reset state    
-
+        
+        # TODO reset scheduler state if exists
+        if self.scheduler:
+            self.scheduler.load_state_dict({})
+    
     def get_weights(self):
         return self.module.state_dict()
 

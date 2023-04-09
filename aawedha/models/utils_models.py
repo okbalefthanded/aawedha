@@ -79,8 +79,8 @@ def create_model_from_config(config, optional):
     cfg = deepcopy(config)
     mod = __import__(cfg['from'], fromlist=[cfg['name']])
     kwargs = getfullargspec(getattr(mod, cfg['name']).__init__)[0]
-    
     missing_keys = ["nb_classes", "Chans", "Samples", "kernLength"]
+    missing_keys.extend(list(optional))
     for key in missing_keys:
         if key not in cfg["parameters"] and key in kwargs:
             cfg["parameters"][key] = optional[key]

@@ -48,6 +48,7 @@ class CrossSubject(BenchMark):
         self.settings.nfolds = nfolds
         self.settings.folds  = self.get_folds(nfolds, train_phase, val_phase, 
                                              test_phase, exclude_subj=excl)
+        return self
 
     def get_folds(self, nfolds, tr, vl, ts, exclude_subj=True):
         """Generate train/validation/tes folds following Shuffle split strategy

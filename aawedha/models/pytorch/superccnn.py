@@ -16,7 +16,7 @@ class SuperCCNN(nn.Module):
                 fs=512, resolution=0.293, l2=0.0001, frq_band=[7, 70], 
                 num_experts=4, name='SuperCCNN'):
         super().__init__()    
-        self.name = name
+        self.name = f"{name}{num_experts}"
         self.fs = fs
         self.resolution = resolution
         self.nfft  = round(fs / resolution)
