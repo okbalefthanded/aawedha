@@ -222,7 +222,7 @@ def create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
     
     split = {}
     split['X_test'] = None
-    split['X_val'] = None
+    split['X_val']  = None
     split['X_train'] = X_train if X_train.dtype is np.float32 else X_train.astype(np.float32)
     split['Y_train'] = Y_train
     if isinstance(X_test, np.ndarray):

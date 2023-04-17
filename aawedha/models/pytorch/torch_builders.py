@@ -2,8 +2,10 @@
 #from aawedha.loss.focal_loss import FocalLoss
 #from aawedha.loss.poly_loss import PolyLoss
 import aawedha.loss.torch_loss as tl
+from aawedha.metrics.torch_metrics import CategoricalAccuracy
 from aawedha.models.pytorch.wasamtorch import WASAM
 from aawedha.models.pytorch.samtorch import SAM
+from aawedha.loss.smooth_loss import SmoothLoss
 from aawedha.optimizers.adan import Adan
 from libauc.losses import AUCMLoss
 from libauc.optimizers import PESG
@@ -21,7 +23,8 @@ losses = {
     'binary_crossentropy': nn.BCEWithLogitsLoss,
     'focal_loss': tl.FocalLoss,
     'poly_loss': tl.PolyLoss,
-    'auc_margin' : AUCMLoss
+    'auc_margin' : AUCMLoss,
+    "smooth_loss": SmoothLoss
     }
 
 available_metrics = {
@@ -30,7 +33,8 @@ available_metrics = {
     'recall': torchmetrics.Recall,
     'auc': torchmetrics.AUROC,
     'ece': torchmetrics.CalibrationError,
-    'mcc': torchmetrics.MatthewsCorrCoef
+    'mcc': torchmetrics.MatthewsCorrCoef,
+    'categorical_accuracy': CategoricalAccuracy
     }
 
 custom_opt = {
@@ -182,14 +186,7 @@ def build_scheduler(data_loader, optimizer, scheduler):
         params[params_args[sched_id]] = len(data_loader) // 2
     else:
         params[params_args[sched_id]] = len(data_loader) 
-    '''
-    if sched_id == 'OneCycleLR':
-        params['steps_per_epoch'] = len(data_loader)
-    elif sched_id == '':
-        pass
-    elif sched_id == 'CosineAnnealingWarmRestarts':
-        params['T_0'] = 0
-    '''    
+         
     if sched_id in available:
         return getattr(optim.lr_scheduler, sched_id)(**params)
     else:

@@ -8,6 +8,7 @@ from aawedha.evaluation.evaluation_utils import fit_scale
 from aawedha.evaluation.evaluation_utils import transform_scale
 from aawedha.models.pytorch.torchdata import data_shapes
 from aawedha.models.pytorch.torchdata import make_loader
+from aawedha.loss.smooth_loss import SmoothLoss
 from torchsummary import summary
 from copy import deepcopy
 import torch.optim.lr_scheduler as lrs
@@ -430,7 +431,7 @@ class TorchModel(nn.Module):
 
     def _labels_type(self):
         labels_type = torch.long
-        if type(self.loss) is nn.BCEWithLogitsLoss:
+        if type(self.loss) in (nn.BCEWithLogitsLoss, SmoothLoss):
             labels_type = torch.float32
         return labels_type
 

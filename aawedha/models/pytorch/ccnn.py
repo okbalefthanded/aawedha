@@ -27,7 +27,7 @@ class CCNN(nn.Module):
         self.fft_end = int(round(frq_band[1] / self.resolution)) + 1
         
         samples = (self.fft_end - self.fft_start) * 2        
-        out_features = (samples - (kernLength-1) - 1) + 1 
+        out_features = samples - kernLength - 1  
         filters = 2*Chans
 
         self.conv1 = L2(nn.Conv2d(1, filters, (Chans, 1), bias=False, padding="valid"), 

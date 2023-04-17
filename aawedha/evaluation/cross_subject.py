@@ -194,7 +194,7 @@ class CrossSubject(BenchMark):
         return X, Y
 
     def _total_operations(self):
-        return self.settings.nfolds
+        return len(self.settings.folds)
 
     def _eval_type(self):
         return "Fold"
