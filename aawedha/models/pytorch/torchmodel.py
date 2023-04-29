@@ -353,6 +353,8 @@ class TorchModel(nn.Module):
         last_layer = modules[output_index]
         if hasattr(self.module._modules[last_layer], 'out_features'):
             self.output_shape = self.module._modules[last_layer].out_features
+        elif not hasattr(self.module._modules[last_layer], 'module'):
+            pass
         else:
             # Linear with TorchLayers regularizes
             self.output_shape = self.module._modules[last_layer].module.out_features
