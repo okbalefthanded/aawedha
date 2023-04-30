@@ -22,10 +22,10 @@ def make_loader(x, y, batch_size=32, shuffle=True, labels_type=torch.long):
         y = np.expand_dims(y, axis=1)
 
     tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
-                                                    torch.tensor(y, dtype=labels_type))
+                                                torch.tensor(y, dtype=labels_type))
     loader = torch.utils.data.DataLoader(tensor_set, 
-                                             batch_size=batch_size, 
-                                             shuffle=shuffle)
+                                         batch_size=batch_size, 
+                                         shuffle=shuffle)
     return loader
 
 def reshape_input(x):

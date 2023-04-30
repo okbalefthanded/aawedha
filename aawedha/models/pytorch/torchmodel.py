@@ -58,7 +58,7 @@ class TorchModel(nn.Module):
 
         # forward + backward + optimize
         outputs = self.module(inputs)
-        loss = self.loss(outputs, labels)
+        loss    = self.loss(outputs, labels)
         loss.backward()
         self.optimizer.step()
         
@@ -182,7 +182,8 @@ class TorchModel(nn.Module):
 
         self.module.eval()
         self.loss.eval()
-        [metric.eval() for metric in self.metrics_list]        
+        if self.metrics_list:
+            [metric.eval() for metric in self.metrics_list]        
 
         self.reset_metrics()
 
@@ -220,8 +221,8 @@ class TorchModel(nn.Module):
             if isinstance(y, np.ndarray):
                 if y.ndim > 1:
                     self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
-        
-        [metric.train() for metric in self.metrics_list]
+        if self.metrics_list:
+            [metric.train() for metric in self.metrics_list]
 
         if self.scheduler:
             self.scheduler = build_scheduler(train_loader, self.optimizer, self.scheduler)
@@ -354,7 +355,8 @@ class TorchModel(nn.Module):
         if hasattr(self.module._modules[last_layer], 'out_features'):
             self.output_shape = self.module._modules[last_layer].out_features
         elif not hasattr(self.module._modules[last_layer], 'module'):
-            pass
+            # TODO: only Linear module has an out shape attribute.
+            self.output_shape = None
         else:
             # Linear with TorchLayers regularizes
             self.output_shape = self.module._modules[last_layer].module.out_features
@@ -382,7 +384,8 @@ class TorchModel(nn.Module):
         """
         self.module.to(self.device)
         self.loss.to(self.device)
-        [metric.to(self.device) for metric in self.metrics_list]    
+        if self.metrics_list:
+            [metric.to(self.device) for metric in self.metrics_list]    
     
     def _compute_metrics(self, return_metrics, outputs, labels):
         with torch.no_grad():

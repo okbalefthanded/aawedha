@@ -24,7 +24,10 @@ losses = {
     'focal_loss': tl.FocalLoss,
     'poly_loss': tl.PolyLoss,
     'auc_margin' : AUCMLoss,
-    "smooth_loss": SmoothLoss
+    "smooth_loss": SmoothLoss,
+    # TODO: MSE/MAE
+    "mse": nn.MSELoss,
+    "mae": nn.L1Loss
     }
 
 available_metrics = {

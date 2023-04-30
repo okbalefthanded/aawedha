@@ -6,6 +6,7 @@ from aawedha.models.pytorch.torch_swa import SWA
 
 train_strategy = {
     'regular': TorchModel,
+    # TODO: add hybrid generative-discirminative models
     'swa': SWA,
     'twa': TwaTrain,
     'sam': SAMTorch,
