@@ -1,6 +1,6 @@
 from aawedha.models.pytorch.torchdata import reshape_input
 from aawedha.models.utils_models import is_a_loss
-from aawedha.layers.condconv import CondConv
+from aawedha.layers.dynamicconv import DynamicConv
 from aawedha.models.pytorch.eegtcnetpth import TemporalConvNet
 from torchlayers.regularization import L2
 from torch.nn.utils.parametrizations import spectral_norm
