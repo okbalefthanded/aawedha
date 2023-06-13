@@ -1,3 +1,4 @@
+from mne.time_frequency import psd_array_multitaper
 from scipy.fft import fft
 from copy import deepcopy
 from scipy import signal
@@ -83,6 +84,48 @@ def spectral_power(data, subject=0, channel='POz'):
 
     if len(ch) == 1:
         pwr = [p.pop() for p in pwr]
+    return pwr, frequencies
+
+
+def spectral_power_welch(data, subject=0, channel='POz'):
+    x = data.epochs[subject]
+    y = deepcopy(data.y[subject]) 
+    if not 0. in y:
+        y -= 1
+    ev_count = np.unique(data.events[subject]).size
+    if channel == 'all':
+        ch = range(len(data.ch_names))
+    else:
+        ch = [data.ch_names.index(channel)]
+    frequencies, ps = signal.welch(x, fs = data.fs, 
+                                   nperseg = x.shape[0], 
+                                   window = 'hann', noverlap = 0, 
+                                   scaling = 'spectrum', return_onesided=True, 
+                                   axis=0 )# units uV**2
+
+    pwr = []
+    for fr in range(ev_count):
+        epo_frq = ps[:, ch, y == fr].squeeze()  
+        pwr.append(np.mean(epo_frq, axis=-1))
+    return pwr, frequencies
+
+def spectral_power_multitaper(data, subject=0, channel='POz'):
+    x = data.epochs[subject].transpose((2,1,0))
+    y = deepcopy(data.y[subject]) 
+    if not 0. in y:
+        y -= 1
+    ev_count = np.unique(data.events[subject]).size
+    if channel == 'all':
+        ch = range(len(data.ch_names))
+    else:
+        ch = [data.ch_names.index(channel)]
+    ps, frequencies = psd_array_multitaper(x, data.fs, adaptive=True,
+                                  normalization='full', verbose=0)
+    
+    pwr = []
+    for fr in range(ev_count):
+        epo_frq = ps[y == fr, ch, :]          
+        pwr.append(np.mean(epo_frq, axis=0))
     return pwr, frequencies
 
 

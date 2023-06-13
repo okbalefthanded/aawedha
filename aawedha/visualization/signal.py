@@ -1,7 +1,10 @@
+from aawedha.analysis.time_frequency import spectral_power_multitaper
+from aawedha.analysis.time_frequency import spectral_power_welch
 from aawedha.analysis.time_frequency import spectral_power
 from aawedha.analysis.time_frequency import wavelet
 from aawedha.analysis.stats import r_square_signed
 from aawedha.analysis.time_frequency import snr
+
 from typing import Iterable
 import matplotlib.pyplot as plt
 import numpy as np
@@ -186,6 +189,169 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2,
         fname = fname= f"{savefolder}/psd_{data.paradigm.filename}.png"
         plt.savefig(fname, bbox_inches='tight')
 
+
+def plot_psd_welch(data, subject=0, channel='POz', harmonics=2, 
+                   flim=50, ylim=2, save=False, savefolder=None):
+    """Plot spectral power using the Welch method for a given subject in a dataset at
+    a specified electrode.
+    Parameters
+    ----------
+    data : dataset instance
+        epoched EEG signal dataset
+    subject : int | list | str
+        int : given index for a subject, by default 0 (first subject in the dataset)
+        list : indices subject's subset.
+        str : 'all', mean of psd across all subjects in data.
+    channel : str, optional
+        electrode name, by default 'Poz' (suitable for SSVEP based experiments)
+    harmonics : int
+        number of frequency harmonics to highlight in plot, default 2
+    flim : int
+        x-axis limit, frequencies in Hz. Default 50
+    ylim: int
+        y-axis limit, PSD. Default 2
+    save : bool
+        if True save figures in savefolder. Default False.
+    savefolder : str 
+        figure saving folder path, default None.
+    """
+    pwr, frequencies = spectral_power_welch(data, subject, channel)
+    # pwr, frequencies = spectral_power(data, subject, channel)
+    is_erp = False
+    if data.paradigm.__class__.__name__ == 'ERP':
+        # stimuli = data.events[subject]
+        is_erp = True
+        stimuli = ['Non_Target', 'Target']
+    else:
+        stimuli = data.paradigm.frequencies
+    if channel == 'all':
+        chs = data.ch_names
+    else:
+        chs = channel
+    title = data.title
+    if type(channel) is list or channel == 'all':
+        if len(stimuli) == 1:
+            for ch in range(len(pwr[0])):
+                event = stimuli[0]
+                if not is_erp:
+                    f_idx = harmonics_idx(frequencies, event, harmonics)
+
+                plt.figure()
+                plt.plot(frequencies, pwr[0][ch])
+                if not is_erp:
+                    plt.plot(frequencies[f_idx], pwr[0][ch][f_idx], 'ro')
+                plt.xlim(0, flim)
+                plt.ylim(0, ylim)
+                plt.xlabel('Frequnecy [HZ]')
+                plt.ylabel('Power spectrum ($\mu V^2$)')
+                plt.title(f' {title} Subject: {subject + 1} Frequency: {stimuli[0]}, at {chs[ch]}')
+    else:
+        if subject == 'all':
+                subject = "Grand Average"
+        else:
+                subject = subject + 1
+        for fr in range(len(pwr)):
+            event = stimuli[fr]
+            if not is_erp:
+                f_idx = harmonics_idx(frequencies, event, harmonics)
+            
+            plt.figure()
+            plt.plot(frequencies, pwr[fr])
+            if not is_erp:
+                plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
+            plt.xlim(0, flim)
+            plt.ylim(0, ylim)
+            plt.xlabel('Frequnecy [HZ]')
+            plt.ylabel('Power spectrum ($\mu V^2$)')
+            plt.title(f' {title} Subject: {subject} Frequency: {stimuli[fr]}, at {channel}')
+    if save:
+        if not savefolder:
+            if not os.path.exists("savedfigs"):
+                os.mkdir("savedfigs")
+            savefolder = "savedfigs"                
+        fname = fname= f"{savefolder}/psd_{data.paradigm.filename}.png"
+        plt.savefig(fname, bbox_inches='tight')
+
+def plot_spectral_power_multitaper(data, subject=0, channel='POz', harmonics=2, 
+                                   flim=50, ylim=2, save=False, savefolder=None):
+    """Plot spectral power using the Multitaper method for a given subject in a dataset at
+    a specified electrode.
+    Parameters
+    ----------
+    data : dataset instance
+        epoched EEG signal dataset
+    subject : int | list | str
+        int : given index for a subject, by default 0 (first subject in the dataset)
+        list : indices subject's subset.
+        str : 'all', mean of psd across all subjects in data.
+    channel : str, optional
+        electrode name, by default 'Poz' (suitable for SSVEP based experiments)
+    harmonics : int
+        number of frequency harmonics to highlight in plot, default 2
+    flim : int
+        x-axis limit, frequencies in Hz. Default 50
+    ylim: int
+        y-axis limit, PSD. Default 2
+    save : bool
+        if True save figures in savefolder. Default False.
+    savefolder : str 
+        figure saving folder path, default None.
+    """
+    pwr, frequencies = spectral_power_welch(data, subject, channel)
+    is_erp = False
+    if data.paradigm.__class__.__name__ == 'ERP':
+        # stimuli = data.events[subject]
+        is_erp = True
+        stimuli = ['Non_Target', 'Target']
+    else:
+        stimuli = data.paradigm.frequencies
+    if channel == 'all':
+        chs = data.ch_names
+    else:
+        chs = channel
+    title = data.title
+    if type(channel) is list or channel == 'all':
+        if len(stimuli) == 1:
+            for ch in range(len(pwr[0])):
+                event = stimuli[0]
+                if not is_erp:
+                    f_idx = harmonics_idx(frequencies, event, harmonics)
+
+                plt.figure()
+                plt.plot(frequencies, pwr[0][ch])
+                if not is_erp:
+                    plt.plot(frequencies[f_idx], pwr[0][ch][f_idx], 'ro')
+                plt.xlim(0, flim)
+                plt.ylim(0, ylim)
+                plt.xlabel('Frequnecy [HZ]')
+                plt.ylabel('Power spectrum ($\mu V^2$)')
+                plt.title(f' {title} Subject: {subject + 1} Frequency: {stimuli[0]}, at {chs[ch]}')
+    else:
+        if subject == 'all':
+                subject = "Grand Average"
+        else:
+                subject = subject + 1
+        for fr in range(len(pwr)):
+            event = stimuli[fr]
+            if not is_erp:
+                f_idx = harmonics_idx(frequencies, event, harmonics)
+            
+            plt.figure()
+            plt.plot(frequencies, pwr[fr])
+            if not is_erp:
+                plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
+            plt.xlim(0, flim)
+            plt.ylim(0, ylim)
+            plt.xlabel('Frequnecy [HZ]')
+            plt.ylabel('Power spectrum ($\mu V^2$)')
+            plt.title(f' {title} Subject: {subject} Frequency: {stimuli[fr]}, at {channel}')
+    if save:
+        if not savefolder:
+            if not os.path.exists("savedfigs"):
+                os.mkdir("savedfigs")
+            savefolder = "savedfigs"                
+        fname = fname= f"{savefolder}/psd_{data.paradigm.filename}.png"
+        plt.savefig(fname, bbox_inches='tight')
 
 def plot_time_frequency(data, subject=0, channel='POz', w=4.):
     """Plot wavelet transform in a colormesh for each event in dataset
