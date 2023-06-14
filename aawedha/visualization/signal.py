@@ -297,7 +297,7 @@ def plot_spectral_power_multitaper(data, subject=0, channel='POz', harmonics=2,
     savefolder : str 
         figure saving folder path, default None.
     """
-    pwr, frequencies = spectral_power_welch(data, subject, channel)
+    pwr, frequencies = spectral_power_multitaper(data, subject, channel)
     is_erp = False
     if data.paradigm.__class__.__name__ == 'ERP':
         # stimuli = data.events[subject]
