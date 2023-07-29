@@ -264,6 +264,7 @@ def plot_psd_welch(data, subject=0, channel='POz', harmonics=2,
             plt.xlabel('Frequnecy [HZ]')
             plt.ylabel('Power spectrum ($\mu V^2$)')
             plt.title(f' {title} Subject: {subject} Frequency: {stimuli[fr]}, at {channel}')
+    
     if save:
         if not savefolder:
             if not os.path.exists("savedfigs"):

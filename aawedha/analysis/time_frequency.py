@@ -88,15 +88,25 @@ def spectral_power(data, subject=0, channel='POz'):
 
 
 def spectral_power_welch(data, subject=0, channel='POz'):
-    x = data.epochs[subject]
-    y = deepcopy(data.y[subject]) 
+    if isinstance(data.epochs, list) or data.epochs.ndim == 4:
+        if subject == 'all':
+            subjects = range(len(data.epochs))
+            x = np.concatenate([data.epochs[idx] for idx in subjects], axis=-1)
+            y = np.concatenate([data.y[idx] for idx in subjects], axis=-1)
+            ev_count = np.unique(np.concatenate([ev for ev in data.events])).size
+        else:
+            y = deepcopy(data.y[subject])
+            ev_count = np.unique(data.events[subject]).size
+            x = data.epochs[subject]
+    
     if not 0. in y:
         y -= 1
-    ev_count = np.unique(data.events[subject]).size
+
     if channel == 'all':
         ch = range(len(data.ch_names))
     else:
         ch = [data.ch_names.index(channel)]
+    
     frequencies, ps = signal.welch(x, fs = data.fs, 
                                    nperseg = x.shape[0], 
                                    window = 'hann', noverlap = 0, 
