@@ -531,7 +531,7 @@ class DataSet(metaclass=ABCMeta):
         return data, duration, data_shape            
     
     def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, 
-                            slide=0.1, method='divide'):
+                            baseline=0., slide=0.1, method='divide'):
         """Segment continuous EEG data using an augmentation method
 
         Parameters
@@ -567,12 +567,12 @@ class DataSet(metaclass=ABCMeta):
         # stimulation = 5 * self.fs
         if method == 'divide':
             augmented = range(np.floor(stimulation / np.diff(epoch))[0].astype(int))
-            v = [eeg_epoch(raw_signal, epoch + np.diff(epoch) * i, pos) for i in augmented]
+            v = [eeg_epoch(raw_signal, epoch + np.diff(epoch) * i, pos, self.fs, bool(baseline), baseline) for i in augmented]
 
         elif method == 'slide':
             slide = np.ceil(slide * self.fs).astype(int)
             augmented = range(int((stimulation - np.diff(epoch)) // slide) + 1)
-            v = [eeg_epoch(raw_signal, epoch + (slide * i), pos) for i in augmented]
+            v = [eeg_epoch(raw_signal, epoch + (slide * i), pos, self.fs, bool(baseline), baseline) for i in augmented]
 
         return v
 

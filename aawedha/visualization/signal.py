@@ -11,6 +11,9 @@ import numpy as np
 import mne
 import os
 
+def to_list(number):
+    return number if type(number) is list else [0, number]
+
 
 def harmonics_idx(freqs, event, h):
     if event == 'idle':
@@ -191,7 +194,9 @@ def plot_spectral_power(data, subject=0, channel='POz', harmonics=2,
 
 
 def plot_psd_welch(data, subject=0, channel='POz', harmonics=2, 
-                   flim=50, ylim=2, save=False, savefolder=None):
+                   flim=50, ylim=2, layout="grid", save=False, 
+                   savefolder=None, dpi=300
+                  ):
     """Plot spectral power using the Welch method for a given subject in a dataset at
     a specified electrode.
     Parameters
@@ -206,29 +211,38 @@ def plot_psd_welch(data, subject=0, channel='POz', harmonics=2,
         electrode name, by default 'Poz' (suitable for SSVEP based experiments)
     harmonics : int
         number of frequency harmonics to highlight in plot, default 2
-    flim : int
+    flim : int | list
         x-axis limit, frequencies in Hz. Default 50
-    ylim: int
+    ylim: int  | list
         y-axis limit, PSD. Default 2
+    layout: str
+        arrangment of subplots
+            - grid : rows x columns 
+            - vert : vertical layout
     save : bool
         if True save figures in savefolder. Default False.
     savefolder : str 
         figure saving folder path, default None.
     """
+    flim = to_list(flim)
+    ylim = to_list(ylim)
+    
     pwr, frequencies = spectral_power_welch(data, subject, channel)
-    # pwr, frequencies = spectral_power(data, subject, channel)
     is_erp = False
     if data.paradigm.__class__.__name__ == 'ERP':
-        # stimuli = data.events[subject]
         is_erp = True
         stimuli = ['Non_Target', 'Target']
     else:
         stimuli = data.paradigm.frequencies
+    
     if channel == 'all':
         chs = data.ch_names
     else:
         chs = channel
     title = data.title
+    n_cols = 1 if layout == "vert" else 3
+    n_rows = len(stimuli) if layout == "vert" else len(stimuli) // n_cols
+    # single stimulus
     if type(channel) is list or channel == 'all':
         if len(stimuli) == 1:
             for ch in range(len(pwr[0])):
@@ -240,38 +254,51 @@ def plot_psd_welch(data, subject=0, channel='POz', harmonics=2,
                 plt.plot(frequencies, pwr[0][ch])
                 if not is_erp:
                     plt.plot(frequencies[f_idx], pwr[0][ch][f_idx], 'ro')
-                plt.xlim(0, flim)
-                plt.ylim(0, ylim)
+                plt.xlim(flim)
+                plt.ylim(ylim)
                 plt.xlabel('Frequnecy [HZ]')
                 plt.ylabel('Power spectrum ($\mu V^2$)')
                 plt.title(f' {title} Subject: {subject + 1} Frequency: {stimuli[0]}, at {chs[ch]}')
+    # multiple stimuli
     else:
         if subject == 'all':
                 subject = "Grand Average"
         else:
                 subject = subject + 1
-        for fr in range(len(pwr)):
-            event = stimuli[fr]
-            if not is_erp:
-                f_idx = harmonics_idx(frequencies, event, harmonics)
-            
-            plt.figure()
-            plt.plot(frequencies, pwr[fr])
-            if not is_erp:
-                plt.plot(frequencies[f_idx], pwr[fr][f_idx], 'ro')
-            plt.xlim(0, flim)
-            plt.ylim(0, ylim)
-            plt.xlabel('Frequnecy [HZ]')
-            plt.ylabel('Power spectrum ($\mu V^2$)')
-            plt.title(f' {title} Subject: {subject} Frequency: {stimuli[fr]}, at {channel}')
+        fsize = (15, 8) if layout == "grid" else (8, 15)
+        fig, ax = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=fsize, layout='constrained')
+        # for fr in range(len(pwr)):        
+        k = 0
+        for fr, row in enumerate(ax):
+            if isinstance(row, Iterable):
+                rows = row
+            else:
+                rows = [row]
+            for col in rows:
+                event = stimuli[k]
+                if not is_erp:
+                    f_idx = harmonics_idx(frequencies, event, harmonics)            
+                col.plot(frequencies, pwr[k])
+                if not is_erp:
+                    col.plot(frequencies[f_idx], pwr[k][f_idx], 'ro')
+                col.set_title(f' {stimuli[k]} Hz')
+                col.set_ylim(ylim[0], ylim[1])
+                col.set_xlim(flim[0], flim[1])
+                col.set_xlabel('Frequnecy [HZ]')
+                col.set_ylabel('Power spectrum ($\mu V^2$)')
+                k += 1
+        
     
     if save:
         if not savefolder:
             if not os.path.exists("savedfigs"):
                 os.mkdir("savedfigs")
             savefolder = "savedfigs"                
-        fname = fname= f"{savefolder}/psd_{data.paradigm.filename}.png"
-        plt.savefig(fname, bbox_inches='tight')
+        fname = fname= f"{savefolder}/psd_welch_{data.paradigm.filename}.png"
+        plt.savefig(fname, bbox_inches='tight', dpi=dpi)
+    plt.show()
+    plt.close()
+
 
 def plot_spectral_power_multitaper(data, subject=0, channel='POz', harmonics=2, 
                                    flim=50, ylim=2, save=False, savefolder=None):

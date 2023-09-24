@@ -150,7 +150,6 @@ def unzip_files(zip_files, store_path):
         # zip_ref.close() # close file
         os.remove(zipf) # delete zipped file
 
-
 def unzip_single_file(path, compressed_file):
     save_dir = Path(path)  
     zip_file = zipfile.ZipFile(compressed_file, 'r')
@@ -159,7 +158,6 @@ def unzip_single_file(path, compressed_file):
         file_path = save_dir / Path(files).name
         file_path.write_bytes(data)
     zip_file.close()
-
 
 def untar_files(tar_files, store_path):
     """Untar compressed files and delete tar files.

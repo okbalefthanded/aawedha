@@ -13,7 +13,7 @@ import torch
 class DynCCNN(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=8,  dropout_rate=0.25, kernLength=10,
-                 fs=512, resolution=0.293, l2=0.0001, frq_band=[7, 70], 
+                 fs=512, resolution=0.293, l2=0.0001, frq_band=[7, 70], dilate=3,
                  K=4, ratio=4, temperature=30, name='DynCCNN'):
         super().__init__()    
         self.name = name
@@ -22,21 +22,21 @@ class DynCCNN(nn.Module):
         self.nfft  = round(fs / resolution)
         self.fft_start = int(round(frq_band[0] / self.resolution)) 
         self.fft_end   = int(round(frq_band[1] / self.resolution)) + 1
-        dilation = (1, 3) 
+        dilation = (1, dilate) 
         samples = (self.fft_end - self.fft_start) * 2        
         out_features = samples - dilation[1]*(kernLength-1) 
         filters = 2*Chans
 
         self.conv1 = DynamicConv(1, filters, (Chans, 1), stride=1, padding="valid",
                                     grounps=1, bias=False ,K=K,
-                                    temprature=30, ratio=1, init_weight=True)
+                                    temprature=temperature, ratio=1, init_weight=True)
                                    
         self.ln1   = nn.BatchNorm2d(filters) # nn.LayerNorm([filters, 1, samples])
         self.drop1 = nn.Dropout(dropout_rate)
         
         self.conv2 = DynamicConv(filters, filters, (1, 10), stride=1, padding="valid",
                                     dilation=dilation, grounps=1, bias=False ,K=K,
-                                    temprature=30, ratio=4, init_weight=True)
+                                    temprature=temperature, ratio=ratio, init_weight=True)
                                    
         self.ln2   = nn.BatchNorm2d(filters) # nn.LayerNorm([filters, 1, out_features])
         self.drop2 = nn.Dropout(dropout_rate)

@@ -5,7 +5,7 @@ from scipy import signal
 import numpy as np
 
 
-def spectral_power(data, subject=0, channel='POz'):
+def spectral_power(data, subject=0, channel='POz', mode="train"):
     """Calculate spectral power for each event in a given dataset
     for a subject at a specified channel
 
@@ -19,7 +19,8 @@ def spectral_power(data, subject=0, channel='POz'):
         str : 'all', mean of psd across all subjects in data.
     channel : str, optional
         electrode name, by default 'Poz'
-
+    mode : str : {'train', 'test'}
+        Data session type
     Returns
     -------
     pwr : list of nd array (1 x samples/2 + 1)
@@ -29,23 +30,33 @@ def spectral_power(data, subject=0, channel='POz'):
         array of frequencies: 0 - nyquist
     """
 
-    if isinstance(data.epochs, list) or data.epochs.ndim == 4:
-        if subject == 'all':
-            subjects = range(len(data.epochs))
-            epochs = np.concatenate([data.epochs[idx] for idx in subjects], axis=-1)
-            y = np.concatenate([data.y[idx] for idx in subjects], axis=-1)
-            samples, _ ,trials = epochs.shape
-            ev_count = np.unique(np.concatenate([ev for ev in data.events])).size
-        else:
-            samples, _, trials = data.epochs[subject].shape
-            y = deepcopy(data.y[subject])
-            ev_count = np.unique(data.events[subject]).size
-            epochs = data.epochs[subject]
-    else:
-        samples, _, trials = data.epochs.shape
-        y = deepcopy(data.y)
-        ev_count = np.unique(data.events).size
+    if mode == "train":
         epochs = data.epochs
+        y = deepcopy(data.y)
+        events = data.events
+    elif mode == "test":
+        if hasattr(data, "test_epochs"):
+            epochs = data.test_epochs
+            y = deepcopy(data.test_y)
+            events = data.test_events
+        else:
+            raise AttributeError("DataSet instance does not has attribute test_epochs")        
+
+    if isinstance(epochs, list) or epochs.ndim == 4:
+        if subject == 'all':
+            subjects = range(len(epochs))
+            epochs = np.concatenate([epochs[idx] for idx in subjects], axis=-1)
+            y = np.concatenate([y[idx] for idx in subjects], axis=-1)
+            samples, _ ,trials = epochs.shape
+            ev_count = np.unique(np.concatenate([ev for ev in events])).size
+        else:
+            samples, _, trials = epochs[subject].shape
+            y = deepcopy(y[subject])
+            ev_count = np.unique(events[subject]).size
+            epochs = epochs[subject]
+    else:
+        samples, _, trials = epochs.shape
+        ev_count = np.unique(events).size
 
     if data.paradigm.__class__.__name__ == 'ERP':
         ev_count = 2
@@ -88,6 +99,28 @@ def spectral_power(data, subject=0, channel='POz'):
 
 
 def spectral_power_welch(data, subject=0, channel='POz'):
+    """Calculate power spectral density using multitaper method.
+
+    Parameters
+    ----------
+    data : dataset instance
+        epoched EEG signal dataset
+    subject : int | list | str
+        int : given index for a subject, by default 0 (first subject in the dataset)
+        list : indices subject's subset.
+        str : 'all', mean of psd across all subjects in data.
+    channel : str, optional
+        electrode name, by default 'Poz'
+
+    Returns
+    -------
+    pwr : list of nd array (1 x samples/2 + 1)
+        spectral power of each event in the dataset
+
+    frequencies: nd array
+        array of frequencies: 0 - nyquist
+    """
+    # TODO : add test_epochs data
     if isinstance(data.epochs, list) or data.epochs.ndim == 4:
         if subject == 'all':
             subjects = range(len(data.epochs))
@@ -120,6 +153,28 @@ def spectral_power_welch(data, subject=0, channel='POz'):
     return pwr, frequencies
 
 def spectral_power_multitaper(data, subject=0, channel='POz'):
+    """Calculate power spectral density using Welch method.
+
+    Parameters
+    ----------
+    data : dataset instance
+        epoched EEG signal dataset
+    subject : int | list | str
+        int : given index for a subject, by default 0 (first subject in the dataset)
+        list : indices subject's subset.
+        str : 'all', mean of psd across all subjects in data.
+    channel : str, optional
+        electrode name, by default 'Poz'
+
+    Returns
+    -------
+    pwr : list of nd array (1 x samples/2 + 1)
+        spectral power of each event in the dataset
+
+    frequencies: nd array
+        array of frequencies: 0 - nyquist
+    """
+    # TODO : add test_epochs data
     x = data.epochs[subject].transpose((2,1,0))
     y = deepcopy(data.y[subject]) 
     if not 0. in y:
