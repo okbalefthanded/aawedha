@@ -50,6 +50,6 @@ def count_flops(pth_model):
     if not pth_model.input_shape:
         raise ValueError("Model input shape is not set")
     input_tensor = torch.ones(1, *pth_model.input_shape, device=pth_model.device)
-    macs, _ = profile(pth_model, inputs=(input_tensor,))
+    macs, _ = profile(pth_model.module, inputs=(input_tensor,))
     macs, _ = clever_format([macs, _], "%.3f")
     return macs

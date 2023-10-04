@@ -150,6 +150,8 @@ def spectral_power_welch(data, subject=0, channel='POz'):
     for fr in range(ev_count):
         epo_frq = ps[:, ch, y == fr].squeeze()  
         pwr.append(np.mean(epo_frq, axis=-1))
+    # pwr: list, fq x [samples/2+1, chs] (ndarray)
+    # frequencies : 1d array samples / 2 +1
     return pwr, frequencies
 
 def spectral_power_multitaper(data, subject=0, channel='POz'):

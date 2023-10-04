@@ -9,7 +9,8 @@ from aawedha.evaluation.evaluation_utils import transform_scale
 from aawedha.models.pytorch.torchdata import data_shapes
 from aawedha.models.pytorch.torchdata import make_loader
 from aawedha.loss.smooth_loss import SmoothLoss
-from torchsummary import summary
+# from torchsummary import summary
+from torchinfo import summary
 from copy import deepcopy
 import torch.optim.lr_scheduler as lrs
 import torch.nn as nn
@@ -311,7 +312,9 @@ class TorchModel(nn.Module):
         elif self.input_shape:
             input_shape = self.input_shape
         if input_shape:
-            summary(self.module, input_shape, device=self.device)
+            summary_str = summary(self.module, input_shape, device=self.device)
+            print(summary_str)
+
 
     def save(self, path):
         """Save model
