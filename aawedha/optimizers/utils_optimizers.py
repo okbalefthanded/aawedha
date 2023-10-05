@@ -1,7 +1,9 @@
 from tensorflow.keras.utils import deserialize_keras_object
 from tensorflow.keras.optimizers import get
-import tensorflow_addons.optimizers as tfaopt
+from aawedha.io.io_utils import load_yaml
 from madgrad import MadGrad
+
+import tensorflow_addons.optimizers as tfaopt
 
 all_classes_tfa = {'adabelief': tfaopt.AdaBelief,
                     'adamw': tfaopt.AdamW,
@@ -76,3 +78,22 @@ def get_optimizer(identifier, opt_lib=None):
         opt = deserialize_keras_object(config, module_objects=custom_classes,
                           custom_objects=None, printable_module_name='optimizer')
         return opt
+    
+
+def config_to_description(cfg_path):
+    """convert yaml configuration entries to a list of optimizer
+    description for evaluation.
+
+    Parameters
+    ----------
+    cfg_path : str
+        yaml configuration file path.
+
+    Returns
+    -------
+    list
+        list of description with list[0] is the optimizer name
+        and list[1] is a dict of optimizer params.
+    """
+    cfg = load_yaml(cfg_path)
+    return [cfg["name"], cfg["params"]]
