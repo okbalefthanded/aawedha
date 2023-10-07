@@ -23,6 +23,8 @@ pkbar
 pyyaml
 thop
 pingouin
+lion-pytorch
+prodigyopt
 git+https://github.com/okbalefthanded/antialiased-cnns.git
 git+https://github.com/lessw2020/Ranger21.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git

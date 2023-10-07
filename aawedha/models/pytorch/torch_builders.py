@@ -6,7 +6,11 @@ from aawedha.metrics.torch_metrics import CategoricalAccuracy
 from aawedha.models.pytorch.wasamtorch import WASAM
 from aawedha.models.pytorch.samtorch import SAM
 from aawedha.loss.smooth_loss import SmoothLoss
+from aawedha.optimizers.aida import Aida
 from aawedha.optimizers.adan import Adan
+from aawedha.optimizers.agd import AGD
+from lion_pytorch import Lion
+from prodigyopt import Prodigy
 from libauc.losses import AUCMLoss
 from libauc.optimizers import PESG
 from importlib import import_module
@@ -44,6 +48,10 @@ custom_opt = {
     'Adan': Adan,
     'Ranger': Ranger21,
     'PESG' : PESG,
+    'Lion': Lion,
+    'Prodigy': Prodigy,
+    'AGD': AGD,
+    'Aida': Aida
 }
 
 wrapped_opt = {
