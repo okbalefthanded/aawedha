@@ -374,6 +374,8 @@ class TorchModel(nn.Module):
                 metrics=None, loss_weights=None,
                 scheduler=None, classes=2, callbacks=[]):
         self.optimizer = get_optimizer(optimizer, self.module.parameters())
+        if hasattr(self.optimizer, 'init_weights'):
+            self.optimizer.init_weights()
         self.loss      = get_loss(loss)
         self.metrics_list = get_metrics(metrics, classes)
         self.callbacks = build_callbacks(self, callbacks)

@@ -153,8 +153,7 @@ def opt_module(base_opt):
         base_opt_module = getattr(optim, base_opt)
     elif base_opt in custom_opt:
         base_opt_module = custom_opt[base_opt]
-    return base_opt_module
-    
+    return base_opt_module    
 
 def get_loss(loss):
     if isinstance(loss, str):
@@ -201,8 +200,7 @@ def build_scheduler(data_loader, optimizer, scheduler):
     if sched_id in available:
         return getattr(optim.lr_scheduler, sched_id)(**params)
     else:
-        ModuleNotFoundError  
-
+        ModuleNotFoundError
 
 def build_callbacks(model, callbacks_list):
     clbks = []
