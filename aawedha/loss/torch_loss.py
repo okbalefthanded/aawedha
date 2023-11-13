@@ -37,7 +37,7 @@ class _Loss(nn.Module):
         return sparse_targets
 
 class FocalLoss(_Loss):
-    """
+    """https://arxiv.org/abs/1708.02002
     """
     def __init__(self, alpha: float = 0.25 , gamma: float = 2.0, **kwargs: Any) -> None:
         super().__init__(**kwargs)

@@ -315,7 +315,6 @@ class TorchModel(nn.Module):
             summary_str = summary(self.module, input_shape, device=self.device)
             print(summary_str)
 
-
     def save(self, path):
         """Save model
 

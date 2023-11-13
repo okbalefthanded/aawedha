@@ -25,8 +25,8 @@ class AGD(Optimizer):
 
         for p in self.params:
             if p.dim() == 1: raise Exception("Biases are not supported.")
-
-        super().__init__(params, defaults=dict())
+        defs = dict(gain=gain)
+        super().__init__(params, defaults=defs)
 
     @torch.no_grad()
     def init_weights(self):

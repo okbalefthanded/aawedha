@@ -12,7 +12,6 @@ import pandas as pd
 import numpy as np
 
 
-
 def positive_class_prob(probs):
     """Select probabilities of positive class from binary classification
     probabilities
@@ -34,7 +33,6 @@ def positive_class_prob(probs):
         return scores
     else:
         return scores[:, 1]
-
 
 def metrics_by_lib(lib):
     """Create metrics according to the library used for evaluation.
