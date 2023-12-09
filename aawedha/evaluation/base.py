@@ -496,13 +496,13 @@ class Evaluation:
             Y_train = None
         
         history = self.learner.fit(x=X_train, y=Y_train,
-                                 batch_size=batch,
-                                 epochs=ep,
-                                 steps_per_epoch=spe,
-                                 verbose=self.settings.verbose,
-                                 validation_data=val,
-                                 class_weight=cws,
-                                 callbacks=clbs)
+                                   batch_size=batch,
+                                   epochs=ep,
+                                   steps_per_epoch=spe,
+                                   verbose=self.settings.verbose,
+                                   validation_data=val,
+                                   class_weight=cws,
+                                   callbacks=clbs)
         
         if isinstance(X_test, np.ndarray):
             probs = self.learner.predict(X_test)
@@ -621,8 +621,9 @@ class Evaluation:
         convert_label = False
         device = get_device(self.learner.config)
         classes = self._get_classes()
-        khsara, _, _, _ = self.learner.get_compile_configs(device, classes)
-
+        # khsara, _, _, _ = self.learner.get_compile_configs(device, classes)
+        cfgs = self.learner.get_compile_configs(device, classes)
+        khsara = cfgs[0]
         if self.settings.engine == 'keras' and type(khsara) != str:
             loss_config = khsara.get_config()
             if khsara.name != 'sparse_categorical_crossentropy' and 'label_smoothing' in loss_config:

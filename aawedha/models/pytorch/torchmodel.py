@@ -27,6 +27,7 @@ class TorchModel(nn.Module):
         self.module = module
         self.optimizer = None
         self.loss = None
+        self.loss_weights = None
         self.metrics_list = []
         self.metrics_names = []
         self.callbacks = []
@@ -36,17 +37,27 @@ class TorchModel(nn.Module):
         self.history = {}
         self.device = device
         self.input_shape = None
+        self.features_dim = None
         self.output_shape = None
         self.mu = None
         self.sigma = None  
         self.is_categorical = False 
         self.is_binary = False   
 
-    def compile(self, optimizer='Adam', loss=None,
-                metrics=None, loss_weights=None,
-                scheduler=None, classes=2, callbacks=[]):
-        self._compile_regular(optimizer=optimizer, loss=loss, metrics=metrics, 
-                              scheduler=scheduler, classes=classes, 
+    def compile(self, 
+                optimizer='Adam', 
+                loss=None,
+                metrics=None, 
+                loss_weights=None,
+                scheduler=None, 
+                classes=2, 
+                callbacks=[]):
+        self._compile_regular(optimizer=optimizer, 
+                              loss=loss, 
+                              metrics=metrics, 
+                              loss_weights=loss_weights,
+                              scheduler=scheduler, 
+                              classes=classes, 
                               callbacks=callbacks)
 
     def train_step(self, data):
@@ -70,9 +81,14 @@ class TorchModel(nn.Module):
         return_metrics = self._compute_metrics(return_metrics, outputs, labels)
         return return_metrics
 
-    def fit(self, x, y=None, batch_size=32, epochs=100, verbose=2, 
-            validation_data=None, class_weight=None, 
-            steps_per_epoch=None, shuffle=True, 
+    def fit(self, x, y=None, 
+            batch_size=32, 
+            epochs=100, 
+            verbose=2, 
+            validation_data=None, 
+            class_weight=None, 
+            steps_per_epoch=None, 
+            shuffle=True, 
             callbacks=None):        
         """
         """
@@ -98,8 +114,15 @@ class TorchModel(nn.Module):
         history['history'] = hist
         return history
 
-    def _fit_loop(self, train_loader, validation_data, has_validation,
-                 epochs, batch_size, hist, progress, verbose):
+    def _fit_loop(self, 
+                  train_loader, 
+                  validation_data, 
+                  has_validation,
+                  epochs, 
+                  batch_size, 
+                  hist, 
+                  progress, 
+                  verbose):
         # on_train_begin callbacks
         # if self.callbacks: self.callbacks.on_train_begin()
         if self.callbacks: [clbk.on_train_begin() for clbk in self.callbacks] 
@@ -117,11 +140,14 @@ class TorchModel(nn.Module):
             for i, data in enumerate(train_loader, 0):
                 # on_train_batch_begin callbacks
                 if self.callbacks: [clbk.on_train_batch_begin() for clbk in self.callbacks]
+                
                 return_metrics = self.train_step(data)
                 running_loss  += return_metrics['loss'] / len(train_loader)
                 return_metrics['loss'] = running_loss
+                
                 # on_train_batch_end callbacks
                 if self.callbacks: [clbk.on_train_batch_end() for clbk in self.callbacks]
+                
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
             
@@ -152,7 +178,9 @@ class TorchModel(nn.Module):
         if self.callbacks: [clbk.on_train_end() for clbk in self.callbacks]
         return hist
 
-    def predict(self, x, normalize=False):
+    def predict(self, 
+                x, 
+                normalize=False):
         """
         """
         if normalize:
@@ -166,10 +194,17 @@ class TorchModel(nn.Module):
 
         if self.is_binary:
             pred = nn.Sigmoid()(pred)
-        return pred.cpu().detach().numpy()
+        if isinstance(pred, tuple):
+            return pred[0].cpu().detach().numpy()
+        else:    
+            return pred.cpu().detach().numpy()
 
-    def evaluate(self, x, y=None, batch_size=32, verbose=0, normalize=False, 
-                 shuffle=False, return_dict=True):
+    def evaluate(self, x, y=None, 
+                 batch_size=32, 
+                 verbose=0, 
+                 normalize=False, 
+                 shuffle=False, 
+                 return_dict=True):
         """
         """
         loss = 0
@@ -210,18 +245,23 @@ class TorchModel(nn.Module):
         
         return return_metrics
 
-    def _pre_fit(self, x, y, batch_size, validation_data, class_weight, shuffle):
+    def _pre_fit(self, x, y, 
+                 batch_size, 
+                 validation_data, 
+                 class_weight, 
+                 shuffle):
         has_validation = True if validation_data else False
         labels_type  = self._labels_type()
         train_loader = self._create_loader(x, y, shuffle, batch_size)         
 
-        self.set_output_shape()
+        # self.set_output_shape()
         self._set_is_binary(train_loader.dataset.tensors[1])
         
         if class_weight: 
             if isinstance(y, np.ndarray):
                 if y.ndim > 1:
-                    self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
+                    if not isinstance(self.loss, list):
+                        self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
         if self.metrics_list:
             [metric.train() for metric in self.metrics_list]
 
@@ -289,7 +329,11 @@ class TorchModel(nn.Module):
                     layer.reset_parameters()
         
         if self.optimizer:
-            self.optimizer.state = collections.defaultdict(dict) # Reset state    
+            if isinstance(self.optimizer, list):
+                for opt in self.optimizer:
+                    opt.state = collections.defaultdict(dict)
+            else:
+                self.optimizer.state = collections.defaultdict(dict) # Reset state    
         
         # TODO reset scheduler state if exists
         if self.scheduler:
@@ -337,7 +381,7 @@ class TorchModel(nn.Module):
         return transform_scale(x, self.mu, self.sigma)
 
     def reset_metrics(self):
-        """Reset metric values
+        """Reset metrics values
         """
         for metric in self.metrics_list:
             metric.reset()   
@@ -355,12 +399,14 @@ class TorchModel(nn.Module):
             output_index = -1
         last_layer = modules[output_index]
         if hasattr(self.module._modules[last_layer], 'out_features'):
-            self.output_shape = self.module._modules[last_layer].out_features
+            self.features_dim = self.module._modules[last_layer].in_features
+            self.output_shape = self.module._modules[last_layer].out_features            
         elif not hasattr(self.module._modules[last_layer], 'module'):
             # TODO: only Linear module has an out shape attribute.
             self.output_shape = None
         else:
             # Linear with TorchLayers regularizes
+            self.features_dim = self.module._modules[last_layer].module.in_features
             self.output_shape = self.module._modules[last_layer].module.out_features
 
     def metrics_to(self, device=None):
@@ -369,13 +415,37 @@ class TorchModel(nn.Module):
         for metric in self.metrics_list:
             metric.to(device)        
     
-    def _compile_regular(self, optimizer='Adam', loss=None,
-                metrics=None, loss_weights=None,
-                scheduler=None, classes=2, callbacks=[]):
-        self.optimizer = get_optimizer(optimizer, self.module.parameters())
-        if hasattr(self.optimizer, 'init_weights'):
-            self.optimizer.init_weights()
-        self.loss      = get_loss(loss)
+    def _compile_regular(self, 
+                         optimizer='Adam', 
+                         loss=None,
+                         metrics=None, 
+                         loss_weights=None,
+                         scheduler=None, 
+                         classes=2, 
+                         callbacks=[]):
+        
+        self.set_output_shape() # moved from _pre_fit()
+        self.loss      = get_loss(loss, self.features_dim)
+        self.loss_weights = self._check_loss_weights(loss_weights)
+        # Test whether a certain loss requires a seperate Optimizer
+        # params_opt = {"params": self.module.parameters()}
+        params_opt = [self.module.parameters()]
+        if isinstance(self.loss, list):
+            for loss in self.loss:
+                if "extern_optim" in loss.__dict__.keys():
+                    # params_opt.update({"loss_param": loss.parameters()})
+                    params_opt.append(loss.parameters())
+
+        self.optimizer = get_optimizer(optimizer, params_opt)
+        # which hell of an optimizer has init_weights? <AGD>
+        if isinstance(self.optimizer, list):
+            if len(self.optimizer) > 1:
+                for opt in self.optimizer:
+                    if hasattr(opt, 'init_weights'):
+                        opt.init_weights()    
+        else:
+            if hasattr(self.optimizer, 'init_weights'):
+                self.optimizer.init_weights()
         self.metrics_list = get_metrics(metrics, classes)
         self.callbacks = build_callbacks(self, callbacks)
         self.scheduler = scheduler
@@ -387,11 +457,17 @@ class TorchModel(nn.Module):
         """Transfer module, loss and metrics to compute device.
         """
         self.module.to(self.device)
-        self.loss.to(self.device)
+        if isinstance(self.loss, list):
+            [loss.to(self.device) for loss in self.loss]
+        else:
+            self.loss.to(self.device)
         if self.metrics_list:
             [metric.to(self.device) for metric in self.metrics_list]    
     
-    def _compute_metrics(self, return_metrics, outputs, labels):
+    def _compute_metrics(self, 
+                         return_metrics, 
+                         outputs, 
+                         labels):
         with torch.no_grad():
             # if self._is_binary(labels):
             # torchmetrics requires sparse labels, some losses (eg polyLoss)
@@ -440,11 +516,16 @@ class TorchModel(nn.Module):
 
     def _labels_type(self):
         labels_type = torch.long
-        if type(self.loss) in (nn.BCEWithLogitsLoss, SmoothLoss):
+        if isinstance(self.loss, list):
+            # TODO
+            return labels_type
+        elif type(self.loss) in (nn.BCEWithLogitsLoss, SmoothLoss):
             labels_type = torch.float32
         return labels_type
 
-    def _create_loader(self, x, y, shuffle=True, batch_size=32):
+    def _create_loader(self, x, y, 
+                       shuffle=True, 
+                       batch_size=32):
         labels_type = self._labels_type()  
         
         if isinstance(x, torch.utils.data.DataLoader):
@@ -460,3 +541,12 @@ class TorchModel(nn.Module):
                 self._set_auroc_classes()
         
         return train_loader    
+    
+    def _check_loss_weights(self, loss_weights):
+        if isinstance(self.loss, list):
+            if isinstance(loss_weights, list):
+                return [lw if lw is not None else 1 for lw in loss_weights]
+            else:
+                return [loss_weights] * len(self.loss) if loss_weights else [1] * len(self.loss)
+        else:
+            return loss_weights if loss_weights else 1

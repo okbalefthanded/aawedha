@@ -241,6 +241,16 @@ class DataSet(metaclass=ABCMeta):
             if hasattr(self, 'test_epochs'):
                 self.test_epochs = self._reshape(self.test_epochs)
 
+    def epochs_to_list(self):
+        """Convert Epochs and Test epochs attributes from 4D numpy arrays 
+        to a list of 3D numpy arrays
+        """
+        if isinstance(self.epochs, np.ndarray):
+            self.epochs = [self.epochs[i] for i in range(self.epochs.shape[0])]
+            if hasattr(self, "test_epochs"):
+                self.test_epochs = [self.test_epochs[i] for i in range(self.test_epochs.shape[0])]
+        return self
+
     def select_subjects(self, subjects=[]):
         """Keep a subset of subjects in the dataset.
 

@@ -32,8 +32,9 @@ class _Loss(nn.Module):
 
     def labels_to_sparse(self, target):
         sparse_targets = deepcopy(target)
-        if sparse_targets.shape[1] > 1:
-            sparse_targets = sparse_targets.argmax(axis=1)
+        if sparse_targets.ndim > 1:
+            if sparse_targets.shape[1] > 1:
+                sparse_targets = sparse_targets.argmax(axis=1)
         return sparse_targets
 
 class FocalLoss(_Loss):

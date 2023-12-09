@@ -122,7 +122,7 @@ def labels_to_categorical(y):
         y = to_categorical(y - 1)
     return y
 
-def fit_scale(X):
+def fit_scale(X, axis=0):
     """Estimate mean and standard deviation from train set
     for normalization.
     train data is normalized afterwards
@@ -141,14 +141,12 @@ def fit_scale(X):
     sigma : nd array (1, kernels, channels, samples)
         standard deviation over all trials
     """
-    mu = X.mean(axis=0)
-    sigma = X.std(axis=0)
-    X = transform_scale(X, mu, sigma)
-    # X = np.subtract(X, mu[None, :, :])
-    # X = np.divide(X, sigma[None, :, :])
+    mu = X.mean(axis=axis)
+    sigma = X.std(axis=axis)
+    X = transform_scale(X, mu, sigma, axis=axis)
     return X, mu, sigma
 
-def transform_scale(X, mu, sigma):
+def transform_scale(X, mu, sigma, axis=0):
     '''Apply normalization on validation/test data using estimated
     mean and std from fit_scale method
 
@@ -166,8 +164,8 @@ def transform_scale(X, mu, sigma):
     X :  nd array (trials, kernels, samples, channels)
         normalized data
     '''
-    X = np.subtract(X, mu[None, :, :])
-    X = np.divide(X, sigma[None, :, :] + 1e-7)
+    X = np.subtract(X, np.expand_dims(mu, axis))
+    X = np.divide(X, np.expand_dims(sigma, axis) + 1e-7)
     return X
 
 def transpose_split(arrays):

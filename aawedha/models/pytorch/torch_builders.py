@@ -1,11 +1,13 @@
 #from aawedha.loss.complement_ce import ComplementCrossEntropy
 #from aawedha.loss.focal_loss import FocalLoss
 #from aawedha.loss.poly_loss import PolyLoss
+from inspect import getfullargspec
 import aawedha.loss.torch_loss as tl
 from aawedha.metrics.torch_metrics import CategoricalAccuracy
 from aawedha.models.pytorch.wasamtorch import WASAM
 from aawedha.models.pytorch.samtorch import SAM
 from aawedha.loss.smooth_loss import SmoothLoss
+from aawedha.loss.center_loss import CenterLoss
 from aawedha.optimizers.aida import Aida
 from aawedha.optimizers.adan import Adan
 from aawedha.optimizers.agd import AGD
@@ -21,13 +23,14 @@ import torchmetrics
 
 losses = {
     'sparse_categorical_crossentropy': nn.CrossEntropyLoss,
-    'complement_crossentropy': tl.ComplementCrossEntropy,
+    'complement_crossentropy':  tl.ComplementCrossEntropy,
     'categorical_crossentropy': nn.CrossEntropyLoss,
     'binary_crossentropy': nn.BCEWithLogitsLoss,
     'focal_loss': tl.FocalLoss,
-    'poly_loss': tl.PolyLoss,
+    'poly_loss':  tl.PolyLoss,
     'auc_margin' : AUCMLoss,
     "smooth_loss": SmoothLoss,
+    "center_loss" : CenterLoss,
     # TODO: MSE/MAE
     "mse": nn.MSELoss,
     "mae": nn.L1Loss
@@ -68,19 +71,35 @@ def get_optimizer(optimizer, opt_params):
 
     Parameters
     ----------
-    optimizer : str | list
-        - optimizer name and parameters
-    opt_params : iterable | dict
-        Pytorch module (model) parameters to optimize.
-
+    optimizer : str | set | dict
+        - optimizer name to be used with default parameters.
+        - optimizers name for multiple optimizers.
+        - optimizer name (s) and parameters.
+    opt_params : generator | list
+        - Pytorch module (model) parameters to optimize.
+        - List of parameters to optimize when different optimizers are used 
+         for different modules.
     Returns
     -------
     torch.optim instance
         optimizer object
     """
-    params = {'params': opt_params}
+    # if isinstance(opt_params, Generator):
+    #     params = {'params': opt_params}
+    # else:
+    #     params = [{"params": opt_params[0]}, {"loss_para"}]
+
     if isinstance(optimizer, str):
         return _get_optim(optimizer, params)
+    # set and dict for multiple losses with an optimizer each
+    elif isinstance(optimizer, set):
+        return [_get_optim(opt, {"params": prm}) for opt, prm in zip(optimizer, opt_params)]
+    elif isinstance(optimizer, dict):
+        optimizer = [_get_optim(opt, {"params": prm, **optimizer[opt]}) for opt, prm in zip(optimizer, opt_params)]
+        if len(optimizer) == 1:
+            return optimizer.pop()
+        else:
+            return optimizer
     elif isinstance(optimizer, list):
         params = {**params, **optimizer[1]}
         return _get_optim(optimizer[0], params)
@@ -154,22 +173,73 @@ def opt_module(base_opt):
         base_opt_module = custom_opt[base_opt]
     return base_opt_module    
 
-def get_loss(loss):
+def get_loss(loss, features_dim=None):
+    """Create Loss object from description
+
+    Parameters
+    ----------
+    loss : str | list | set | dict | torch.nn.Module
+        str:    - Loss name, will create the loss object with default parameters.
+        list:   - Loss name with parameters, used also for multiple losses training.
+        dict:   - Loss entries with paramerets, used also for multiple losses.
+        module: - a loss object instance to be passed directly.
+        default : 'sparse_categorical_crossentropy'
+    Returns
+    -------
+    torch.nn.Module
+        Loss object instantiated
+
+    Raises
+    ------
+    ModuleNotFoundError
+        Raised when the loss name is incorrect.
+    NotImplementedError
+        Raised when an non nn.Module object is passed.
+    """
     if isinstance(loss, str):
         if loss in list(losses.keys()):
             return losses[loss]()
         else:
             raise ModuleNotFoundError
+    elif isinstance(loss, set):
+        return [losses[loss_id]() for loss_id in loss]    
     elif isinstance(loss, list):
         loss_id = loss[0]
         params  = loss[1]
         return losses[loss_id](**params)
+    elif isinstance(loss, dict):
+        # loss = [losses[loss_id](**params) for loss_id, params in loss.items()]         
+        ls = []
+        for loss_id, params in loss.items():
+            loss_args = getfullargspec(losses[loss_id].__init__)[0]
+            if "feat_dim" in loss_args:
+                params.update({"feat_dim": features_dim})                
+            ls.append(losses[loss_id](**params))
+        if len(ls) > 1:
+            return ls
+        else:
+            return ls.pop()
     elif isinstance(loss, nn.Module):
         return loss
     else:
         raise NotImplementedError
 
 def get_metrics(metrics, classes):
+    """Construct the metrics 
+
+    Parameters
+    ----------
+    metrics : list of str or TorchMetrics Objects
+        entries are metrics names or instances.
+    classes : int
+        number of classes in the dataset to be trained on. TorchMertrics
+        metrics needs this information.
+
+    Returns
+    -------
+    list
+        Torchmetrics instances.
+    """
     selected_metrics = []
     task = "binary" if classes == 2 else "multiclass"
     

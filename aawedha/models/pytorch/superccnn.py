@@ -12,17 +12,27 @@ import torch
 
 class SuperCCNN(nn.Module):
 
-    def __init__(self, nb_classes=4, Chans=8,  dropout_rate=0.25, kernLength=10,
-                fs=512, resolution=0.293, l2=0.0001, frq_band=[7, 70], 
-                num_experts=4, name='SuperCCNN'):
+    def __init__(self, 
+                 nb_classes=4, 
+                 Chans=8, 
+                 dropout_rate=0.25, 
+                 kernLength=10,
+                 fs=512, 
+                 resolution=0.293, 
+                 l2=0.0001, 
+                 frq_band=[7, 70], 
+                 num_experts=4,
+                 return_features=True, 
+                 name='SuperCCNN'):
         super().__init__()    
         self.name = f"{name}{num_experts}"
+        self.return_features = return_features
         self.fs = fs
         self.resolution = resolution
         self.nfft  = round(fs / resolution)
         self.fft_start = int(round(frq_band[0] / self.resolution)) 
         self.fft_end   = int(round(frq_band[1] / self.resolution)) + 1
-         
+        
         samples = (self.fft_end - self.fft_start) * 2        
         out_features = (samples - (kernLength-1) - 1) + 1 
         filters = 2*Chans
@@ -58,8 +68,12 @@ class SuperCCNN(nn.Module):
         x = self.drop1(F.relu(self.ln1(self.conv1(x))))
         x = self.drop2(F.relu(self.ln2(self.conv2(x))))    
         x = flatten(x, 1)
+        features = x
         x = self.fc(x)
-        return x
+        if self.return_features:
+            return x, features
+        else:
+            return x
 
     def transform(self, x):
         with torch.no_grad():

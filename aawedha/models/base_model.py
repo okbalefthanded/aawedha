@@ -85,13 +85,13 @@ class Learner:
             number of classes in the dataset to be trained on
         """
         devices = {'CPU': 'cpu', 'GPU': 'cuda'}
-        khsara, optimizer, metrics, schedule = self.get_compile_configs(device, classes)
+        khsara, optimizer, metrics, loss_weights, schedule = self.get_compile_configs(device, classes)
         if device != 'TPU':
             if self.type == 'keras':
                 self._compile_keras(khsara, optimizer, metrics)
             else:
                 self.model.set_device(devices[device.upper()])
-                self._compile_pytorch(khsara, optimizer, metrics, schedule, classes)
+                self._compile_pytorch(khsara, optimizer, metrics, loss_weights, schedule, classes)
         else:
             self._compile_for_tpu(khsara, optimizer, classes)
         self.compiled = True
@@ -182,16 +182,19 @@ class Learner:
         mets : list : str | keras metrics
             metrics
         """ 
-        schedule = None
+        schedule, loss_weights = None, None
         if 'compile' in self.config:
+            # metrics
             if 'metrics' in self.config['compile']:
                 metrics = self.config['compile']['metrics']
             else:
                 metrics = self._get_metrics(classes)
+            # loss (es)
             if 'loss' in self.config['compile']:
                 khsara = self.config['compile']['loss']
             else:
                 khsara = self._get_loss(classes)
+            # optimizer (s)
             if 'optimizer' in self.config['compile']:
                 optimizer = self.config['compile']['optimizer']
                 if isinstance(optimizer, str) or isinstance(optimizer, list):
@@ -201,12 +204,16 @@ class Learner:
                             optimizer = get_optimizer(optimizer, opt_lib)
             else:
                 optimizer = 'adam'
+            # loss weights            
+            if 'loss_weights' in self.config['compile']:
+                loss_weights = self.config['compile']['loss_weights']
+            # scheduler
             if 'scheduler' in self.config['compile']:
                 schedule = self.config['compile']['scheduler']
         else:
             khsara, optimizer, metrics = self._default_compile(device, classes)           
 
-        return khsara, optimizer, metrics, schedule
+        return khsara, optimizer, metrics, loss_weights, schedule
 
     def fit_normalize(self, X_train):
         """Adapt normalization layer if it's inside the model
@@ -241,13 +248,20 @@ class Learner:
                                metrics=metrics
                                )
 
-    def _compile_pytorch(self, khsara, optimizer, metrics, schedule, classes):
+    def _compile_pytorch(self, 
+                         khsara, 
+                         optimizer, 
+                         metrics, 
+                         loss_weights, 
+                         schedule, 
+                         classes):
         self.model.compile(loss=khsara,
-                               optimizer=optimizer,
-                               metrics=metrics,
-                               scheduler=schedule,
-                               classes=classes
-                               )
+                            optimizer=optimizer,
+                            metrics=metrics,
+                            loss_weights=loss_weights,
+                            scheduler=schedule,
+                            classes=classes
+                            )
     
     def _compile_for_tpu(self, khsara, optimizer, classes):
         strategy = init_TPU()

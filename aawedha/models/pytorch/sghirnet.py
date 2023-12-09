@@ -1,10 +1,14 @@
 from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
+from aawedha.models.pytorch.torch_inits import initialize_He_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.layers.condconv import CondConv, CondConvConstraint
 from aawedha.models.pytorch.torchdata import reshape_input
 from aawedha.layers.cmt import Attention, Mlp
-from timm.models.layers.drop import DropPath
+from aawedha.layers.cbam import CBAMBlock
+from aawedha.layers.aff import MS_CAM
+from torchlayers.regularization import L2
+from timm.layers.drop import DropPath
 from antialiased_cnns import BlurPool
 from torch import flatten
 from torch import nn
@@ -1742,7 +1746,8 @@ class SghirNet28(nn.Module):
 
     def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
                 F1=32, F2=16, D=1, dropoutRate=0.5, 
-                heads=1, dim=46, name="SghirNet26"):
+                heads=1, dim=46, attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet28"):
         super().__init__()
         self.name = name       
         offset = 0 if Samples % 2 else 1    
@@ -1774,7 +1779,7 @@ class SghirNet28(nn.Module):
         self.ln1   = nn.LayerNorm(F2)
         self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
         self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
-                                      qk_scale=None, attn_drop=0., proj_drop=0., 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
                                       qk_ratio=1, sr_ratio=1)
         self.ln2   = nn.LayerNorm(F2)
         self.mlp   = Mlp(F2)   
@@ -1947,4 +1952,1229 @@ class SghirNet30(nn.Module):
             real = x.real[:,:,:, self.fft_start:self.fft_end]
             imag = x.imag[:,:,:, self.fft_start:self.fft_end]
             x = torch.cat((real, imag), axis=-1)
+        return x    
+
+
+# SghirNet28 + SiLu instead of Elu
+class SghirNet31(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet31"):
+        super().__init__()
+        self.name = name       
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.silu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.silu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.silu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
         return x
+
+
+# SghirNet28 as denseNet
+class SghirNet32(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet32"):
+        super().__init__()
+        self.name = name       
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip0 = skip(F2, F2, Samples, Samples // 16)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))
+        shortcut0 = x
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2) + self.skip0(shortcut0)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+
+
+class GlobalAveragePool2D():
+    def __init__(self, keepdim=True) -> None:
+        # super(GlobalAveragePool2D, self).__init__()
+        self.keepdim = keepdim
+
+    # def forward(self, inputs):
+    #     return torch.mean(inputs, axis=[2, 3], keepdim=self.keepdim)
+
+    def __call__(self, inputs, *args, **kwargs):
+        return torch.mean(inputs, axis=[2, 3], keepdim=self.keepdim)    
+    
+class SSEBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, length1, length2) -> None:
+        super(SSEBlock, self).__init__()
+
+        self.in_channels, self.out_channels = in_channels, out_channels
+        self.conv = nn.Conv2d(self.in_channels, self.out_channels, kernel_size=(1, 1))
+        self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size=1, 
+                              stride=length1 // length2, 
+                              bias=False)
+        self.sigmoid = nn.Sigmoid()
+        self.globalAvgPool = GlobalAveragePool2D()
+
+        self.norm = nn.BatchNorm2d(self.in_channels)
+
+    def forward(self, inputs):
+        bn = self.norm(inputs)
+        x = self.globalAvgPool(bn)
+        x = self.conv(x)
+        x = self.sigmoid(x)
+        bn = self.conv2(bn)
+        z = torch.mul(bn, x)
+        return z
+
+# SghirNet28 + SSE instead of skips
+class SghirNet33(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet33"):
+        super().__init__()
+        self.name = name       
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = SSEBlock(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = SSEBlock(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2) 
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+# SghirNet28 with skip added before activation
+class SghirNet34(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet34"):
+        super().__init__()
+        self.name = name       
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples, Samples //2)        
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples, Samples // 2)        
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.bn2(self.conv2(x)) + self.skip1(shortcut1)
+        x = self.do2(self.pool2(F.gelu(x)))     
+        
+        shortcut2 = x
+        x = self.bn3(self.conv3(x)) + self.skip2(shortcut2)
+        x = self.do3(self.pool3(F.gelu(x)))     
+        
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+
+# SghirNet33 with skip added before activation
+class SghirNet35(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, 
+                heads=1, dim=46, attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet35"):
+        super().__init__()
+        self.name = name       
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+        # like a stem
+        self.conv = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
+        self.bn   = nn.BatchNorm2d(F1)
+        # block1        
+        self.conv1 = Conv2dWithConstraint(F1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = SSEBlock(F2, F2, Samples , Samples // 2)        
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = SSEBlock(F2, F2, Samples , Samples // 2)        
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.bn(self.conv(x))
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        
+        shortcut1 = x
+        x = self.bn2(self.conv2(x)) + self.skip1(shortcut1)
+        x = self.do2(self.pool2(F.gelu(x)))     
+        
+        shortcut2 = x
+        x = self.bn3(self.conv3(x)) + self.skip2(shortcut2)
+        x = self.do3(self.pool3(F.gelu(x)))      
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+
+# Complex Features on SGhirnet28 
+class SghirNet36(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet36"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = Conv2dWithConstraint(1, F2, (Chans, 1), max_norm=1, bias=False, groups=D, padding="valid")
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = Conv2dWithConstraint(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, max_norm=1., padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x    
+ 
+# Complex Features on SGhirnet28 and Conv as CCNN
+class SghirNet37(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet37"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = L2(nn.Conv2d(1, F2, (Chans, 1), bias=False, groups=D, padding="valid"), weight_decay=l2)        
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = L2(nn.Conv2d(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, padding="valid"), weight_decay=l2)
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = L2(nn.Conv2d(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, padding="valid"), weight_decay=l2)
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x  
+    
+# Sghirnet37 with CondConv
+class SghirNet38(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet38"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = CondConv(1, F2, (Chans, 1), bias=False, groups=D, padding="valid")        
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = CondConv(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = CondConv(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = LineardWithConstraint(out_shape, nb_classes, max_norm=0.5)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x  
+
+# Sghirnet38 with Linear layer with L2 wd
+class SghirNet39(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet39"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = CondConv(1, F2, (Chans, 1), bias=False, groups=D, padding="valid")        
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = CondConv(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = CondConv(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = L2(nn.Linear(out_shape, nb_classes), weight_decay=l2)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.skip2(shortcut2)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x  
+    
+# Sghirnet39 minus skips and with CBAM
+class SghirNet40(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet40"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = CondConv(1, F2, (Chans, 1), bias=False, groups=D, padding="valid")        
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)        
+        # block2
+        self.conv2 = CondConv(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.cb1 = CBAMBlock(channel=F2, reduction=8, kernel_size=(1, out_shape))
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        # block3
+        self.conv3 = CondConv(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.cb2 = CBAMBlock(channel=F2, reduction=8, kernel_size=(1, out_shape))
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = L2(nn.Linear(out_shape, nb_classes), weight_decay=l2)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))      
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.cb1(self.conv2(x))))))        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.cb2(self.conv3(x))))))
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x    
+
+
+# Sghirnet40 with CBAM and skips
+class SghirNet41(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet41"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = CondConv(1, F2, (Chans, 1), bias=False, groups=D, padding="valid")       
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)         
+        # block2
+        self.conv2 = CondConv(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.cb1   = CBAMBlock(channel=F2, reduction=8, kernel_size=(1, out_shape))
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8) 
+        # block3
+        self.conv3 = CondConv(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.cb2   = CBAMBlock(channel=F2, reduction=8, kernel_size=(1, out_shape))
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = L2(nn.Linear(out_shape, nb_classes), weight_decay=l2)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))      
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.cb1(self.conv2(x))))))
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.cb2(self.conv3(x))))))
+        x = x + self.skip2(shortcut2)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x    
+
+# Sghirnet40 with CBAM after all convs and skips
+class SghirNet42(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet42"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = CondConv(1, F2, (Chans, 1), bias=False, groups=D, padding="valid")       
+        self.cb    = CBAMBlock(channel=F2, reduction=8, kernel_size=(Chans, 1))
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)         
+        # block2
+        self.conv2 = CondConv(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.cb1   = CBAMBlock(channel=F2, reduction=8, kernel_size=(1, out_shape))
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8) 
+        # block3
+        self.conv3 = CondConv(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.cb2   = CBAMBlock(channel=F2, reduction=8, kernel_size=(1, out_shape))
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = L2(nn.Linear(out_shape, nb_classes), weight_decay=l2)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.cb(self.conv1(x))))))      
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.cb1(self.conv2(x))))))
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.cb2(self.conv3(x))))))
+        x = x + self.skip2(shortcut2)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x  
+
+# SghirNet39 with skip added before dropout
+class SghirNet43(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet43"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = CondConv(1, F2, (Chans, 1), bias=False, groups=D, padding="valid")        
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = CondConv(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = CondConv(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = L2(nn.Linear(out_shape, nb_classes), weight_decay=l2)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.pool2(F.gelu(self.bn2(self.conv2(x))))        
+        shortcut2 = x
+        x = x + self.skip1(shortcut1)
+        x = self.do2(x)
+        
+        x = self.pool3(F.gelu(self.bn3(self.conv3(x))))
+        x = x + self.skip2(shortcut2)
+        x = self.do3(x)
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x 
+
+# Sghirnet39 skip with dropout and mlp drop
+class SghirNet44(nn.Module):
+
+    def __init__(self, nb_classes=4, Chans=64, Samples=256, kernLength=256,
+                F1=32, F2=16, D=1, dropoutRate=0.5, fs=512, resolution=0.293, 
+                frq_band=[7, 70], l2=0.0001, heads=1, dim=46, 
+                attn_drop=0.0, proj_drop=0.0, 
+                name="SghirNet44"):
+        super().__init__()
+        self.name = name
+        self.fs = fs
+        self.resolution = resolution
+        self.nfft       = round(fs / resolution)
+        self.fft_start  = int(round(frq_band[0] / self.resolution)) 
+        self.fft_end    = int(round(frq_band[1] / self.resolution)) + 1
+        
+        Samples = (self.fft_end - self.fft_start) * 2
+        kernLength = Samples
+        offset = 0 if Samples % 2 else 1    
+        offsetn = int(not offset)     
+
+        # block1        
+        self.conv1 = CondConv(1, F2, (Chans, 1), bias=False, groups=D, padding="valid")        
+        self.bn1   = nn.LayerNorm([F2, 1, Samples])
+        self.pool1 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do1   = nn.Dropout(p=dropoutRate)
+        self.skip1 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block2
+        self.conv2 = CondConv(F2, F2, (1, (kernLength // 4)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/2) + offsetn - ( kernLength//4) - 1) + 1 
+        self.bn2   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool2 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do2   = nn.Dropout(p=dropoutRate)
+        self.do21  = nn.Dropout(p=dropoutRate)
+        self.skip2 = skip(F2, F2, Samples // 2, Samples // 8)        
+        # block3
+        self.conv3 = CondConv(F2, F2, (1, (kernLength // 16)+offset), groups=D, bias=False, padding="valid")
+        out_shape  = ( math.ceil(Samples/8) + offsetn - ( kernLength//16) - 1) + 1 
+        self.bn3   = nn.LayerNorm([F2, 1, out_shape])
+        self.pool3 = BlurPool(F2, filt_size=(1,2), stride=(1,2))
+        self.do3   = nn.Dropout(p=dropoutRate) 
+        self.do31  = nn.Dropout(p=dropoutRate)
+        # block4        
+        pos_shape = math.ceil(out_shape /2) # kernLength // 32
+        self.ln1   = nn.LayerNorm(F2)
+        self.relative_pos = nn.Parameter(torch.randn(heads, pos_shape, pos_shape)) 
+        self.attn   = Attention(dim=F2, num_heads=heads, qkv_bias=False, 
+                                      qk_scale=None, attn_drop=attn_drop, proj_drop=proj_drop, 
+                                      qk_ratio=1, sr_ratio=1)
+        self.ln2   = nn.LayerNorm(F2)
+        self.mlp   = Mlp(F2, drop=dropoutRate)   
+        #
+        out_shape = pos_shape * F2
+        self.dense = L2(nn.Linear(out_shape, nb_classes), weight_decay=l2)
+
+        initialize_Glorot_uniform(self)
+        # initialize_He_uniform(self)
+        
+    def forward(self, x):        
+        x = reshape_input(x)
+        x = self.transform(x)       
+                
+        x = self.do1(self.pool1(F.gelu(self.bn1(self.conv1(x)))))        
+        shortcut1 = x
+        
+        x = self.do2(self.pool2(F.gelu(self.bn2(self.conv2(x)))))        
+        shortcut2 = x
+        x = x + self.do21(self.skip1(shortcut1))
+        
+        x = self.do3(self.pool3(F.gelu(self.bn3(self.conv3(x)))))
+        x = x + self.do31(self.skip2(shortcut2))
+        # x = self.do4(self.pool4(F.gelu(self.bn4(self.conv4(x)))))   
+        
+        B, C, H, W = x.shape
+        x = x.flatten(2).permute(0, 2, 1) # BCHW->BNC (N=H*W)
+        
+        x = self.attn(self.ln1(x), H, W, self.relative_pos)  
+        x = self.mlp(self.ln2(x), H, W)
+
+        x = flatten(x, 1)      
+        x = self.dense(x)
+        return x
+    
+    def transform(self, x):
+        with torch.no_grad():
+            samples = x.shape[-1]
+            x = torch.fft.rfft2(x, s=self.nfft, dim=-1) / samples
+            real = x.real[:,:,:, self.fft_start:self.fft_end]
+            imag = x.imag[:,:,:, self.fft_start:self.fft_end]
+            x = torch.cat((real, imag), axis=-1)
+        return x 
+

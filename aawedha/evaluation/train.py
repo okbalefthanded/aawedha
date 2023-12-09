@@ -141,12 +141,13 @@ class Train(Evaluation):
 
         shape = (2, 1, 0)
         X, Y = self._cat_lists(X, Y)
+        if X.ndim == 4:
+            shape = (3, 2, 1, 0)
         X = X.transpose(shape)
         if val_size == 0:
             X_train, X_val, Y_train, Y_val = X, None, Y, None
         else:
             X_train, X_val, Y_train, Y_val = train_test_split(X, Y, test_size=val_size)
-
         split = create_split(X_train, X_val, None, Y_train, Y_val, None)
         return split
 
