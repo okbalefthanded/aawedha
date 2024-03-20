@@ -3,11 +3,13 @@
 #from aawedha.loss.poly_loss import PolyLoss
 from inspect import getfullargspec
 import aawedha.loss.torch_loss as tl
+from aawedha.models.pytorch.torch_callbacks import CallBack, ModelCheckPoint
 from aawedha.metrics.torch_metrics import CategoricalAccuracy
 from aawedha.models.pytorch.wasamtorch import WASAM
 from aawedha.models.pytorch.samtorch import SAM
 from aawedha.loss.smooth_loss import SmoothLoss
 from aawedha.loss.center_loss import CenterLoss
+from torch.optim.optimizer import Optimizer
 from aawedha.optimizers.aida import Aida
 from aawedha.optimizers.adan import Adan
 from aawedha.optimizers.agd import AGD
@@ -62,7 +64,7 @@ wrapped_opt = {
 }
 
 available_callbacks = {
-    'none':  NotImplemented,
+    'Modelcheckpoint':  ModelCheckPoint,
     }
 
 
@@ -90,7 +92,7 @@ def get_optimizer(optimizer, opt_params):
     #     params = [{"params": opt_params[0]}, {"loss_para"}]
 
     if isinstance(optimizer, str):
-        return _get_optim(optimizer, params)
+        return _get_optim(optimizer, {'params': opt_params})
     # set and dict for multiple losses with an optimizer each
     elif isinstance(optimizer, set):
         return [_get_optim(opt, {"params": prm}) for opt, prm in zip(optimizer, opt_params)]
@@ -100,9 +102,10 @@ def get_optimizer(optimizer, opt_params):
             return optimizer.pop()
         else:
             return optimizer
-    elif isinstance(optimizer, list):
-        params = {**params, **optimizer[1]}
-        return _get_optim(optimizer[0], params)
+    elif isinstance(optimizer, list) or isinstance(optimizer, Optimizer):
+        # params = {**params, **optimizer[1]}
+        # return _get_optim(optimizer[0], params)
+        return optimizer
     else:
         return optimizer   
 
@@ -271,20 +274,22 @@ def build_scheduler(data_loader, optimizer, scheduler):
     else:
         ModuleNotFoundError
 
-def build_callbacks(model, callbacks_list):
+def build_callbacks(callbacks_list):
     clbks = []
-    callback_instance = None
+    # callback_instance = None
     clbk_id = ""
     for clbk in callbacks_list:
         if isinstance(clbk, list):
+            # TODO
             if clbk[0] in available_callbacks:
                 clbk_id = clbk[0]
-            params = {'model': model, **clbk[1]}
+            # params = {'model': model, **clbk[1]}
+            params = {}
             callback_instance = available_callbacks[clbk_id](**params)
         elif isinstance(clbk, str):
-            callback_instance = available_callbacks[clbk](model=model)    
-        else:
+            # TODO
+            callback_instance = available_callbacks[clbk]()    
+        elif isinstance(clbk, CallBack):
             callback_instance = clbk
-        if callback_instance:
-            clbks.append(callback_instance)
+        clbks.append(callback_instance)
     return clbks   

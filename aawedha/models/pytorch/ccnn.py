@@ -25,11 +25,20 @@ def transform(x, nfft, start, end):
 
 class CCNN(nn.Module):
 
-    def __init__(self, nb_classes=4, Chans=8,  dropout_rate=0.25, kernLength=10,
-                fs=512, resolution=0.293, l2=0.0001, frq_band=[7, 70], 
+    def __init__(self, 
+                 nb_classes=4, 
+                 Chans=8,  
+                 dropout_rate=0.25, 
+                 kernLength=10,
+                 fs=512, 
+                 resolution=0.293, 
+                 l2=0.0001, 
+                 frq_band=[7, 70], 
+                 return_features=False, 
                 name='CCNN'):
         super().__init__()    
         self.name = name
+        self.return_features = return_features
         self.fs = fs
         self.resolution = resolution
         self.nfft  = round(fs / resolution)
@@ -73,9 +82,13 @@ class CCNN(nn.Module):
         x = self.drop1(F.relu(self.bn1(self.conv1(x))))
         x = self.drop2(F.relu(self.bn2(self.conv2(x))))
         x = flatten(x, 1)
+        features = x
         x = self.fc(x)
-        return x
-
+        if self.return_features:
+            return x, features
+        else:
+            return x
+        
     def transform(self, x):
         with torch.no_grad():
             samples = x.shape[-1]

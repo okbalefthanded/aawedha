@@ -96,4 +96,5 @@ def config_to_description(cfg_path):
         and list[1] is a dict of optimizer params.
     """
     cfg = load_yaml(cfg_path)
-    return [cfg["name"], cfg["params"]]
+    # return [cfg["name"], cfg["params"]]
+    return {cfg["name"]: cfg["params"]}

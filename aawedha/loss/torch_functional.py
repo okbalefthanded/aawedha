@@ -210,3 +210,49 @@ def poly_loss(
         loss = loss.view(*target.shape)
 
     return loss
+
+
+def poly_sigmoid_focal_loss(
+    inputs: torch.Tensor,
+    targets: torch.Tensor,
+    alpha: float = -1,
+    gamma: float = 2,
+    eps: float = 2.0,
+    reduction: str = "none",
+) -> torch.Tensor:
+    """
+    Implements the Focal Loss Poly1 loss from `"PolyLoss: A Polynomial Expansion Perspective of Classification Loss
+    Functions" <https://arxiv.org/pdf/2204.12511.pdf>`_.
+    Args:
+        inputs: A float tensor of arbitrary shape.
+                The predictions for each example.
+        targets: A float tensor with the same shape as inputs. Stores the binary
+                 classification label for each element in inputs
+                (0 for the negative class and 1 for the positive class).
+        alpha: (optional) Weighting factor in range (0,1) to balance
+                positive vs negative examples. Default = -1 (no weighting).
+        gamma: Exponent of the modulating factor (1 - p_t) to
+               balance easy vs hard examples.
+        eps (float, optional): epsilon 1 from the paper
+        reduction: 'none' | 'mean' | 'sum'
+                 'none': No reduction will be applied to the output.
+                 'mean': The output will be averaged.
+                 'sum': The output will be summed.
+    Returns:
+        Loss tensor with the reduction option applied.
+    """
+    p = torch.sigmoid(inputs)
+    p_t = (p * targets) + (1 - p) * (1 - targets)
+    fl = sigmoid_focal_loss(inputs, targets, alpha, gamma, reduction="none")
+    loss = (eps * ((1 - p_t) ** (gamma + 1)))
+    if alpha >= 0:
+        alpha_t = alpha * targets + (1 - alpha) * (1 - targets)
+        loss = alpha_t * loss
+    loss = fl + loss
+    
+    if reduction == "mean":
+        loss = loss.mean()
+    elif reduction == "sum":
+        loss = loss.sum()
+
+    return loss

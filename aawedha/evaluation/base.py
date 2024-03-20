@@ -506,8 +506,11 @@ class Evaluation:
         
         if isinstance(X_test, np.ndarray):
             probs = self.learner.predict(X_test)
-            perf  = self.learner.evaluate(X_test, Y_test, batch_size=batch, 
-                                          return_dict=True, verbose=0)  
+            perf  = self.learner.evaluate(X_test, 
+                                          Y_test, 
+                                          batch_size=batch, 
+                                          return_dict=True, 
+                                          verbose=0)  
             # 
             # perf['char_rate'] = char_rate()      
         return history, probs, perf

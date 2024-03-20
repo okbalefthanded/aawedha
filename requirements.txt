@@ -27,8 +27,9 @@ lion-pytorch
 prodigyopt
 pywt
 ptwt
+pynvml
 git+https://github.com/okbalefthanded/antialiased-cnns.git
-git+https://github.com/lessw2020/Ranger21.git
+git+https://github.com/okbalefthanded/Ranger21.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git
 git+https://github.com/okbalefthanded/pyLpov.git@py3
 git+https://github.com/rwightman/pytorch-image-models

@@ -30,7 +30,7 @@ class TorchModel(nn.Module):
         self.loss_weights = None
         self.metrics_list = []
         self.metrics_names = []
-        self.callbacks = []
+        # self.callbacks = []
         self.scheduler = None
         # self.optimizer_state = None
         self.name = name
@@ -109,7 +109,7 @@ class TorchModel(nn.Module):
             progress = pkbar.Kbar(target=len(train_loader), width=25, always_stateful=True)
 
         hist = self._fit_loop(train_loader, validation_data, has_validation,
-                              epochs, batch_size, hist, progress, verbose)              
+                              epochs, batch_size, callbacks, hist, progress, verbose)              
         
         history['history'] = hist
         return history
@@ -120,40 +120,38 @@ class TorchModel(nn.Module):
                   has_validation,
                   epochs, 
                   batch_size, 
+                  callbacks,
                   hist, 
                   progress, 
-                  verbose):
+                  verbose,
+                  ):
         # on_train_begin callbacks
-        # if self.callbacks: self.callbacks.on_train_begin()
-        if self.callbacks: [clbk.on_train_begin() for clbk in self.callbacks] 
+        if callbacks: [clbk.on_train_begin(self.module) for clbk in callbacks] 
 
         for epoch in range(epochs):  # loop over the dataset multiple times
             running_loss = 0
             self.reset_metrics()
             self.module.train()
             # on_epoch_begin callbacks
-            if self.callbacks: [clbk.on_epoch_begin() for clbk in self.callbacks]
+            if callbacks: [clbk.on_epoch_begin() for clbk in callbacks]
             if verbose == 2:
-                print("Epoch {}/{}".format(epoch+1, epochs))
+                print(f"Epoch {epoch+1}/{epochs}")
             
             # train step
             for i, data in enumerate(train_loader, 0):
                 # on_train_batch_begin callbacks
-                if self.callbacks: [clbk.on_train_batch_begin() for clbk in self.callbacks]
+                if callbacks: [clbk.on_train_batch_begin() for clbk in callbacks]
                 
                 return_metrics = self.train_step(data)
                 running_loss  += return_metrics['loss'] / len(train_loader)
                 return_metrics['loss'] = running_loss
                 
                 # on_train_batch_end callbacks
-                if self.callbacks: [clbk.on_train_batch_end() for clbk in self.callbacks]
+                if callbacks: [clbk.on_train_batch_end() for clbk in callbacks]
                 
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
             
-            # on_epoch_end callbacks
-            if self.callbacks: [clbk.on_epoch_end(self, train_loader, epoch) for clbk in self.callbacks]
-
             # evaluate validation data
             val_metrics = None
             if has_validation:
@@ -161,21 +159,26 @@ class TorchModel(nn.Module):
                 for metric in val_metrics:
                     hist[f"val_{metric}"].append(val_metrics[metric])
 
-            # update scheduler 
-            if not self._cyclical_scheduler():
-                self.update_scheduler()
-            
             if verbose == 2:
                 if has_validation:
                     progress.add(1, values=[(f"val_{k}", val_metrics[k]) for k in val_metrics])
                 else:
                     progress.add(1)
-
+            
+            # on_epoch_end callbacks
+            if callbacks: [clbk.on_epoch_end(self, train_loader, epoch, val_metrics) for clbk in callbacks]
+            
+            # update scheduler 
+            if not self._cyclical_scheduler():
+                self.update_scheduler()        
+            
             # update history
             for metric in return_metrics:
                 hist[metric].append(return_metrics[metric]) 
+        
         # on_train_end callbacks
-        if self.callbacks: [clbk.on_train_end() for clbk in self.callbacks]
+        if callbacks: [clbk.on_train_end(self, epoch) for clbk in callbacks]
+        
         return hist
 
     def predict(self, 
@@ -447,7 +450,7 @@ class TorchModel(nn.Module):
             if hasattr(self.optimizer, 'init_weights'):
                 self.optimizer.init_weights()
         self.metrics_list = get_metrics(metrics, classes)
-        self.callbacks = build_callbacks(self, callbacks)
+        # self.callbacks = build_callbacks(callbacks)
         self.scheduler = scheduler
         self.set_metrics_names(metrics)
         # transfer to device

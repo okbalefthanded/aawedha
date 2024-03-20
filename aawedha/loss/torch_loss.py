@@ -104,3 +104,34 @@ class PolyLoss(_Loss):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(eps={self.eps}, reduction='{self.reduction}')"
+    
+class FocalPolyLoss(_Loss):
+    """Implements the Focal Poly1 loss from `"PolyLoss: A Polynomial Expansion Perspective of Classification Loss
+    Functions" <https://arxiv.org/pdf/2204.12511.pdf>`_.
+    Args:
+        weight (torch.Tensor[K], optional): class weight for loss computation
+        eps (float, optional): epsilon 1 from the paper
+        ignore_index: int = -100,
+        reduction: str = 'mean',
+    """
+    def __init__(
+        self,
+        *args: Any,
+        alpha: float = 0.25 , 
+        gamma: float = 2.0,
+        eps: float = 2.0,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.eps = eps
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, x: Tensor, target: Tensor) -> Tensor:
+        return F.poly_sigmoid_focal_loss(x, self.labels_to_sparse(target).float(), 
+                                         self.alpha, self.gamma, self.eps, 
+                                         self.weight, self.ignore_index, 
+                                         self.reduction)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(alpha={self.alpha}, gamma={self.gamma}, eps={self.eps}, reduction='{self.reduction}')"

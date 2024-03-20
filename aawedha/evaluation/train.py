@@ -10,9 +10,15 @@ import os
 class Train(Evaluation):
 
     #pylint: disable=too-many-arguments
-    def run_evaluation(self, val_size=0.1, selection=None, save_model=False, 
-                       model_format='TF', save_history=False, folder=None,
-                       new_labels=None, events=None):
+    def run_evaluation(self, 
+                       val_size=0.1, 
+                       selection=None, 
+                       save_model=False, 
+                       model_format='TF', 
+                       save_history=False, 
+                       folder=None,
+                       new_labels=None, 
+                       events=None):
         """Performs training
 
         Parameters
@@ -136,8 +142,8 @@ class Train(Evaluation):
             X = [self.dataset.epochs[i] for i in selection]
             Y = [self.dataset.y[i] for i in selection]
         else:
-          X = self.dataset.epochs
-          Y = self.dataset.y
+            X = self.dataset.epochs
+            Y = self.dataset.y
 
         shape = (2, 1, 0)
         X, Y = self._cat_lists(X, Y)

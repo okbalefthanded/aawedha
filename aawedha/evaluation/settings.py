@@ -1,3 +1,4 @@
+from aawedha.models.pytorch.torch_builders import build_callbacks
 from aawedha.paradigms.utils_paradigms import paradigm_metrics
 
 
@@ -32,7 +33,10 @@ class Settings:
         if self.fit_config:
             batch = self.fit_config['batch']
             ep    = self.fit_config['epochs']
-            clbks = self.fit_config['callbacks']
+            clbks = []
+            if 'callbacks' in self.fit_config:
+                clbks = self.build_callbacks(self.fit_config['callbacks'])
+                self.fit_config['callbacks'] = clbks
             aug = None
             if 'augment' in self.fit_config: 
                 aug = self.fit_config['augment']
@@ -55,4 +59,12 @@ class Settings:
             if isinstance(metric, str):
                 self.paradigm_metrics[metric] = paradigm_metrics[metric]
             # TODO
+                
+    def build_callbacks(self, callbacks_setting):
+        if self.engine == "pytorch":
+            callbacks = build_callbacks(callbacks_setting)
+        else:
+            # TODO: TF callbacks
+            pass
+        return callbacks
                 

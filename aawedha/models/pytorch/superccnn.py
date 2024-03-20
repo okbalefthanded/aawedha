@@ -22,7 +22,7 @@ class SuperCCNN(nn.Module):
                  l2=0.0001, 
                  frq_band=[7, 70], 
                  num_experts=4,
-                 return_features=True, 
+                 return_features=False, 
                  name='SuperCCNN'):
         super().__init__()    
         self.name = f"{name}{num_experts}"
