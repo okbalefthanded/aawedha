@@ -3,22 +3,25 @@ from aawedha.paradigms.ssvep import SSVEP
 from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass
 from aawedha.utils.network import download_file
-from aawedha.utils.utils import unzip_files
+from aawedha.utils.utils import untar_files, make_dir
+from aawedha.utils.utils import count_files_in_folder
+from pathlib import Path
 from scipy.io import loadmat
 import numpy as np
 import glob
 import re
 
-URLS = ["http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S1-S10.mat.zip",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S11-S20.mat.zip",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S21-S30.mat.zip",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S31-S40.mat.zip",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S41-S50.mat.zip",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S41-S50.mat.zip",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S51-S60.mat.zip",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/S61-S70.mat.zip",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/note.txt",
-        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan/description.txt"]
+URLS = ["http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/S1-S10.tar.gz",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/S11-S20.tar.gz",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/S21-S30.tar.gz",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/S31-S40.tar.gz",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/S41-S50.tar.gz",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/S41-S50.tar.gz",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/S51-S60.tar.gz",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/S61-S70.tar.gz",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/note.pdf",
+        "http://bci.med.tsinghua.edu.cn/upload/liubingchuan_BETA_wof/description.pdf"]
+
 
 class Beta(DataSet):
     """
@@ -42,6 +45,7 @@ class Beta(DataSet):
                          doi='http://dx.doi.org/10.3389/fnins.2020.00627',
                          url="http://bci.med.tsinghua.edu.cn/upload/liubingchuan"
                          )
+        self.alt_url =  "https://bci.med.tsinghua.edu.cn/download.html"
 
 
     def generate_set(self, load_path=None, download=False, ch=None, epoch=2, band=[5.0, 45.0],
@@ -196,11 +200,35 @@ class Beta(DataSet):
         store_path : str, 
             folder path where raw data will be stored, by default None. data will be stored in working path.
         """
-        for url in URLS:
-            download_file(url, store_path)
+        make_dir(store_path)
+        timeout = (3, 30)
+        # download files
+        # for url in URLS:
+        download_file(URLS, store_path, timeout=timeout)
         # unzip files and delete
-        zip_files = glob.glob(f"{store_path}/*.zip")
-        unzip_files(zip_files, store_path)        
+        tar_files = glob.glob(f"{store_path}/*tar.gz")
+        untar_files(tar_files)  
+
+    def already_exists(self, folder):
+        """Check if the dataset already exists in the specified folder.
+        Parameters
+        ---------- 
+        folder : str
+            folder path where to check for dataset existence
+        Returns
+        -------
+        bool
+            True if dataset already exists, False otherwise
+        """
+        # sessions = ['session1', 'session2']
+        folder = Path(folder)
+        files_count = 0
+        # for sess in sessions:
+        files_count += count_files_in_folder(folder)
+        
+        if files_count >= 70:
+            return True
+        return False  
 
     def _get_events(self):
         """Attaches the experiments paradigm frequencies to

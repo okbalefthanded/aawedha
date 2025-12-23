@@ -8,6 +8,7 @@ from torch import nn
 
 
 # based on the Keras implementation by the EEGnet authors
+# https://github.com/vlawhern/arl-eegmodels/blob/master/EEGModels.py
 class DeepConvNetPTH(nn.Module):
     """ Pytorch implementation of the Deep Convolutional Network as described in
     Schirrmeister et. al. (2017), Human Brain Mapping.

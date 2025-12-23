@@ -5,6 +5,7 @@ from aawedha.analysis.time_frequency import wavelet
 from aawedha.analysis.stats import r_square_signed
 from aawedha.analysis.time_frequency import snr
 
+from pathlib import Path
 from typing import Iterable
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +26,8 @@ def harmonics_idx(freqs, event, h):
     return f_idx
 
 
-def plot_grand_average(data=None, subject=None, channel=['Cz']):
+def plot_grand_average(data=None, subject=None, channel=['Cz'], save=False, 
+                   savefolder=None, dpi=300):
     """Plot grande average ERPs.
     Parameters
     ----------
@@ -35,10 +37,22 @@ def plot_grand_average(data=None, subject=None, channel=['Cz']):
         subject index in dataset, if None plot grand average.
     channel : list of str or 'all'
         channels to calculate average from, by default 'Cz'.
-        if 'all', plot all channels in dataset       
+        if 'all', plot all channels in dataset
+    save : bool
+        if True save figures in savefolder. Default False.
+    savefolder : str 
+        figure saving folder path, default None.
+    dpi : int
+        figure resolution, default 300.       
     """
 
-    samples = data.epochs[0].shape[0]
+    if data.epochs.ndim == 3:
+        raise ValueError('Data epochs should be 4D array (n_subjects, n_times n_channels, n_trials)')
+    
+    subjects, samples, _, trials = data.epochs.shape
+    if subject is not None and subject >= subjects:
+        raise ValueError(f'Subject index out of range, should be less than {subjects}')
+    
     time = np.linspace(0., samples/data.fs, samples) * 1000
 
     n_rows = 1
@@ -61,7 +75,7 @@ def plot_grand_average(data=None, subject=None, channel=['Cz']):
         ch = data.ch_names.index(channel.pop())
         ch_names = [data.ch_names[ch]]
 
-    if subject:
+    if type(subject) is int:
         n_subjects = 1
         y = data.y[subject]
         trials = data.epochs[subject]
@@ -82,7 +96,8 @@ def plot_grand_average(data=None, subject=None, channel=['Cz']):
     # if len(ch_names) % 4 != 0 and len(ch_names) > 1:
         # n_cols += 1
         # n_rows += 1
-    ymin, ymax = target.min(), target.max()
+    ymin, ymax = target.min() - .5, target.max() + .5
+
     if len(ch_names) == 1:
         plt.plot(time, target)
         plt.plot(time, non_target)
@@ -105,6 +120,17 @@ def plot_grand_average(data=None, subject=None, channel=['Cz']):
                     col.set_ylim((ymin, ymax))
                     k += 1
         fig.tight_layout()
+
+    if save:
+        subject_str = "grand_average"
+        if type(subject) is int:
+            subject_str = f"subject_{subject+1}"
+        if not savefolder:
+            if not os.path.exists("savedfigs"):
+                os.mkdir("savedfigs")
+            savefolder = "savedfigs"                
+        fname = f"{savefolder}/erp_plot_{data.title}_{subject_str}.png"
+        plt.savefig(fname, bbox_inches='tight', dpi=dpi)
 
     plt.xlabel('[Time (ms)]')
     plt.ylabel('[µV]')
@@ -293,8 +319,10 @@ def plot_psd_welch(data, subject=0, channel='POz', harmonics=2,
         if not savefolder:
             if not os.path.exists("savedfigs"):
                 os.mkdir("savedfigs")
-            savefolder = "savedfigs"                
-        fname = fname= f"{savefolder}/psd_welch_{data.paradigm.filename}.png"
+            savefolder = "savedfigs"                        
+        savefolder = Path(savefolder)
+        # fname = f"{savefolder}/psd_welch_{data.paradigm.filename}.png"
+        fname = savefolder / f"psd_welch_{data.paradigm.filename}.pn"
         plt.savefig(fname, bbox_inches='tight', dpi=dpi)
     plt.show()
     plt.close()
@@ -433,7 +461,7 @@ def plot_topomaps(data=None, channels=None, fs=512, intervals=[]):
     info.set_montage(montage)
     if data.ndim == 2:
         fig, ax = plt.subplots(1, data.shape[1])
-        #im = mne.viz.plot_topomap(...); plt.colorbar(im[0])
+        # im = mne.viz.plot_topomap(...); plt.colorbar(im[0])
         for i in range(data.shape[1]):
             im = mne.viz.plot_topomap(data[:, i],
                                  pos=info, axes=ax[i], show=False,

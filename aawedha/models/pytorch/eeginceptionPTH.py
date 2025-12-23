@@ -1,6 +1,13 @@
+# implementation of EEG-Inception model in PyTorch
+# adapted from the authors' Keras version:  https://github.com/esantamariavazquez/EEG-Inception/blob/main/EEGInception/EEGInception.py
+# Santamaria-Vazquez, E., Martinez-Cagigal, V., Vaquerizo-Villar, F. and Hornero, R. (2020) 
+# ‘EEG-Inception: A Novel Deep Convolutional Neural Network for Assistive ERP-Based Brain-Computer Interfaces’, 
+# IEEE Transactions on Neural Systems and Rehabilitation Engineering, 28(12), pp. 2773–2782. 
+# Available at: https://doi.org/10.1109/TNSRE.2020.3048106.
 from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
 from aawedha.models.pytorch.torchdata import reshape_input
+from aawedha.models.utils_models import is_a_loss
 from torch import flatten
 from torch import nn
 import torch
@@ -54,7 +61,22 @@ class EEGInceptionPTH(nn.Module):
         self.p4 = nn.AvgPool2d(kernel_size=(1, 2), stride=(1, 2))
         self.dense = nn.Linear(6 * (Samples // division_rate), nb_classes)
 
-        initialize_Glorot_uniform(self)              
+        # initialize_Glorot_uniform(self)
+        self.init_weights() # original paper inits Conv2D with He Normal
+
+    def init_weights(self):
+        for module in self.modules():
+            if not is_a_loss(module):
+                if hasattr(module, 'weight'):
+                    # if not("BatchNorm" in module.__class__.__name__):
+                    cls_name = module.__class__.__name__            
+                    if not("BatchNorm" in cls_name or "LayerNorm" in cls_name):
+                        nn.init.kaiming_normal_(module.weight, mode='fan_in', nonlinearity='relu')
+                    else: 
+                        nn.init.constant_(module.weight, 1)
+                if hasattr(module, "bias"):
+                    if module.bias is not None:
+                        nn.init.constant_(module.bias, 0)            
 
     def forward(self, x):
         x = reshape_input(x)

@@ -2,7 +2,7 @@ from aawedha.io.base import DataSet
 from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass, eeg_epoch
 from aawedha.utils.network import download_file
-from aawedha.utils.utils import unzip_files
+from aawedha.utils.utils import extract_zip
 import numpy as np
 import pickle
 import glob
@@ -44,6 +44,7 @@ class Exoskeleton(DataSet):
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
+        self.alt_url = "https://zenodo.org/records/2392979"
 
     def generate_set(self, load_path=None,
                      download=False,
@@ -101,7 +102,7 @@ class Exoskeleton(DataSet):
         if download:
             self.download_raw(load_path)
 
-        self.epochs, self.y = self.load_raw(load_path, 'train',
+        self.epochs, self.y = self.load_raw(load_path, 'train', ch,
                                             epoch, band,
                                             order, augment,
                                             method,
@@ -109,7 +110,7 @@ class Exoskeleton(DataSet):
                                             )
 
         self.test_epochs, self.test_y = self.load_raw(load_path,
-                                                      'test', epoch,
+                                                      'test', ch, epoch,
                                                       band, order, augment,
                                                       method,
                                                       slide
@@ -119,10 +120,10 @@ class Exoskeleton(DataSet):
         self.paradigm = self._get_paradigm()
         self.events = self._get_events(self.y)
         self.test_events = self._get_events(self.test_y)
-        if save:    
+        if save and save_folder:    
             self.save_set(save_folder, fname)
 
-    def load_raw(self, path=None, ch=None, mode='', epoch_duration=[2, 5],
+    def load_raw(self, path=None, mode='', ch=None, epoch_duration=[2, 5],
                  band=[5.0, 45.0], order=6, augment=False,
                  method='divide', slide=0.1):
         """Read and process raw data into structured arrays
@@ -162,10 +163,8 @@ class Exoskeleton(DataSet):
             class labels for the entire set or train/test phase
             trials is not a fixed number, it varies according to subjects sessions
         """
-        if os.path.isdir(f"{path}/dataset-ssvep-exoskeleton"):
-            files_list = sorted(glob.glob(f"{path}/dataset-ssvep-exoskeleton-master/s*"))
-        else:
-            files_list = sorted(glob.glob(f"{path}/s*"))
+        files_list = self._get_filelist(path)
+        
         if ch:
             chans = self.select_channels(ch)
         else:
@@ -194,9 +193,12 @@ class Exoskeleton(DataSet):
         store_path : str,
             folder path where raw data will be stored, by default None. data will be stored in working path.
         """
-        download_file(self.url, store_path)
+        if store_path and not os.path.exists(store_path):
+            os.makedirs(store_path)
         fname = f"{store_path}/master.zip"
-        unzip_files([fname], store_path)
+        download_file(self.url, store_path)        
+        extract_zip(fname, store_path)        
+        # unzip_files([fname], store_path)
 
     def to_sync(self):
         """Keep epochs with frequency stimulation and 
@@ -337,6 +339,23 @@ class Exoskeleton(DataSet):
                      stimuli=3, phrase='',
                      stim_type='ON_OFF', frequencies=['idle', '13.', '21.', '17.'],
                      )
+
+    def _get_filelist(self, path):
+        """Get list of files in a folder
+
+        Parameters
+        ----------
+        path : str
+            folder path
+
+        Returns
+        -------
+        list of files
+        """
+        if "dataset-ssvep-exoskeleton-master" in path:
+            return sorted(glob.glob(f"{path}/s*"))
+        elif os.path.isdir(f"{path}/dataset-ssvep-exoskeleton"):
+            return sorted(glob.glob(f"{path}/dataset-ssvep-exoskeleton-master/s*"))
 
     @staticmethod
     def flatten(list_of_lists=[]):

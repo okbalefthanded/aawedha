@@ -1,12 +1,14 @@
+from io import BytesIO
 from tqdm import tqdm
 import requests
 import ftplib
+import pycurl
 import glob
 import os
 
 
 # based on gist: https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
-def download_file(url, folder=None, n_chunk=1000):
+def download_file(url, folder=None, timeout=((3, 5)), n_chunk=1000):
     """Download file from url and stored in folder.
 
     Parameters
@@ -18,21 +20,27 @@ def download_file(url, folder=None, n_chunk=1000):
     n_chunk : int, optional
         streaming chunks count, by default 1000
     """
-    resp = requests.get(url, stream=True)
-    total = int(resp.headers.get('content-length', 0))
-    fname = url.split('/')[-1]
-    if folder : 
-        fname = os.path.join(folder, fname)
-    block_size = 1024
-    with open(fname, 'wb') as f, tqdm(
-            desc=fname,
-            total=total,
-            unit='iB',
-            unit_scale=True,
-            unit_divisor=1024) as bar:
-        for data in resp.iter_content(chunk_size=n_chunk * block_size):
-            size = f.write(data)
-            bar.update(size)
+    if not isinstance(url, list):
+        url = [url]
+        
+    block_size = 8192
+    with requests.Session() as session:
+        # resp = requests.get(url, stream=True, timeout=(3,5))
+        for u in url:
+            resp = session.get(u, stream=True, timeout=timeout)
+            total = int(resp.headers.get('content-length', 0))
+            # check if the file is already downloaded            
+            fname = u.split('/')[-1]
+            if folder : 
+                fname = os.path.join(folder, fname)   
+            if os.path.exists(fname):
+                print(f"File {fname} already exists, skipping download.")
+                continue     
+            print(f"Downloading {u} to {folder} with size {total} bytes")
+            with open(fname, 'wb') as f, tqdm(desc=fname, total=total, unit='iB', unit_scale=True, unit_divisor=1024) as bar:
+                for data in resp.iter_content(chunk_size=n_chunk * block_size):
+                    size = f.write(data)
+                    bar.update(size)
 
 def connect_ftp(url, user='anonymous', password=''):
     """Connect and login a ftp client to url host for ftp files download.
@@ -121,6 +129,85 @@ def download_ftp_folder(ftp, folder, store_path, only_files=None, pattern=None):
         # ftp.retrbinary("RETR " + fname, open(fpath, 'wb').write)
         # ftp.retrbinary("RETR " + f, open(f, 'wb').write)
         # ftp.retrbinary("RETR " + f, open(fpath, 'wb').write)
+
+def download_pycurl(url, output_filename):
+    """Downloads a file from a given URL using pycurl and saves it to a specified filename."
+    Parameters
+    ----------
+    url : str
+        The URL of the file to download.
+    output_filename : str
+        The name of the file to save the downloaded content to.
+    Returns
+    -------
+    None
+    Raises
+    ------
+    pycurl.error
+        If a pycurl-specific error occurs during the download.
+    Exception
+        For any other unexpected errors.
+    Notes
+    -----
+    The function prints status messages to indicate the progress and result of the download.
+    If the HTTP status code is not 200, a warning is printed.
+    """
+    buffer = BytesIO() # Create a BytesIO object to store the data in memory initially
+    c = pycurl.Curl()
+
+    try:
+        # Set the URL to download
+        c.setopt(c.URL, url)
+
+        # Set the callback function for writing data
+        # pycurl will call this function with chunks of data
+        # We write these chunks directly to the output file
+        with open(output_filename, 'wb') as f:
+            c.setopt(c.WRITEDATA, f)
+
+            # Perform the request
+            print(f"Starting download from: {url}")
+            c.perform()
+            print(f"Download complete! File saved to: {output_filename}")
+
+        # Get response code for success check
+        status_code = c.getinfo(pycurl.HTTP_CODE)
+        if status_code != 200:
+            print(f"Warning: HTTP Status Code: {status_code}")
+
+    except pycurl.error as e:
+        error_code, error_message = e.args
+        print(f"PycURL Error ({error_code}): {error_message}")
+        print(f"Could not download {url}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        # Always close the curl handle
+        c.close()
+
+
+def remote_dataset_size(url):
+    """Get the size of a remote dataset file.
+
+    Parameters
+    ----------
+    path : str
+        local folder path where the file is stored.
+    url : str
+        remote file url.
+
+    Returns
+    -------
+    int
+        size of the remote file in bytes.
+    """
+    with requests.Session() as session:
+        resp = session.get(url, stream=True)
+        if resp.status_code == 200:
+            return int(resp.headers.get('content-length', 0))
+        else:
+            print(f"Failed to retrieve size for {url}, status code: {resp.status_code}")
+            return 0
 
 
 def check_size(ftp, path, remote_folder):

@@ -133,6 +133,22 @@ def time_now():
     """
     return datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
 
+def extract_zip(zip_file, store_path):
+    """Extract a zip file to a given path.
+
+    Parameters
+    ----------
+    zip_file : str
+        path to the zip file to extract
+    store_path : str
+        folder where to extract the zip file.
+    """
+    if not os.path.exists(store_path):
+        os.makedirs(store_path)
+    with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        zip_ref.extractall(store_path)
+
+
 def unzip_files(zip_files, store_path):
     """Unzip compressed files and delete zipped files.
 
@@ -188,6 +204,22 @@ def set_seed(seed):
     tf.random.set_seed(seed)
     torch.manual_seed(seed)
 
+
+def make_dir(folder):
+    """Create a folder if it does not exist.
+
+    Parameters
+    ----------
+    folder : str
+        folder path to create
+    """
+    if folder and not os.path.exists(folder):
+        os.makedirs(folder)
+        print(f"Created folder: {folder}")
+    else:
+        print(f"Folder already exists: {folder}")
+
+
 def make_folders(root="aawedha"):
     """Create additional folders where logs, trained models, checkpoints
     and debug logs will be saved.
@@ -216,6 +248,63 @@ def cwd():
     cwdir = os.getcwd().split('/')[-1]
     return os.getcwd() if cwdir != 'aawedha' else 'aawedha'
 
+def folder_full(folder_path, content_size):
+    """Check if a folder is full or not.
+
+    Parameters
+    ----------
+    folder_path : str
+        folder path to check
+    content_size : int
+        size of the content to be added to the folder in bytes
+
+    Returns
+    -------
+    bool
+        True if the folder is full, False otherwise.
+    """
+    if os.path.exists(folder_path):
+        folder_size = get_folder_size_scandir(folder_path)
+        return folder_size >= content_size
+    else:
+        # if folder does not exist, it is not full
+        return False
+
+def get_folder_size_scandir(path='.'):
+    """Calculates the total size of a folder using os.scandir() recursively.
+    """
+    total = 0
+    with os.scandir(path) as it:
+        for entry in it:
+            if entry.is_file():
+                total += entry.stat().st_size
+            elif entry.is_dir():
+                total += get_folder_size_scandir(entry.path)
+    return total
+
+
+def count_files_in_folder(folder_path):
+    """
+    Counts the number of files in a given folder using os.scandir().
+    
+    Args:
+        folder_path (str): The path to the folder.
+        
+    Returns:
+        int: The number of files in the folder.
+    """
+    if not os.path.isdir(folder_path):
+        print(f"Error: '{folder_path}' is not a valid directory.")
+        return 0
+    
+    count = 0
+    with os.scandir(folder_path) as entries:
+        for entry in entries:
+            if entry.is_file():
+                count += 1
+                
+    return count
+
 def set_channels_order(order='first'):
     """Set the order of channels in tensors for Keras to
     First or Last.
@@ -227,4 +316,7 @@ def set_channels_order(order='first'):
     """
     assert order in ('first', 'last')
     K.set_image_data_format(f'channels_{order}')
+
+
+
 

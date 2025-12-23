@@ -1,8 +1,11 @@
 """
     Base class for datasets
 """
+
 from sklearn.model_selection import StratifiedKFold
 from abc import ABCMeta, abstractmethod
+from aawedha.utils.network import remote_dataset_size
+from aawedha.utils.utils import folder_full
 from aawedha.analysis.utils import isfloat
 from aawedha.analysis.preprocess import eeg_epoch
 from aawedha.paradigms.subject import Subject
@@ -70,15 +73,15 @@ class DataSet(metaclass=ABCMeta):
             DataSet published paper doi, by default ''
         """
         self.epochs = None
-        self.y = None
+        self.y      = None
         self.events = []
         self.paradigm = None
         self.subjects = []
-        self.title = title
+        self.title    = title
         self.ch_names = ch_names
-        self.fs = fs
-        self.doi = doi
-        self.url = url
+        self.fs   = fs
+        self.doi  = doi
+        self.url  = url
         self.path = '' # keep the path were the final object is saved as pkl
 
     def __str__(self):
@@ -315,6 +318,36 @@ class DataSet(metaclass=ABCMeta):
                         self.test_epochs = self.test_epochs[:, :, indexes, :]
 
         return indexes
+    
+    def rereference(self, ref_ch='average'):
+        """Rereference EEG epochs to specified reference channel or average reference.
+
+        Parameters
+        ----------
+        ref_ch : str, optional
+            reference channel name, by default 'average'
+        """
+        if ref_ch == 'average':
+            if isinstance(self.epochs, list):
+                self.epochs = [ep - np.mean(ep, axis=1, keepdims=True) for ep in self.epochs]                
+                if hasattr(self, 'test_epochs'):
+                    self.test_epochs = [ep - np.mean(ep, axis=1, keepdims=True) for ep in self.test_epochs]
+            else:
+                self.epochs -= np.mean(self.epochs, axis=2, keepdims=True)
+                if hasattr(self, 'test_epochs'):
+                    self.test_epochs -= np.mean(self.test_epochs, axis=2, keepdims=True)
+        else:
+            ch_idx = self.ch_names.index(ref_ch)
+            if isinstance(self.epochs, list):
+                self.epochs = [ep - ep[:, ch_idx:ch_idx+1, :] for ep in self.epochs]
+                if hasattr(self, 'test_epochs'):
+                    self.test_epochs = [ep - ep[:, ch_idx:ch_idx+1, :] for ep in self.test_epochs]
+            else:
+                self.epochs -= self.epochs[:, :, ch_idx:ch_idx+1, :]
+                if hasattr(self, 'test_epochs'):
+                    self.test_epochs -= self.test_epochs[:, :, ch_idx:ch_idx+1, :]
+
+            self.select_channels([ch for ch in self.ch_names if ch != ref_ch])
 
     def select_trials(self, ratio=0.1):
         """Keep a random subset of training trials.
@@ -539,6 +572,23 @@ class DataSet(metaclass=ABCMeta):
             duration = f' epoch duration:{self.epochs.shape[1] / self.fs} sec'
             data_shape = f'{self.epochs.shape}'
         return data, duration, data_shape            
+    
+    def already_exists(self, folder):
+        """Check if the dataset already exists in the specified folder.
+
+        Parameters
+        ----------
+        folder : str
+            folder path to check for dataset existence
+
+        Returns
+        -------
+        bool
+            True if dataset exists, False otherwise.
+        """
+        remote_size = remote_dataset_size(self.url)
+        return folder_full(folder, remote_size)
+    
     
     def _get_augmented_cnt(self, raw_signal, epoch, pos, stimulation, 
                             baseline=0., slide=0.1, method='divide'):

@@ -3,9 +3,11 @@ from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass
 from aawedha.utils.network import download_file
 from aawedha.utils.utils import unzip_files
+from aawedha.utils.utils import extract_zip
 from scipy.io import loadmat
 import numpy as np
 import glob
+import os
 
 
 class Perturbations(DataSet):
@@ -219,9 +221,13 @@ class Perturbations(DataSet):
         store_path : str, 
             folder path where raw data will be stored, by default None. data will be stored in working path.
         """
-        download_file(self.url, store_path)        
-        zip_files = [f"{store_path}/*.zip"]
-        unzip_files(zip_files, store_path)
+        if store_path and not os.path.exists(store_path):
+            os.makedirs(store_path)
+        download_file(self.url, store_path)  
+        fname = f"{store_path}/DATA_REPOSITORY.zip"
+        extract_zip(fname, store_path)
+        # zip_files = [f"{store_path}/*.zip"]
+        # unzip_files(zip_files, store_path)
 
     def get_path(self):
         NotImplementedError

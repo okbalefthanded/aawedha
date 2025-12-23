@@ -3,7 +3,9 @@ from aawedha.paradigms.ssvep import SSVEP
 from aawedha.paradigms.subject import Subject
 from aawedha.analysis.preprocess import bandpass
 from scipy.io import loadmat
-import aawedha.utils.network as network
+from aawedha.utils.utils import make_dir, extract_zip
+from aawedha.utils.network import download_file
+# import aawedha.utils.network as network
 import numpy as np
 import glob
 import re
@@ -32,8 +34,9 @@ class Tsinghua(DataSet):
                                    'PO6', 'PO8', 'CB1', 'O1', 'Oz', 'O2', 'CB2'],
                          fs=250,
                          doi='http://dx.doi.org/10.1073/pnas.1508080112',
-                         url='sccn.ucsd.edu'
+                         url='https://sccn.ucsd.edu/download/ssvep_benchmark_dataset.zip'
                          )
+        self.alt_url =  "https://bci.med.tsinghua.edu.cn/download.html"
 
     def generate_set(self, load_path=None, download=False, 
                     ch=None, epoch=5, band=[5.0, 45.0],
@@ -185,8 +188,12 @@ class Tsinghua(DataSet):
         store_path : str, 
             folder path where raw data will be stored, by default None. data will be stored in working path.
         """
-        ftp_client = network.connect_ftp(self.url)
-        network.download_ftp_folder(ftp_client, 'pub/ssvep_benchmark_dataset', store_path)
+        make_dir(store_path)
+        download_file(self.url, store_path)
+        fname = f"{store_path}/ssvep_benchmark_dataset.zip"
+        extract_zip(fname, store_path)
+        # ftp_client = network.connect_ftp(self.url)
+        # network.download_ftp_folder(ftp_client, 'pub/ssvep_benchmark_dataset', store_path)
 
     def _get_events(self):
         """Attaches the experiments paradigm frequencies to

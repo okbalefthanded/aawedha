@@ -3,7 +3,10 @@ from aawedha.paradigms.ssvep import SSVEP
 import aawedha.utils.network as network
 from aawedha.paradigms.erp import ERP
 from aawedha.io.base import DataSet
+from aawedha.utils.utils import make_dir, count_files_in_folder
+from aawedha.utils.network import download_file
 from scipy.io import loadmat
+from pathlib import Path
 import numpy as np
 import glob
 import os
@@ -35,11 +38,12 @@ class OpenBMISSVEP(DataSet):
                                    'PO4'],
                          fs=1000,
                          doi='https://doi.org/10.1093/gigascience/giz002',
-                         url="parrot.genomics.cn")
+                         url="https://s3.ap-northeast-1.wasabisys.com/gigadb-datasets/live/pub/10.5524/100001_101000/100542")
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
         self.sessions = 100  # index of last trial in a session
+        
 
     def generate_set(self, load_path=None,
                      download=False,
@@ -232,9 +236,65 @@ class OpenBMISSVEP(DataSet):
         X = np.array(X, dtype=np.float32)
         Y = np.array(Y, dtype=np.float32).squeeze()
         events = np.array(events).squeeze()
-        return X, Y, events
+        return X, Y, events    
 
     def download_raw(self, store_path):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        # urls = []
+        store_path = Path(store_path)
+        urls = self._get_urls()
+        make_dir(store_path)        
+        timeout = (3, 30)
+        sessions = ['session1', 'session2']
+        for i, sess in enumerate(sessions):            
+            # for subj in range(1, 55):
+                # path = f"{self.url}/{sess}/s{subj}/sess{i+1:02}_subj{subj:02}_EEG_SSVEP.mat"
+                # urls.append(f"{self.url}/{sess}/s{subj}/sess{i+1:02}_subj{subj:02}_EEG_SSVEP.mat") 
+            make_dir(store_path / sess)  
+            download_file(urls[sess], store_path / sess, timeout=timeout)
+    
+
+    def already_exists(self, folder):
+        """Check if the dataset already exists in the specified folder.
+        Parameters
+        ---------- 
+        folder : str
+            folder path where to check for dataset existence
+        Returns
+        -------
+        bool
+            True if dataset already exists, False otherwise
+        """
+        sessions = ['session1', 'session2']
+        folder = Path(folder)
+        files_count = 0
+        for sess in sessions:
+            files_count += count_files_in_folder(folder / sess)
+        
+        if files_count >= 108:
+            return True
+        return False
+
+    def _get_urls(self):
+        """Get urls for downloading raw data.
+        """
+        urls = {}
+        sessions = ['session1', 'session2']
+        for i, sess in enumerate(sessions):            
+            tmp = []
+            for subj in range(1, 55):
+                tmp.append(f"{self.url}/{sess}/s{subj}/sess{i+1:02}_subj{subj:02}_EEG_SSVEP.mat")
+            urls[sess] = tmp
+        return urls
+
+
+    def download_raw_legacy(self, store_path):
         """Download raw data from dataset repo url and stored it in a folder.
 
         Parameters

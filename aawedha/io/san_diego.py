@@ -3,6 +3,7 @@ from aawedha.paradigms.ssvep import SSVEP
 from aawedha.analysis.preprocess import bandpass
 from scipy.io import loadmat
 from aawedha.utils.utils import unzip_files
+from aawedha.utils.utils import make_dir 
 import aawedha.utils.network as network
 import numpy as np
 
@@ -21,7 +22,7 @@ class SanDiego(DataSet):
                                    'PO4', 'PO8', 'O1', 'Oz', 'O2'],
                          fs=256,
                          doi='http://dx.doi.org/10.1371/journal.pone.0140703',
-                         url="sccn.ucsd.edu"
+                         url="https://sccn.ucsd.edu"
                          )
 
 
@@ -147,7 +148,7 @@ class SanDiego(DataSet):
                 # epoch_duration = np.round(np.array(ep) * self.fs).astype(int)
                 start, end = 0, epoch_duration
                 if isinstance(epoch_duration, np.ndarray): 
-                    if epoch_duration.nsize >= 2:
+                    if epoch_duration.size >= 2:
                         start, end = epoch_duration[0], epoch_duration[1] 
                 eeg = eeg[onset+start:onset+end, :, :, :]
                 samples, channels, blocks, targets = eeg.shape
@@ -171,11 +172,14 @@ class SanDiego(DataSet):
         store_path : str, 
             folder path where raw data will be stored, by default None. data will be stored in working path.
         """
-        ftp_client = network.connect_ftp(self.url)
-        # network.download_ftp_folder(ftp_client, 'pub/cca_ssvep', store_path)
-        network.download_ftp_folder(ftp_client, 'pub', store_path, only_files='cca_ssvep.zip')
-        # unzip
+        make_dir(store_path)
         zip_files = [f"{store_path}/cca_ssvep.zip"]
+        # network.download_pycurl(f"{self.url}/pub/cca_ssvep.zip", store_path)
+        network.download_pycurl(f"{self.url}/download/cca_ssvep.zip", zip_files[0])        
+        # ftp_client = network.connect_ftp(self.url)
+        # network.download_ftp_folder(ftp_client, 'pub/cca_ssvep', store_path)
+        # network.download_ftp_folder(ftp_client, 'pub', store_path, only_files='cca_ssvep.zip')
+        # unzip        
         unzip_files(zip_files, store_path)
 
     def _get_events(self):

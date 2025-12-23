@@ -3,6 +3,7 @@ from aawedha.models.pytorch.torch_builders import build_callbacks
 from aawedha.models.pytorch.torch_builders import build_scheduler
 from aawedha.models.pytorch.torch_builders import get_optimizer
 from aawedha.models.pytorch.torch_builders import get_metrics
+from aawedha.models.pytorch.precisebn import update_bn_stats
 from aawedha.models.pytorch.torch_builders import get_loss
 from aawedha.evaluation.evaluation_utils import fit_scale
 from aawedha.evaluation.evaluation_utils import transform_scale
@@ -70,6 +71,7 @@ class TorchModel(nn.Module):
 
         # forward + backward + optimize
         outputs = self.module(inputs)
+        outputs = outputs.squeeze() #
         loss    = self.loss(outputs, labels)
         loss.backward()
         self.optimizer.step()
@@ -127,11 +129,14 @@ class TorchModel(nn.Module):
                   ):
         # on_train_begin callbacks
         if callbacks: [clbk.on_train_begin(self.module) for clbk in callbacks] 
-
+        tmp_loader = [train_loader.dataset.tensors[0].to(self.device)] # FIXME a hack for PreciseBN
         for epoch in range(epochs):  # loop over the dataset multiple times
             running_loss = 0
             self.reset_metrics()
             self.module.train()
+            if hasattr(self.optimizer, "train"): # for schedule-free optimizers
+                self.optimizer.train()
+                
             # on_epoch_begin callbacks
             if callbacks: [clbk.on_epoch_begin() for clbk in callbacks]
             if verbose == 2:
@@ -151,6 +156,9 @@ class TorchModel(nn.Module):
                 
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
+            
+            # Precise BN??
+            update_bn_stats(self.module, tmp_loader, num_iters=1, progress=None)
             
             # evaluate validation data
             val_metrics = None
@@ -188,7 +196,11 @@ class TorchModel(nn.Module):
         """
         if normalize:
             x = self.normalize(x)
+        
         self.module.eval()
+        if hasattr(self.optimizer, "eval"): # for shcedule-free optimizers
+            self.optimizer.eval()
+        
         if isinstance(x, torch.Tensor):
             x_tensor = x.to(self.device)
         else:
@@ -211,6 +223,7 @@ class TorchModel(nn.Module):
         """
         """
         loss = 0
+        
         if normalize:
             x = self.normalize(x)
         if isinstance(x, torch.utils.data.DataLoader):
@@ -220,6 +233,8 @@ class TorchModel(nn.Module):
             test_loader = make_loader(x, y, batch_size, shuffle, labels_type)
 
         self.module.eval()
+        if hasattr(self.optimizer, "eval"): # for shcedule-free optimizers
+            self.optimizer.eval()
         self.loss.eval()
         if self.metrics_list:
             [metric.eval() for metric in self.metrics_list]        
@@ -234,6 +249,7 @@ class TorchModel(nn.Module):
                 inputs, labels = data[0].to(self.device), data[1].to(self.device)
                 # calculate outputs by running inputs through the network
                 outputs = self.module(inputs)
+                outputs = outputs.squeeze() # 
                 loss += self.loss(outputs, labels).item()
 
                 # return_metrics = {'loss': loss.item() / len(test_loader)}
@@ -259,12 +275,12 @@ class TorchModel(nn.Module):
 
         # self.set_output_shape()
         self._set_is_binary(train_loader.dataset.tensors[1])
-        
-        if class_weight: 
-            if isinstance(y, np.ndarray):
-                if y.ndim > 1:
-                    if not isinstance(self.loss, list):
-                        self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
+        # TODO: set class_weight for each loss
+        # if class_weight: 
+        #     if isinstance(y, np.ndarray):
+        #         if y.ndim > 1:
+        #             if not isinstance(self.loss, list):
+        #                 self.loss.pos_weight = torch.tensor([class_weight[0], class_weight[1]])        
         if self.metrics_list:
             [metric.train() for metric in self.metrics_list]
 
@@ -396,21 +412,37 @@ class TorchModel(nn.Module):
     def set_output_shape(self):
         """Setter for output shape attribute
         """
-        modules = list(self.module._modules.keys())
+        # modules = list(self.module._modules.keys())
+        # output_index = -2
+        # if modules[-1] != 'loss':
+        #     output_index = -1
+        # last_layer = modules[output_index]
+        if hasattr(self.module, 'out_features'):
+            self.features_dim = self.module.in_features
+            self.output_shape = self.module.out_features
+        else:
+            last_layer = self._get_last_layer(self.module)
+            # Linear layer as last layer
+            if hasattr(self.module._modules[last_layer], 'out_features'):
+                self.features_dim = self.module._modules[last_layer].in_features
+                self.output_shape = self.module._modules[last_layer].out_features            
+            elif not hasattr(self.module._modules[last_layer], 'module'):
+                # Last layer as a Sequential module
+                inside_last_layer = self._get_last_layer(self.module._modules[last_layer])    
+                self.features_dim = self.module._modules[last_layer]._modules[inside_last_layer].in_features
+                self.output_shape = self.module._modules[last_layer]._modules[inside_last_layer].out_features
+            else:
+                # Linear with TorchLayers regularizes
+                self.features_dim = self.module._modules[last_layer].module.in_features
+                self.output_shape = self.module._modules[last_layer].module.out_features
+
+    @staticmethod
+    def _get_last_layer(module):
+        modules = list(module._modules.keys())
         output_index = -2
         if modules[-1] != 'loss':
             output_index = -1
-        last_layer = modules[output_index]
-        if hasattr(self.module._modules[last_layer], 'out_features'):
-            self.features_dim = self.module._modules[last_layer].in_features
-            self.output_shape = self.module._modules[last_layer].out_features            
-        elif not hasattr(self.module._modules[last_layer], 'module'):
-            # TODO: only Linear module has an out shape attribute.
-            self.output_shape = None
-        else:
-            # Linear with TorchLayers regularizes
-            self.features_dim = self.module._modules[last_layer].module.in_features
-            self.output_shape = self.module._modules[last_layer].module.out_features
+        return modules[output_index]
 
     def metrics_to(self, device=None):
         if not device:
@@ -431,8 +463,11 @@ class TorchModel(nn.Module):
         self.loss      = get_loss(loss, self.features_dim)
         self.loss_weights = self._check_loss_weights(loss_weights)
         # Test whether a certain loss requires a seperate Optimizer
-        # params_opt = {"params": self.module.parameters()}
-        params_opt = [self.module.parameters()]
+        ## params_opt = {"params": self.module.parameters()}
+        # params_opt = [self.module.parameters()]
+        # filter out non-grad parameters, use for composing different modules
+        # in a single model. freezing after pretraining.
+        params_opt = [filter(lambda p: p.requires_grad, self.module.parameters())]  
         if isinstance(self.loss, list):
             for loss in self.loss:
                 if "extern_optim" in loss.__dict__.keys():
@@ -450,7 +485,7 @@ class TorchModel(nn.Module):
             if hasattr(self.optimizer, 'init_weights'):
                 self.optimizer.init_weights()
         self.metrics_list = get_metrics(metrics, classes)
-        # self.callbacks = build_callbacks(callbacks)
+        # self.callbacks = build_callbacks(callbacks) # moved to settings class, to be set at fit
         self.scheduler = scheduler
         self.set_metrics_names(metrics)
         # transfer to device
@@ -477,7 +512,12 @@ class TorchModel(nn.Module):
             # require categorical labels
             targets = deepcopy(labels)
             if self.is_binary:
-                outputs = nn.Sigmoid()(outputs)
+                if outputs.ndim < 2:
+                    outputs = nn.Sigmoid()(outputs)
+                else:
+                    # when the binary model return [N, 2] outputs
+                    outputs = nn.Softmax(dim=1)(outputs)
+                    outputs = outputs[:, 1]
                 outputs = outputs.squeeze()
                 targets = targets.squeeze()
                 # hack for ECE
@@ -530,7 +570,6 @@ class TorchModel(nn.Module):
                        shuffle=True, 
                        batch_size=32):
         labels_type = self._labels_type()  
-        
         if isinstance(x, torch.utils.data.DataLoader):
             train_loader = x
             self.input_shape, y_size = data_shapes(x)

@@ -1,8 +1,8 @@
-from tensorflow_addons.metrics import MatthewsCorrelationCoefficient
+# from tensorflow_addons.metrics import MatthewsCorrelationCoefficient
 from sklearn.metrics import roc_curve, confusion_matrix
 from aawedha.models.utils_models import model_lib
 from tensorflow.keras.utils import to_categorical
-from tensorflow_addons.metrics import F1Score
+# from tensorflow_addons.metrics import F1Score
 from pyLpov.utils.utils import select_target
 from aawedha.paradigms.base import Paradigm
 from sklearn.metrics import accuracy_score
@@ -141,7 +141,7 @@ def fit_scale(X, axis=0):
     sigma : nd array (1, kernels, channels, samples)
         standard deviation over all trials
     """
-    mu = X.mean(axis=axis)
+    mu    = X.mean(axis=axis)
     sigma = X.std(axis=axis)
     X = transform_scale(X, mu, sigma, axis=axis)
     return X, mu, sigma
@@ -212,9 +212,9 @@ def create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test):
     dict
         evaluation data split dictionary where the key is the array's name.
     """
-    Y_train = class_min_zero(Y_train)
-    Y_test  = class_min_zero(Y_test)
-    Y_val   = class_min_zero(Y_val)
+    # Y_train = class_min_zero(Y_train)
+    # Y_test  = class_min_zero(Y_test)
+    # Y_val   = class_min_zero(Y_val)
     
     split = {}
     split['X_test'] = None

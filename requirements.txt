@@ -28,6 +28,8 @@ prodigyopt
 pywt
 ptwt
 pynvml
+pycurl
+einops
 git+https://github.com/okbalefthanded/antialiased-cnns.git
 git+https://github.com/okbalefthanded/Ranger21.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git

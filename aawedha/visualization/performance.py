@@ -1,5 +1,5 @@
 from sklearn.metrics import auc
-from scipy import interp
+# from scipy import interp
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -95,7 +95,8 @@ def plot_roc_curve(results={}, nfolds=4, subj=None):
                 roc_auc = results['auc'][s, fld]  # (subject, fold)
                 fpr = results['fp'][s][fld]
                 tpr = results['tp'][s][fld]
-            tprs.append(interp(mean_fpr, fpr, tpr))
+            # tprs.append(interp(mean_fpr, fpr, tpr)) old scipy version
+            tprs.append(np.interp(mean_fpr, fpr, tpr)) # new numpy version
             plt.plot(fpr, tpr, lw=1, alpha=0.3,
                      label=f'ROC fold {fld} AUC = {roc_auc}')
 

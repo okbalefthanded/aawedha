@@ -1,10 +1,13 @@
+# TODO: REFACTOR, delete TF code, use pytorch only
+
 from tensorflow.keras.utils import deserialize_keras_object
 from tensorflow.keras.optimizers import get
 from aawedha.io.io_utils import load_yaml
 from madgrad import MadGrad
 
-import tensorflow_addons.optimizers as tfaopt
+# import tensorflow_addons.optimizers as tfaopt
 
+"""
 all_classes_tfa = {'adabelief': tfaopt.AdaBelief,
                     'adamw': tfaopt.AdamW,
                   'cocob': tfaopt.COCOB,
@@ -14,7 +17,7 @@ all_classes_tfa = {'adabelief': tfaopt.AdaBelief,
                   'proximal_adagrad': tfaopt.ProximalAdagrad,
                   'radam': tfaopt.RectifiedAdam,
                   'yogi': tfaopt.Yogi}
-
+"""
 custom_classes = {'madgrad': MadGrad}
 
 def optimizer_lib(identifier):
@@ -37,10 +40,10 @@ def optimizer_lib(identifier):
         _ = get(opt_id)
         return 'builtin'
     except ValueError:
-        if opt_id.lower() in list(all_classes_tfa.keys()):
-            return 'TFA' # tfa : tensorflow_addons
-        else:
-            NotImplementedError
+        # if opt_id.lower() in list(all_classes_tfa.keys()):
+        #    return 'TFA' # tfa : tensorflow_addons
+        # else:
+        NotImplementedError
     return lib
 
 
@@ -70,14 +73,16 @@ def get_optimizer(identifier, opt_lib=None):
     if opt_lib == 'builtin':
         opt = get(identifier)
         return opt
-    elif opt_lib == 'TFA':
-        opt = deserialize_keras_object(config, module_objects=all_classes_tfa,
-                          custom_objects=None, printable_module_name='optimizer')
-        return opt
     else:
         opt = deserialize_keras_object(config, module_objects=custom_classes,
                           custom_objects=None, printable_module_name='optimizer')
         return opt
+    """
+    elif opt_lib == 'TFA':
+        opt = deserialize_keras_object(config, module_objects=all_classes_tfa,
+                          custom_objects=None, printable_module_name='optimizer')
+        return opt
+    """
     
 
 def config_to_description(cfg_path):

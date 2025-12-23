@@ -1,4 +1,4 @@
-from aawedha.evaluation.evaluation_utils import aggregate_results
+from aawedha.evaluation.evaluation_utils import aggregate_results, class_min_zero
 from aawedha.evaluation.evaluation_utils import create_split
 from sklearn.model_selection import KFold, StratifiedKFold
 from aawedha.evaluation.benchmark import BenchMark
@@ -220,7 +220,8 @@ class SingleSubject(BenchMark):
         # folds[0][0][0] : inconsistent fold subject trials
         # folds[0][0]    : same trials numbers for all subjects
         split = {}
-        
+        y = class_min_zero(y)
+
         if self.settings.folds:
 
             if isinstance(self.dataset.epochs, list):
@@ -239,8 +240,8 @@ class SingleSubject(BenchMark):
 
         else:
             X_train = x
-            Y_train = y
-        
+            Y_train = y    
+
         X_val, Y_val = None, None
         
         if indie: # independent Test set            
@@ -258,6 +259,7 @@ class SingleSubject(BenchMark):
                 X_val = x[folds[_val]]
                 Y_val = y[folds[_val]]
             Y_test = self.dataset.test_y[subj][:]
+            Y_test = class_min_zero(Y_test)                
         else:
             if len(self.settings.partition) == 2:
                 X_test = x[folds[_val]]

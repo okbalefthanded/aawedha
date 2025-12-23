@@ -8,6 +8,7 @@ from aawedha.models.utils_models import load_model
 from aawedha.utils.utils import make_folders, cwd
 from aawedha.evaluation.settings import Settings
 from aawedha.utils.utils import get_gpu_name
+from aawedha.utils.utils import make_dir
 from aawedha.models.base_model import Learner
 from aawedha.utils.utils import get_device
 from aawedha.evaluation.score import Score
@@ -452,6 +453,8 @@ class Evaluation:
         perf : array
             model's performance on test data: accuracy and loss
         """
+        history = {}
+        probs, perf = None, None
         batch, ep, clbs, aug = self._get_fit_configs()
         device = get_device(self.learner.config)
         '''
@@ -474,8 +477,7 @@ class Evaluation:
             if self.learner.do_normalize:
                 X_val = self.learner.normalize(X_val)
             val = (X_val, Y_val)
-
-        history = {}
+        
         spe = None
         if device == 'TPU':
             spe = X_train.shape[0] // batch
@@ -485,8 +487,7 @@ class Evaluation:
             else:
                 spe = X_train.shape[-1] // batch
             '''
-        probs, perf = None, None
-        
+                
         if aug:
             X_train, val = build_mixup_dataset(X_train, Y_train, X_val, Y_val, aug, 
                                                batch, self.settings.engine)
@@ -495,7 +496,8 @@ class Evaluation:
             #
             Y_train = None
         
-        history = self.learner.fit(x=X_train, y=Y_train,
+        history = self.learner.fit(x=X_train, 
+                                   y=Y_train,
                                    batch_size=batch,
                                    epochs=ep,
                                    steps_per_epoch=spe,
@@ -762,8 +764,9 @@ class Evaluation:
             root = cwd()
             folder = f'{root}/results'
             
-        if not os.path.isdir(folder):
-            os.mkdir(folder)            
+        # if not os.path.isdir(folder):
+        #     os.mkdir(folder)  
+        make_dir(folder)          
 
         metrics = list(self.score.results)
         [metrics.remove(elem) for elem in ["probs", "confusion"]]
@@ -782,8 +785,9 @@ class Evaluation:
         
         if evl == 'CrossSubject' or evl == 'CrossSet':
             columns = ['Fold 1']
-            if "folds" in metrics:
-                metrics.remove("folds")
+            if "Fold" in metrics:
+                # metrics.remove("folds")
+                metrics.remove("Fold")
         elif evl == 'SingleSubject':
             if 'Subject' in metrics:
                 metrics.remove("Subject")

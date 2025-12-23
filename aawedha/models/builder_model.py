@@ -7,13 +7,14 @@ from aawedha.models.pytorch.torch_swa import SWA
 
 train_strategy = {
     'regular':  TorchModel,
-    'extended': TorchModelExt,
+    'extended': TorchModelExt, # mutltple losses
     # TODO: add hybrid generative-discirminative models
     'swa': SWA,
     'twa': TwaTrain,
     'sam': SAMTorch,
     'asam': None,
-    'wasam': Wasam2
+    'wasam': Wasam2,
+   # 'evonorm': ENorm # wrong
 }
 
 def build_learner(compile_config):

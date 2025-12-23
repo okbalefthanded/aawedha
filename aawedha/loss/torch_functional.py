@@ -94,6 +94,7 @@ def sigmoid_focal_loss(
     Returns:
         Loss tensor with the reduction option applied.
     """
+    # inputs shape : (N, ...) / targets shape : (N, ...)
     p = torch.sigmoid(inputs)
     ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
     p_t = p * targets + (1 - p) * (1 - targets)
@@ -181,6 +182,7 @@ def poly_loss(
         torch.Tensor: loss reduced with `reduction` method
     """
     # log(P[class]) = log_softmax(score)[class]
+    # x shape: (N, K, ...) / target shape: (N, ...)
     logpt = F.log_softmax(x, dim=1)
 
     # Compute pt and logpt only for target classes (the remaining will have a 0 coefficient)
@@ -241,6 +243,7 @@ def poly_sigmoid_focal_loss(
     Returns:
         Loss tensor with the reduction option applied.
     """
+    # inputs shape : (N, ...) / targets shape : (N, ...)
     p = torch.sigmoid(inputs)
     p_t = (p * targets) + (1 - p) * (1 - targets)
     fl = sigmoid_focal_loss(inputs, targets, alpha, gamma, reduction="none")

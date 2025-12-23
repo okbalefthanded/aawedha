@@ -1,3 +1,12 @@
+# Implementation of EEGNet and EEGNet_SSVEP in PyTorch
+# Based on the original TensorFlow implementation
+# Lawhern, V.J., Solon, A.J., Waytowich, N.R., Gordon, S.M., Hung, C.P. and Lance, B.J. (2018) 
+# ‘EEGNet: A compact convolutional neural network for EEG-based brain-computer interfaces’, 
+# Journal of Neural Engineering, 15(5), pp. 1–30. Available at: https://doi.org/10.1088/1741-2552/aace8c.
+# 
+# Waytowich, N.R., Lawhern, V., Garcia, J.O., Cummings, J., Faller, J., Sajda, P. and Vettel, J.M. (2018) 
+# ‘Compact Convolutional Neural Networks for Classification of Asynchronous Steady-state Visual Evoked Potentials’,
+#  pp. 1–21. Available at: https://arxiv.org/pdf/1803.04566.pdf.
 from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
 from aawedha.models.pytorch.torch_utils import LineardWithConstraint
 from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint

@@ -6,10 +6,15 @@ import aawedha.loss.torch_loss as tl
 from aawedha.models.pytorch.torch_callbacks import CallBack, ModelCheckPoint
 from aawedha.metrics.torch_metrics import CategoricalAccuracy
 from aawedha.models.pytorch.wasamtorch import WASAM
+from torch.optim.lr_scheduler import SequentialLR
+from aawedha.optimizers.ademamix import AdEMAMix
 from aawedha.models.pytorch.samtorch import SAM
 from aawedha.loss.smooth_loss import SmoothLoss
 from aawedha.loss.center_loss import CenterLoss
 from torch.optim.optimizer import Optimizer
+from schedulefree import AdamWScheduleFree
+from aawedha.optimizers.c_optim import CAdamW, CLion
+from aawedha.optimizers.adopt import ADOPT
 from aawedha.optimizers.aida import Aida
 from aawedha.optimizers.adan import Adan
 from aawedha.optimizers.agd import AGD
@@ -30,6 +35,7 @@ losses = {
     'binary_crossentropy': nn.BCEWithLogitsLoss,
     'focal_loss': tl.FocalLoss,
     'poly_loss':  tl.PolyLoss,
+    'focal_polyloss' : tl.FocalPolyLoss,
     'auc_margin' : AUCMLoss,
     "smooth_loss": SmoothLoss,
     "center_loss" : CenterLoss,
@@ -55,7 +61,13 @@ custom_opt = {
     'Lion': Lion,
     'Prodigy': Prodigy,
     'AGD': AGD,
-    'Aida': Aida
+    'Aida': Aida,
+    "AdeMaMix": AdEMAMix,
+    "AdamWSF": AdamWScheduleFree,
+    "CAdamW": CAdamW,
+    "CLion": CLion,
+    "Adopt": ADOPT
+               
 }
 
 wrapped_opt = {
@@ -92,7 +104,7 @@ def get_optimizer(optimizer, opt_params):
     #     params = [{"params": opt_params[0]}, {"loss_para"}]
 
     if isinstance(optimizer, str):
-        return _get_optim(optimizer, {'params': opt_params})
+        return _get_optim(optimizer, {'params': opt_params[0]}) # hacky ??
     # set and dict for multiple losses with an optimizer each
     elif isinstance(optimizer, set):
         return [_get_optim(opt, {"params": prm}) for opt, prm in zip(optimizer, opt_params)]
@@ -253,17 +265,68 @@ def get_metrics(metrics, classes):
             selected_metrics.append(metric)
     return selected_metrics
 
+
 def build_scheduler(data_loader, optimizer, scheduler):
     params_args = {'OneCycleLR': 'steps_per_epoch',
-                    'CyclicLR': 'step_size_up',
-                    'CosineAnnealingWarmRestarts': 'T_0'}
+                    'CyclicLR': 'step_size_up'
+                    }
+                    # 'CosineAnnealingWarmRestarts': 'T_0'}
+    # TODO: SequentialLR for warmup and restart
+    available = list(optim.lr_scheduler.__dict__.keys())
+    sched_id  = list(scheduler.keys())[0]          
+    
+    if len(scheduler) > 1:
+        sched = sequential_scheduler(optimizer, scheduler)
+        return sched
+    else:
+        params = {'optimizer': optimizer, **scheduler[sched_id]}
+        sched_id = schedule_name(sched_id)  
+
+    if sched_id in params_args:
+        if sched_id == 'CyclicLR':
+            params[params_args[sched_id]] = len(data_loader) // 2
+        else:
+            params[params_args[sched_id]] = len(data_loader) 
+         
+    if sched_id in available:
+        return getattr(optim.lr_scheduler, sched_id)(**params)
+    else:
+        ModuleNotFoundError
+
+def sequential_scheduler(optimizer, scheduler):
+    ids = list(scheduler.keys())
+    schedulers = []
+    for i in ids:        
+        params = {'optimizer': optimizer, **scheduler[i]}
+        name = schedule_name(i)
+        schedulers.append(getattr(optim.lr_scheduler, name)(**params))    
+    return SequentialLR(optimizer,
+                        schedulers=schedulers,
+                         milestones=[schedulers[0].total_iters]
+                             )
+
+def schedule_name(sched_id):
+    if sched_id.lower() !='cosinewr':   
+        return f"{sched_id}LR"    
+    else:
+        return "CosineAnnealingWarmRestarts"  
+
+
+def build_scheduler_legacy(data_loader, optimizer, scheduler):
+    params_args = {'OneCycleLR': 'steps_per_epoch',
+                    'CyclicLR': 'step_size_up'}
+                    # 'CosineAnnealingWarmRestarts': 'T_0'}
+    # TODO: SequentialLR for warmup and restart
     available = list(optim.lr_scheduler.__dict__.keys())
     sched_id = scheduler[0]
+    
     if sched_id !='cosinewr':   
         sched_id = f"{scheduler[0]}LR"
     else:
         sched_id = "CosineAnnealingWarmRestarts"     
+    
     params = {'optimizer': optimizer, **scheduler[1]}
+    
     if sched_id == 'CyclicLR':
         params[params_args[sched_id]] = len(data_loader) // 2
     else:

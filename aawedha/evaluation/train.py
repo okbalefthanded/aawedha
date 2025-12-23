@@ -1,4 +1,4 @@
-from aawedha.evaluation.evaluation_utils import create_split
+from aawedha.evaluation.evaluation_utils import create_split, class_min_zero
 from sklearn.model_selection import train_test_split
 from aawedha.evaluation.base import Evaluation
 from aawedha.utils.utils import time_now
@@ -147,6 +147,8 @@ class Train(Evaluation):
 
         shape = (2, 1, 0)
         X, Y = self._cat_lists(X, Y)
+        Y = Y.squeeze()
+        Y = class_min_zero(Y)
         if X.ndim == 4:
             shape = (3, 2, 1, 0)
         X = X.transpose(shape)

@@ -130,8 +130,9 @@ class FocalPolyLoss(_Loss):
     def forward(self, x: Tensor, target: Tensor) -> Tensor:
         return F.poly_sigmoid_focal_loss(x, self.labels_to_sparse(target).float(), 
                                          self.alpha, self.gamma, self.eps, 
-                                         self.weight, self.ignore_index, 
+                                         # self.weight, self.ignore_index, 
                                          self.reduction)
+    
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(alpha={self.alpha}, gamma={self.gamma}, eps={self.eps}, reduction='{self.reduction}')"

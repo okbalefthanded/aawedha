@@ -18,8 +18,9 @@ def data_shapes(x):
 def make_loader(x, y, batch_size=32, shuffle=True, labels_type=torch.long):
     """
     """
-    if np.unique(y).size == 2 and y.ndim < 2:
-        y = np.expand_dims(y, axis=1)
+    # why did we add this ??? [because of TorchMetrics]
+    # if np.unique(y).size == 2 and y.ndim < 2:
+    #     y = np.expand_dims(y, axis=1)
     tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
                                                 torch.tensor(y, dtype=labels_type))
     loader = torch.utils.data.DataLoader(tensor_set, 

@@ -57,13 +57,14 @@ class Score(object):
 		res : dict
 			updated dictionary with metrics mean fields.
 		"""
+		
 		metrics = list(res.keys())
 
 		if classes == 2:
 			metrics.remove('viz')
 
 		for metric in metrics:
-			if metric == 'probs':
+			if metric == 'probs' or metric == 'confusion':
 				continue
 			res[metric] = np.array(res[metric])
 			res[metric + '_mean'] = res[metric].mean()

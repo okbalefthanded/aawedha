@@ -1,4 +1,4 @@
-from aawedha.evaluation.evaluation_utils import create_split
+from aawedha.evaluation.evaluation_utils import create_split, class_min_zero
 from aawedha.evaluation.benchmark import BenchMark
 import numpy as np
 
@@ -149,14 +149,17 @@ class CrossSubject(BenchMark):
         _train, _val, _test = 0, 1, 2
         shape = (2, 1, 0)
         X_train, Y_train = self._cat_lists(fold, _train)
-        X_test, Y_test = self._cat_lists(fold, _test)
+        X_test, Y_test   = self._cat_lists(fold, _test)
         X_train = X_train.transpose(shape)
-        X_test = X_test.transpose(shape)
+        X_test  = X_test.transpose(shape)
+        Y_train = class_min_zero(Y_train)
+        Y_test  = class_min_zero(Y_test)
 
         X_val, Y_val = None, None
         if self._has_val():
             X_val, Y_val = self._cat_lists(fold, _val)
-            X_val = X_val.transpose(shape)            
+            X_val = X_val.transpose(shape)      
+            Y_val = class_min_zero(Y_val)      
 
         split = create_split(X_train, X_val, X_test, Y_train, Y_val, Y_test)
         return split
