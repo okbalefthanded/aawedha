@@ -1,3 +1,6 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
 dist/*
 build/*
 notes/*
@@ -10,3 +13,4 @@ aawedha.egg-info
 # developer environments
 .idea
 .vscode
+

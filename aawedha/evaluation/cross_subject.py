@@ -149,7 +149,7 @@ class CrossSubject(BenchMark):
         _train, _val, _test = 0, 1, 2
         shape = (2, 1, 0)
         X_train, Y_train = self._cat_lists(fold, _train)
-        X_test, Y_test   = self._cat_lists(fold, _test)
+        X_test,  Y_test  = self._cat_lists(fold, _test)
         X_train = X_train.transpose(shape)
         X_test  = X_test.transpose(shape)
         Y_train = class_min_zero(Y_train)

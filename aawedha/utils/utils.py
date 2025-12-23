@@ -1,8 +1,6 @@
 from pynvml import *
-from tensorflow.keras import backend as K
 from aawedha.analysis.utils import isfloat
 from pathlib import Path
-import tensorflow as tf
 import pandas as pd
 import numpy as np
 import datetime
@@ -25,12 +23,9 @@ def get_device(config=None):
     device = 'GPU'  # default
     if config:
         if 'device' in config:
-            return config['device']
-    
-    devices = [dev.device_type for dev in tf.config.get_visible_devices()]
-    if 'GPU' not in devices:
-        device = 'CPU'
-    if device == 'GPU':
+            return config['device']    
+    device = 'CPU'
+    if torch.cuda.is_available():
         device = 'cuda'
     return device
 
@@ -43,38 +38,6 @@ def get_gpu_name():
     nvmlShutdown()
     return name
 
-def get_tpu_address():
-    """Return TPU Address
-
-    Returns
-    -------
-        TPU address
-    """
-    try:
-        device_name = os.environ['COLAB_TPU_ADDR']
-        TPU_ADDRESS = 'grpc://' + device_name
-        print('Found TPU at: {}'.format(TPU_ADDRESS))
-    except KeyError:
-        print('TPU not found')
-    return TPU_ADDRESS
-
-def init_TPU():
-    """initialize TPU for training on TPUs
-
-    Returns
-    -------
-    TPUStrategy
-    """
-    TPU_ADDRESS = get_tpu_address()
-    resolver = tf.distribute.cluster_resolver.TPUClusterResolver(TPU_ADDRESS)
-    tf.config.experimental_connect_to_cluster(resolver)
-
-    # This is the TPU initialization code that has to be at the beginning.
-    tf.tpu.experimental.initialize_tpu_system(resolver)
-    # print("All devices: ", tf.config.list_logical_devices('TPU'))
-
-    strategy = tf.distribute.TPUStrategy(resolver)
-    return strategy
 
 def log_to_csv(filepath, folder=''):
     """Convert log file into a csv file of results only
@@ -201,7 +164,6 @@ def set_seed(seed):
     """
     np.random.seed(seed)
     random.seed(seed)
-    tf.random.set_seed(seed)
     torch.manual_seed(seed)
 
 
@@ -304,18 +266,6 @@ def count_files_in_folder(folder_path):
                 count += 1
                 
     return count
-
-def set_channels_order(order='first'):
-    """Set the order of channels in tensors for Keras to
-    First or Last.
-
-    Parameters
-    ----------
-    order : str, optional
-        dimension of channels, by default 'first'
-    """
-    assert order in ('first', 'last')
-    K.set_image_data_format(f'channels_{order}')
 
 
 

@@ -36,19 +36,19 @@ class CheckPoint:
         indices of trials(SingleSubject evaluation)/
         subjects(CrossSubjects evaluation) for each fold
 
-    model :  Keras Model instance
+    model :  TorchModel instance
         the model to train/test on the dataset
 
     model_history : list
-            Keras history callbacks
+            history callbacks
 
     model_config : dict of model configurations, used in compile() and fit().
         compile :
             - loss : str : loss function to optimize during training
                 - default  : 'categorical_crossentropy'
-            - optimizer : str | Keras optimizer instance : SGD optimizer
+            - optimizer : str | optimizer instance : SGD optimizer
                 - default : 'adam'
-            - metrics : list : str | Keras metrics : training metrics
+            - metrics : list : str | metrics : training metrics
                 - default : multiclass tasks ['accuracy']
                             binary tasks ['accuracy', AUC()]
         fit :
@@ -56,7 +56,7 @@ class CheckPoint:
                 - default : 64
             - epochs : int : training epochs
                 - default : 300
-            - callbacks : list : Keras model callbacks
+            - callbacks : list : model callbacks
                 - default : []
 
     predictions : nd array of predictions
@@ -131,9 +131,9 @@ class CheckPoint:
             current evaluation subject (SingleSubject)/ fold (CrossSubject)
              index
 
-        model: Keras model
-            current trained model to save, using Keras' model.save() method which
-            saves a model in h5 format.
+        model: TorchModel instnce
+            current trained model to save, using pytorch save() method which
+            saves a model in pth format.
 
         rets: list
             current evaluation results: accuracy, auc, loss,...
@@ -153,15 +153,9 @@ class CheckPoint:
             self.rets.append(rets)
         self.current = current
         # save model using built-in save_model, to avoid pickle error
-        # HOTFIX FIXME
-        # rolling back to h5 format due to TPU restrictions
-        if self.settings.engine == 'keras':
-            self.check_path = f'{root}/trained/current_model.h5'
-            # self.learner.name = 'aawedha/trained/current_model.h5'
-            # self.model_name = 'aawedha/trained/current_model'
-        elif self.settings.engine == 'pytorch':
-            # self.model_name = 'aawedha/trained/current_model.pth'
-            self.check_path = f'{root}/trained/current_model.pth'
+        # HOTFIX FIXME        
+        # self.model_name = 'aawedha/trained/current_model.pth'
+        self.check_path = f'{root}/trained/current_model.pth'
         # model.save(self.model_name)
 
         model.save(self.check_path)

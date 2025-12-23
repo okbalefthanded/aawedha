@@ -6,9 +6,6 @@ scipy
 h5py
 matplotlib
 seaborn
-tensorflow
-tensorflow-addons
-tf-madgrad
 torch
 torchvision
 torchmetrics
@@ -30,7 +27,6 @@ ptwt
 pynvml
 pycurl
 einops
-git+https://github.com/okbalefthanded/antialiased-cnns.git
 git+https://github.com/okbalefthanded/Ranger21.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git
 git+https://github.com/okbalefthanded/pyLpov.git@py3

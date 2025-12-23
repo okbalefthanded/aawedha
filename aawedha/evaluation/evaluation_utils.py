@@ -1,13 +1,9 @@
-# from tensorflow_addons.metrics import MatthewsCorrelationCoefficient
 from sklearn.metrics import roc_curve, confusion_matrix
-from aawedha.models.utils_models import model_lib
-from tensorflow.keras.utils import to_categorical
-# from tensorflow_addons.metrics import F1Score
+from sklearn.preprocessing import LabelBinarizer
 from pyLpov.utils.utils import select_target
 from aawedha.paradigms.base import Paradigm
 from sklearn.metrics import accuracy_score
 from pyLpov.utils.utils import itr
-import tensorflow as tf
 import pandas as pd
 import numpy as np
 
@@ -34,34 +30,15 @@ def positive_class_prob(probs):
     else:
         return scores[:, 1]
 
-def metrics_by_lib(lib):
+def metrics_binary():
     """Create metrics according to the library used for evaluation.
-
-    Parameters
-    ----------
-    lib : str
-        Machine Learning library currently used for the evalatuion: Keras or Pytorch
 
     Returns
     -------
     list
-        a list of metrics used for Binary classifation, in case of Keras metrics it will
-        return instances, otherwise a list of metrics names.
+        a list of metrics used for Binary classifation.
     """
-    if lib == "keras":
-        return ['accuracy',
-                        tf.keras.metrics.AUC(name='auc'),
-                        tf.keras.metrics.TruePositives(name='tp'),
-                        tf.keras.metrics.FalsePositives(name='fp'),
-                        tf.keras.metrics.TrueNegatives(name='tn'),
-                        tf.keras.metrics.FalseNegatives(name='fn'),
-                        tf.keras.metrics.Precision(name='precision'),
-                        tf.keras.metrics.Recall(name='recall'),
-                        # MatthewsCorrelationCoefficient(num_classes=2, name='mcc'), # unsuppored sparse labels
-                        # F1Score(num_classes=2, name="f1score"),
-                        ]
-    else:
-        return ['accuracy', 'precision', 'recall', 'auc', 'ece', 'mcc']
+    return ['accuracy', 'precision', 'recall', 'auc', 'ece', 'mcc']
 
 def class_weights(y):
     """Calculates inverse of ratio of class' examples in train dataset
@@ -116,10 +93,11 @@ def labels_to_categorical(y):
         true labels in categorical format : example [1,0,0]
     '''
     classes = np.unique(y)
+    lb = LabelBinarizer()
     if np.isin(0, classes):
-        y = to_categorical(y)
+        y = lb.fit_transform(y)
     else:
-        y = to_categorical(y - 1)
+        y = lb.fit_transform(y - 1)
     return y
 
 def fit_scale(X, axis=0):
@@ -349,7 +327,7 @@ def predict_trial(epochs, y, desc, model, n_char, commands):
         labels 1/0 :  1 target, 0 non target
     desc : 1d array (trials)
         events in order of flashing
-    model : trained Keras/Pytorch model
+    model : trained Pytorch model
         trained model for prediction.
     n_char : int
         count of characters spelled in session
@@ -369,17 +347,13 @@ def predict_trial(epochs, y, desc, model, n_char, commands):
     
     labels = []
     cmds = []
-    model_type = model_lib(type(model))
     for j in iterations:
         idx = range(j, j+trials)
         one_trial = epochs[idx, :, :]
-        if model_type == "keras":
-            scores = model.predict(one_trial)
-        else:
-            norm = True
-            if not isinstance(model.mu, np.ndarray):
-                norm = False
-            scores = model.predict(one_trial, normalize=norm)
+        norm = True
+        if not isinstance(model.mu, np.ndarray):
+            norm = False
+        scores = model.predict(one_trial, normalize=norm)
         one_desc = desc[idx]
         if y.ndim == 1:
             target_idx = np.where(y[idx] == 1)
@@ -396,7 +370,7 @@ def predict_trial(epochs, y, desc, model, n_char, commands):
     return accuracy_score(labels, cmds)*100
 
 def char_rate_epoch(epochs, desc, model, phrase, n_char, paradigm, flashes=None):
-    """_summary_
+    """Calculate the character recognition rate per trial repetition.
 
     Parameters
     ----------
@@ -404,7 +378,7 @@ def char_rate_epoch(epochs, desc, model, phrase, n_char, paradigm, flashes=None)
         epoched EEG session
     desc : 1d array (trials)
         events in order of flashing
-    model : trained Keras/Pytorch model
+    model : trained Pytorch model
         trained model for prediction.
     phrase : 1d array of int
         correct phrase to spell by subject
@@ -452,24 +426,20 @@ def predict_fixed_trials(epochs, model):
     ----------
     epochs : ndarray (trials x channels x samples)
         epoched EEG session
-    model : trained Keras/Pytorch model
+    model : trained Pytorch model
         trained model for prediction.
 
     Returns
     -------
     scores : 1d array (trials)
         probability score for class target 1.
-    """
-    model_type = model_lib(type(model))
-    if model_type == "keras":
-        scores = model.predict(epochs)
-    else:
-        norm = True
-        if not isinstance(model.mu, np.ndarray):
-            norm = False
-        scores = model.predict(epochs, normalize=norm)
-        if scores.ndim > 1:
-            scores = scores[:, 1]
+    """   
+    norm = True
+    if not isinstance(model.mu, np.ndarray):
+        norm = False
+    scores = model.predict(epochs, normalize=norm)
+    if scores.ndim > 1:
+        scores = scores[:, 1]
     return scores
 
 def predict_flexible_trials(epochs, desc, model, paradigm, trials):
@@ -484,7 +454,7 @@ def predict_flexible_trials(epochs, desc, model, paradigm, trials):
         epoched EEG session
     desc : 1d array (trials)
         events in order of flashing
-    model : trained Keras/Pytorch model
+    model : trained Pytorch model
         trained model for prediction.
     paradigm : paradigm instance
         experiment information
@@ -509,17 +479,13 @@ def predict_flexible_trials(epochs, desc, model, paradigm, trials):
     desc_flat = []
     repetitions = np.min(trials)
     max_step = repetitions * paradigm.stimuli 
-    model_type = model_lib(type(model))
     for tr in np.nditer(trials):    
         step = (paradigm.stimuli * tr) + k
-        args = np.arange(k, step)
-        if model_type == "keras":
-            sc = model.predict(epochs[args, :, :])[:max_step]
-        else:
-            norm = True
-            if not isinstance(model.mu, np.ndarray):
-                norm = False
-            sc = model.predict(epochs[args, :, :], normalize=norm)[:max_step]        
+        args = np.arange(k, step)        
+        norm = True
+        if not isinstance(model.mu, np.ndarray):
+            norm = False
+        sc = model.predict(epochs[args, :, :], normalize=norm)[:max_step]        
         scores.append(sc)        
         desc_flat.append(desc.squeeze()[args][:max_step])
         k = step

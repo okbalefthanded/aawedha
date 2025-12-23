@@ -14,7 +14,7 @@ class Train(Evaluation):
                        val_size=0.1, 
                        selection=None, 
                        save_model=False, 
-                       model_format='TF', 
+                       model_format='pth', 
                        save_history=False, 
                        folder=None,
                        new_labels=None, 
@@ -34,7 +34,7 @@ class Train(Evaluation):
             if True, save model after training as a the model_format specified, by default False
 
         model_format : str, optional
-            model saving format either TF SavedModel of Keras HDF5, by default TF SavedModel.
+            model saving format pth.
                 
         save_history : bool, optional
             if True, save model's training history as a pandas DataFrame. by default False
@@ -64,7 +64,7 @@ class Train(Evaluation):
 
         self.score.results = self._train(selection, val_size)
 
-        # save model in HDF5 format or SavedModel
+        # save model in Pth format 
         if save_model:
           self.save_model(folderpath=folder, modelformat=model_format)
 

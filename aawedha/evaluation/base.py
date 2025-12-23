@@ -4,18 +4,17 @@ from aawedha.evaluation.evaluation_utils import save_metric_csv
 from aawedha.evaluation.evaluation_utils import class_weights
 from aawedha.evaluation.mixup import build_mixup_dataset
 from aawedha.evaluation.checkpoint import CheckPoint
-from aawedha.models.utils_models import load_model
+from aawedha.trainers.utils_models import load_model
 from aawedha.utils.utils import make_folders, cwd
 from aawedha.evaluation.settings import Settings
 from aawedha.utils.utils import get_gpu_name
 from aawedha.utils.utils import make_dir
-from aawedha.models.base_model import Learner
+from aawedha.trainers.base_model import Learner
 from aawedha.utils.utils import get_device
 from aawedha.evaluation.score import Score
 from aawedha.utils.utils import time_now
 from aawedha.utils.logger import Logger
 from aawedha.io.base import DataSet
-import tensorflow as tf
 import pandas as pd
 import numpy as np
 import datetime
@@ -35,7 +34,7 @@ class Evaluation:
         dataset : DataSet instance
             a dataset from the available sets available to run evaluation on
 
-        model : Keras Model instance
+        model : TorchModel instance
             the model to train/test on the dataset
 
         settings.partition : list of 2 or 3 integers
@@ -103,16 +102,16 @@ class Evaluation:
             subjects, the sum of both, otherwise.
 
         model_history : list
-            Keras history callbacks
+            history callbacks
 
         model_config : dict of model configurations,
         used in compile() and fit().
             compile :
             - loss : str : loss function to optimize during training
                 - default  : 'categorical_crossentropy'
-            - optimizer : str | Keras optimizer instance : SGD optimizer
+            - optimizer : str | optimizer instance : SGD optimizer
                 - default : 'adam'
-            - metrics : list : str | Keras metrics : training metrics
+            - metrics : list : str |  metrics : training metrics
                 - default : multiclass tasks ['accuracy']
                             binary tasks ['accuracy', AUC()]
             fit :
@@ -120,7 +119,7 @@ class Evaluation:
                 - default : 64
             - epochs : int : training epochs
                 - default : 300
-            - callbacks : list : Keras model callbacks
+            - callbacks : list : model callbacks
                 - default : []
 
         model_compiled : bool, flag for model state
@@ -129,13 +128,13 @@ class Evaluation:
     """
 
     def __init__(self, dataset=None, model=None, model_config=None, partition=None, 
-                 folds=None, verbose=2, engine="pytorch", normalize=True, log=False,   
+                 folds=None, verbose=2, normalize=True, log=False,   
                  log_level='debug', log_name=None, debug=False):
         """
         """
         self.dataset  = dataset
-        self.settings = Settings(partition, folds, engine, verbose, 0, debug)        
-        self.learner  = Learner(model=None, normalize=normalize, model_type=engine)
+        self.settings = Settings(partition, folds, verbose, 0, debug)        
+        self.learner  = Learner(model=None, normalize=normalize)
         if model and model_config:
             self.set_model(model, model_config)        
         self.score    = Score()      
@@ -147,9 +146,9 @@ class Evaluation:
         self.log_dir = None 
 
     def __str__(self):
-        name = self.__class__.__name__
+        name  = self.__class__.__name__
         model = self.learner.model.name if self.learner else 'NotSet'
-        info = (f'Type: {name}',
+        info  = (f'Type: {name}',
                 f'DataSet: {str(self.dataset)}',
                 f'Model: {model}')
         return '\n'.join(info)
@@ -189,9 +188,6 @@ class Evaluation:
         instance of evaluation
         """
         chk = self.reset(chkpoint=True)
-        device = get_device(self.learner.config)
-        if device == 'TPU':
-            self._compile_model()
         if run:
             self.run_evaluation(pointer=chk, check=True, savecsv=savecsv)
         return self
@@ -211,7 +207,7 @@ class Evaluation:
 
         Parameters
         ----------
-        model : Keras model
+        model : TorchModel instance
             model to be trained and evaluated, selected from the available ones.
             default : None
 
@@ -219,9 +215,9 @@ class Evaluation:
             compile :
             - loss : str : loss function to optimize during training
                 - default  : 'categorical_crossentropy'
-            - optimizer : str | Keras optimizer instance : SGD optimizer
+            - optimizer : str | optimizer instance : SGD optimizer
                 - default : 'adam'
-            - metrics : list : str | Keras metrics : training metrics
+            - metrics : list : str | metrics : training metrics
                 - default : multiclass tasks ['accuracy']
                             binary tasks ['accuracy', AUC()]
             fit :
@@ -229,7 +225,7 @@ class Evaluation:
                 - default : 64
             - epochs : int : training epochs
                 - default : 300
-            - callbacks : list : Keras model callbacks
+            - callbacks : list : model callbacks
                 - default : []
             default : empty dict, attributed will be set at compile/fit calls
         """
@@ -238,18 +234,15 @@ class Evaluation:
             self.settings.fit_config = model_config['fit']
             if 'paradigm_metrics' in model_config['compile']:
                 self.settings.set_paradigm_metrics(model_config['compile']['paradigm_metrics'])
-        self.learner.set_model(model, self.settings.engine)
+        self.learner.set_model(model)
         # self.learner.model = model
         # self.learner.name = model.name
-        self.learner.set_type()
         self.reset_weights()   
-        if self.settings.engine == 'pytorch':
-            self.learner.model.set_output_shape() 
+        self.learner.model.set_output_shape() 
 
-    def save_model(self, folderpath=None, filepath=None, modelformat='TF'):
-        """Save trained model in HDF5 format or SavedModel TF format
-        Uses the built-in save method in Keras Model object.
-        model name will be: folderpath/modelname_paradigm_dataset.h5
+    def save_model(self, folderpath=None, filepath=None, modelformat='pth'):
+        """Save trained model in PyTorch  format
+        model name will be: folderpath/modelname_paradigm_dataset.pth
 
         Parameters
         ----------
@@ -263,29 +256,17 @@ class Evaluation:
 
         modelformat : str
             model's file format 
-            TF:  Tensorflow SavedFormat
-            H5:  Keras h5py format
             PTH: PyTorch format
         """
-        device = get_device(self.learner.config)
         if not os.path.isdir('trained'):
             os.mkdir('trained')
         if not folderpath:
-            folderpath = 'trained/'
-
-        # filepath = folderpath + '/' + '_'.join([self.model.name, prdg, dt, '.h5'])        
+            folderpath = 'trained/'    
         if not filepath:
             prdg = self.dataset.paradigm.title
             dt = self.dataset.title
             filepath = os.path.join(folderpath, '_'.join([self.learner.name, prdg, dt]))
-        if self.settings.engine == "keras":
-            if modelformat == 'h5' or device == 'TPU':
-                # due to cloud TPUs restrictions, we force
-                # model saving to H5 format. used for long
-                # benchmarking evaluations
-                filepath = f"{filepath}.h5"
-        else:
-            filepath = f"{filepath}.pth" # pytorch model
+        filepath = f"{filepath}.pth" # pytorch model
         self.learner.save(filepath)            
 
     def log_experiment(self):
@@ -356,7 +337,7 @@ class Evaluation:
                                   history=chk.learner.history, 
                                   normalize=chk.learner.do_normalize, 
                                   name=chk.learner.name, 
-                                  model_type=chk.learner.type)
+                                  )
             self.settings = chk.settings
             self.settings.current = chk.current
             self.score.results = chk.rets            
@@ -386,7 +367,7 @@ class Evaluation:
         bool : True if number of subjects in training data equals the number of
         subjects in test data False otherwise
         """
-        test_epochs = 0
+        test_epochs  = 0
         train_epochs = len(self.dataset.epochs)
         if hasattr(self.dataset, 'test_epochs'):
             test_epochs = len(self.dataset.test_epochs)
@@ -443,7 +424,7 @@ class Evaluation:
 
         Returns
         -------
-        history : Keras history callback
+        history : history callback
             the model's loss and metrics performances per epoch
 
         probs : 2d array (n_examples x n_classes)
@@ -456,12 +437,6 @@ class Evaluation:
         history = {}
         probs, perf = None, None
         batch, ep, clbs, aug = self._get_fit_configs()
-        device = get_device(self.learner.config)
-        '''
-        if device != 'CPU':
-            X_train, X_test, X_val = self._transpose_split(
-                [X_train, X_test, X_val])
-        '''
         #
         self.reset_weights()
         if self.learner.do_normalize:
@@ -476,21 +451,11 @@ class Evaluation:
         else:            
             if self.learner.do_normalize:
                 X_val = self.learner.normalize(X_val)
-            val = (X_val, Y_val)
-        
-        spe = None
-        if device == 'TPU':
-            spe = X_train.shape[0] // batch
-            '''
-            if format == 'channels_first':
-                spe = X_train.shape[0] // batch
-            else:
-                spe = X_train.shape[-1] // batch
-            '''
+            val = (X_val, Y_val)        
                 
         if aug:
             X_train, val = build_mixup_dataset(X_train, Y_train, X_val, Y_val, aug, 
-                                               batch, self.settings.engine)
+                                               batch)
             if isinstance(Y_test, np.ndarray):      
                 Y_test = labels_to_categorical(Y_test)
             #
@@ -500,7 +465,6 @@ class Evaluation:
                                    y=Y_train,
                                    batch_size=batch,
                                    epochs=ep,
-                                   steps_per_epoch=spe,
                                    verbose=self.settings.verbose,
                                    validation_data=val,
                                    class_weight=cws,
@@ -531,8 +495,8 @@ class Evaluation:
         """
         eval_perf = []
         X_train, Y_train = split['X_train'], split['Y_train']
-        X_test, Y_test   = split['X_test'], split['Y_test']
-        X_val, Y_val     = split['X_val'], split['Y_val']
+        X_test, Y_test   = split['X_test'],  split['Y_test']
+        X_val, Y_val     = split['X_val'],   split['Y_val']
         #
         cws = class_weights(Y_train)
         # evaluate model on subj on all folds
@@ -557,16 +521,16 @@ class Evaluation:
         ep : int
             epochs number
         clbks : list
-            keras callbacks added to be watched during training
+            callbacks added to be watched during training
         """
         batch, ep, clbks, aug = self.settings.get_fit_configs()
         if self.settings.debug:
             # logdir = os.path.join("aawedha/debug", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-            debug_dir = os.path.join("aawedha", "debug")
+            debug_dir    = os.path.join("aawedha", "debug")
             self.log_dir = os.path.join(debug_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
             if not os.path.isdir(self.log_dir):
                 os.mkdir(self.log_dir)
-            clbks.append(tf.keras.callbacks.TensorBoard(self.log_dir))        
+            # clbks.append(tf.keras.callbacks.TensorBoard(self.log_dir))        
         return batch, ep, clbks, aug #, format
 
     def _get_model_configs_info(self):
@@ -627,18 +591,12 @@ class Evaluation:
         device = get_device(self.learner.config)
         classes = self._get_classes()
         # khsara, _, _, _ = self.learner.get_compile_configs(device, classes)
-        cfgs = self.learner.get_compile_configs(device, classes)
-        khsara = cfgs[0]
-        if self.settings.engine == 'keras' and type(khsara) != str:
-            loss_config = khsara.get_config()
-            if khsara.name != 'sparse_categorical_crossentropy' and 'label_smoothing' in loss_config:
-                if loss_config['label_smoothing'] != 0.0:
-                    convert_label = True
-        elif self.settings.engine == 'pytorch':
-            if self.learner.output_shape() > 1:
-                if Y_train.ndim > 1:
-                    if Y_train.shape[1] == 2:
-                        convert_label = True              
+        # cfgs = self.learner.get_compile_configs(device, classes)
+        # khsara = cfgs[0]
+        if self.learner.output_shape() > 1:
+            if Y_train.ndim > 1:
+                if Y_train.shape[1] == 2:
+                    convert_label = True              
                   
         if convert_label:
             Y_train = labels_to_categorical(Y_train)
@@ -798,7 +756,7 @@ class Evaluation:
         columns.extend(['Avg', 'Std', 'Sem'])
         date = time_now()
         results = self.score.results
-        model = self.learner.name
+        model   = self.learner.name
         for metric in metrics:
             if metric == 'viz':
                 continue
