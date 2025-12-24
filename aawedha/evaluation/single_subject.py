@@ -149,6 +149,7 @@ class SingleSubject(BenchMark):
         for fold in folds_range:
             split = self._split_set(x, y, op, fold, indie)
             split_perf = self._eval_split(split)
+            # Save model ???
             if self.settings.paradigm_metrics:
                 # TODO
                 paradigm_perf = self._eval_paradigm_metrics(split_perf['probs'], op)

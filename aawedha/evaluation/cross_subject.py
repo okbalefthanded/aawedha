@@ -120,6 +120,7 @@ class CrossSubject(BenchMark):
         """
         split = self._split_set(op)
         rets  = self._eval_split(split)
+        # Save model ???
         del split 
         # self.learner.reset_weights()
         return rets
