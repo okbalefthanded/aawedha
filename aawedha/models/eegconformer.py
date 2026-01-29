@@ -4,6 +4,8 @@
 # 31, 710–719 (2023). https://doi.org/10.1109/TNSRE.2022.3230250.
 # Code: https://github.com/eeyhsong/EEG-Conformer 
 #
+from aawedha.layers.utils_layers import calc_conv2d_output
+from aawedha.layers.utils_layers import calc_pool2d_output
 from aawedha.trainers.torchdata import reshape_input
 from einops.layers.torch import Rearrange, Reduce
 from einops import rearrange, reduce, repeat
@@ -18,13 +20,13 @@ import math
 # Convolution module
 # use conv to capture local features, instead of postion embedding.
 class PatchEmbedding(nn.Module):
-    def __init__(self, emb_size=40):
+    def __init__(self, Chans=15, emb_size=40):
         # self.patch_size = patch_size
         super().__init__()
 
         self.shallownet = nn.Sequential(
             nn.Conv2d(1, 40, (1, 25), (1, 1)),
-            nn.Conv2d(40, 40, (22, 1), (1, 1)),
+            nn.Conv2d(40, 40, (Chans, 1), (1, 1)),
             nn.BatchNorm2d(40),
             nn.ELU(),
             nn.AvgPool2d((1, 75), (1, 15)),  # pooling acts as slicing to obtain 'patch' along the time dimension as in ViT
@@ -46,7 +48,7 @@ class PatchEmbedding(nn.Module):
 class MultiHeadAttention(nn.Module):
     def __init__(self, emb_size, num_heads, dropout):
         super().__init__()
-        self.emb_size = emb_size
+        self.emb_size  = emb_size
         self.num_heads = num_heads
         self.keys = nn.Linear(emb_size, emb_size)
         self.queries = nn.Linear(emb_size, emb_size)
@@ -56,7 +58,7 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self, x: Tensor, mask: Tensor = None) -> Tensor:
         queries = rearrange(self.queries(x), "b n (h d) -> b h n d", h=self.num_heads)
-        keys = rearrange(self.keys(x), "b n (h d) -> b h n d", h=self.num_heads)
+        keys    = rearrange(self.keys(x), "b n (h d) -> b h n d", h=self.num_heads)
         values = rearrange(self.values(x), "b n (h d) -> b h n d", h=self.num_heads)
         energy = torch.einsum('bhqd, bhkd -> bhqk', queries, keys)
         if mask is not None:
@@ -83,7 +85,6 @@ class ResidualAdd(nn.Module):
         x += res
         return x
 
-
 class FeedForwardBlock(nn.Sequential):
     def __init__(self, emb_size, expansion, drop_p):
         super().__init__(
@@ -93,12 +94,10 @@ class FeedForwardBlock(nn.Sequential):
             nn.Linear(expansion * emb_size, emb_size),
         )
 
-
 class GELU(nn.Module):
     def forward(self, input: Tensor) -> Tensor:
         return input*0.5*(1.0+torch.erf(input/math.sqrt(2.0)))
-
-
+        
 class TransformerEncoderBlock(nn.Sequential):
     def __init__(self,
                  emb_size,
@@ -122,14 +121,13 @@ class TransformerEncoderBlock(nn.Sequential):
 
 
 class TransformerEncoder(nn.Sequential):
-    def __init__(self, depth, emb_size):
-        super().__init__(*[TransformerEncoderBlock(emb_size) for _ in range(depth)])
-
+    def __init__(self, depth, emb_size, num_heads=10):
+        super().__init__(*[TransformerEncoderBlock(emb_size, num_heads=num_heads) for _ in range(depth)])
 
 class ClassificationHead(nn.Sequential):
-    def __init__(self, emb_size, n_classes):
+    def __init__(self, emb_size, hidden, n_classes):
         super().__init__()
-
+        
         # global average pooling
         self.clshead = nn.Sequential(
             Reduce('b n e -> b e', reduction='mean'),
@@ -137,13 +135,14 @@ class ClassificationHead(nn.Sequential):
             nn.Linear(emb_size, n_classes)
         )
         self.fc = nn.Sequential(
-            nn.Linear(2440, 256),
+            # nn.Linear(2440, 256),
+            nn.Linear(hidden, 256),
             nn.ELU(),
             nn.Dropout(0.5),
             nn.Linear(256, 32),
             nn.ELU(),
             nn.Dropout(0.3),
-            nn.Linear(32, 4)
+            nn.Linear(32, n_classes)
         )
 
     def forward(self, x):
@@ -153,12 +152,15 @@ class ClassificationHead(nn.Sequential):
 
 
 class Conformer(nn.Module):
-    def __init__(self, emb_size=40, depth=6, n_classes=4, **kwargs):
-        super().__init__()
-        
-        self.embedding = PatchEmbedding(emb_size)
-        self.transformerEncoder = TransformerEncoder(depth, emb_size)
-        self.classificationHead = ClassificationHead(emb_size, n_classes)
+    def __init__(self, nb_classes=4, Chans=15, Samples=512, emb_size=40, depth=6, num_heads=10, **kwargs):
+        super().__init__() 
+        h, w = calc_conv2d_output(input_size=(Chans, Samples), kernel_size=(1, 25), stride=(1, 1)) # PathEmbedding conv
+        h, w = calc_conv2d_output(input_size=(h, w), kernel_size=(Chans, 1), stride=(1, 1))
+        h, w = calc_pool2d_output(input_size=(h, w), kernel_size=(1, 75), stride=(1, 15))
+        hidden = 40 * w # 40: number of filters in PathEmbedding
+        self.embedding = PatchEmbedding(Chans, emb_size)
+        self.transformerEncoder = TransformerEncoder(depth, emb_size, num_heads=num_heads)
+        self.classificationHead = ClassificationHead(emb_size, hidden, nb_classes)
 
     def forward(self, x):
         x = reshape_input(x)

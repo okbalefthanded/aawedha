@@ -553,8 +553,8 @@ def plot_rsigned(data=None, subject=None, channel='Cz'):
                     col.plot(t, r[:, k])
                     col.set_title(f'Sgn r² at {data.ch_names[k]}')
                     col.legend(legend)
-                    col.xlabel(xlabel)
-                    col.ylabel(ylabel)
+                    col.set_xlabel(xlabel)
+                    col.set_ylabel(ylabel)
                     col.set_ylim((ymin, ymax))
                     k += 1
         fig.tight_layout()
