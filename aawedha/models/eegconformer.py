@@ -152,8 +152,9 @@ class ClassificationHead(nn.Sequential):
 
 
 class Conformer(nn.Module):
-    def __init__(self, nb_classes=4, Chans=15, Samples=512, emb_size=40, depth=6, num_heads=10, **kwargs):
+    def __init__(self, nb_classes=4, Chans=15, Samples=512, emb_size=40, depth=6, num_heads=10, name="EEGConformer", **kwargs):
         super().__init__() 
+        self.name = name
         h, w = calc_conv2d_output(input_size=(Chans, Samples), kernel_size=(1, 25), stride=(1, 1)) # PathEmbedding conv
         h, w = calc_conv2d_output(input_size=(h, w), kernel_size=(Chans, 1), stride=(1, 1))
         h, w = calc_pool2d_output(input_size=(h, w), kernel_size=(1, 75), stride=(1, 15))

@@ -1,3 +1,4 @@
+from unicodedata import name
 from aawedha.trainers.torch_inits import initialize_Glorot_uniform
 from aawedha.trainers.torch_builders import build_callbacks
 from aawedha.trainers.torch_builders import build_scheduler
@@ -427,9 +428,18 @@ class TorchModel(nn.Module):
                 self.output_shape = self.module._modules[last_layer].out_features            
             elif not hasattr(self.module._modules[last_layer], 'module'):
                 # Last layer as a Sequential module
-                inside_last_layer = self._get_last_layer(self.module._modules[last_layer])    
-                self.features_dim = self.module._modules[last_layer]._modules[inside_last_layer].in_features
-                self.output_shape = self.module._modules[last_layer]._modules[inside_last_layer].out_features
+                # inside_last_layer = self._get_last_layer(self.module._modules[last_layer])    
+                # self.features_dim = self.module._modules[last_layer]._modules[inside_last_layer].in_features
+                # self.output_shape = self.module._modules[last_layer]._modules[inside_last_layer].out_features
+                # alternative solution, not toroughly tested
+                for name, mod in self.module.named_modules():
+                    if not list(mod.children()) and hasattr(mod, "out_features"):
+                        # print(name, mod.in_features, mod.out_features)
+                        feat_dim = mod.in_features
+                        out_shape = mod.out_features
+                self.features_dim = feat_dim
+                self.output_shape = out_shape
+
             else:
                 # Linear with TorchLayers regularizes
                 self.features_dim = self.module._modules[last_layer].module.in_features

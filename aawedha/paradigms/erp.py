@@ -4,9 +4,6 @@
 """
 from aawedha.paradigms.base import Paradigm
 
-
-
-
 class ERP(Paradigm):
     """
     Attributes
@@ -43,9 +40,11 @@ class ERP(Paradigm):
     """
 
     def __init__(self, title='ERP', control='Sync', stimulation=100,
-                 break_duration=100, repetition=10, stimuli=12, phrase='12345',
+                 break_duration=100, repetition=10, online_repetition=None, stimuli=12, phrase='12345',
                  stim_type='flash', flashing_mode='SC', speller=[]):
         super(ERP, self).__init__(title, control, stimulation, break_duration,
                                   repetition, stimuli, stim_type, phrase)
+        self.online_repetition = online_repetition
         self.flashing_mode = flashing_mode
         self.speller = speller
+    

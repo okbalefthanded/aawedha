@@ -203,7 +203,8 @@ class DataSet(metaclass=ABCMeta):
         with open(fname, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)     
 
-    def load_set(self, file_name=None, subjects=None, ch=None):
+    @staticmethod
+    def load_set(file_name=None, subjects=None, ch=None):
         """Load saved DataSet as serialized object
         if subjects are specified, it will return the selected subject(s) data only.
         if ch is specified, a subset of selected channels will be returned

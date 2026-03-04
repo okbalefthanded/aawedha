@@ -8,6 +8,7 @@ from aawedha.utils.network import download_file
 from scipy.io import loadmat
 from pathlib import Path
 import numpy as np
+import warnings
 import glob
 import os
 
@@ -364,18 +365,22 @@ class OpenBMIERP(DataSet):
                                    'PO4'],
                          fs=1000,
                          doi='https://doi.org/10.1093/gigascience/giz002',
-                         url="parrot.genomics.cn")
+                         # url="parrot.genomics.cn"
+                         url="https://s3.ap-northeast-1.wasabisys.com/gigadb-datasets/live/pub/10.5524/100001_101000/100542"
+                         )
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
         self.sessions = 1980  # index of last trial in a session
         self.test_sessions = 2160  # index of last trial in a session
+        self.random_sequence = None
 
     def generate_set(self, load_path=None,
                      download=False,
                      epoch=[0., .7],
                      band=[1., 10.],
                      order=2, 
+                     baseline=0.3,
                      save=True, 
                      save_folder=None,
                      fname=None,
@@ -423,15 +428,17 @@ class OpenBMIERP(DataSet):
             self.fs = self.fs // int(downsample)
 
         epochs, y, events = self.load_raw(load_path, 'train', epoch,
-                                          band, order, channels,
+                                          band, order, channels, baseline,
                                           downsample                        
                                           )
         self.epochs = epochs
         self.y = y
         self.events = events
 
+
+
         epochs, y, events = self.load_raw(load_path, 'test', epoch,
-                                          band, order, channels,
+                                          band, order, channels, baseline,
                                           downsample                                       
                                           )
         self.test_epochs = epochs
@@ -445,9 +452,14 @@ class OpenBMIERP(DataSet):
         self.paradigm = self._get_paradigm()
         if save:
             self.save_set(save_folder, fname)
+        random_sequence_path = f"{load_path}/random_cell_order.mat"
+        if os.path.isfile(random_sequence_path):
+            self.random_sequence = loadmat(random_sequence_path)['rc_order'].squeeze()
+        else:
+            warnings.warn("Random sequence file not found. Add it later!.")
 
     def load_raw(self, path=None, mode='', epoch_duration=[0., .7],
-                 band=[1., 10.], order=2, ch=None,
+                 band=[1., 10.], order=2, ch=None, baseline=0.3,
                  downsample=None
                  ):
         """Read and process raw data into structured arrays
@@ -500,7 +512,11 @@ class OpenBMIERP(DataSet):
         for subj in range(1, n_subjects+1):
             x_subj, y_subj, events_subj = [], [], []
             for sess in sessions:
-                f = glob.glob(f'{path}/{sess}/s{subj}/*ERP.mat')[0]                
+                f = glob.glob(f'{path}/{sess}/s{subj}/*ERP.mat')           
+                if not f:
+                    f = glob.glob(f'{path}/{sess}/*{subj}*ERP.mat')[0]
+                else:
+                    f = f[0]
                 data = loadmat(f)
                 data = data['EEG_ERP_'+mode]
                 # eeg = data[0][0][0][::stride, :, ch_index].transpose((0, 2, 1))
@@ -508,7 +524,7 @@ class OpenBMIERP(DataSet):
                 cnt = bandpass(data['x'][0][0][::stride, ch_index], band, self.fs, order)                
                 mrk = data['t'][0][0].squeeze() // stride
                 eeg = eeg_epoch(cnt, epoch_duration, mrk,
-                                self.fs, baseline_correction=True, baseline=0.2)
+                                self.fs, baseline_correction=True, baseline=baseline)
                 y = data['y_dec'][0][0].squeeze().astype(int)
                 y[y==2] = 0
                 ev = [elm.item() for elm in data['y_class'][0][0].squeeze().tolist()]                
@@ -527,7 +543,7 @@ class OpenBMIERP(DataSet):
         events = np.array(events).squeeze()
         return X, Y, events
 
-    def download_raw(self, store_path):
+    def download_raw_legacy(self, store_path):
         """Download raw data from dataset repo url and stored it in a folder.
 
         Parameters
@@ -549,6 +565,58 @@ class OpenBMIERP(DataSet):
                         continue
                 network.download_ftp_folder(ftp_client, folder, path, pattern="*ERP.mat")
 
+    def download_raw(self, store_path):
+        """Download raw data from dataset repo url and stored it in a folder.
+
+        Parameters
+        ----------
+        store_path : str, 
+            folder path where raw data will be stored, by default None. data will be stored in working path.
+        """
+        # urls = []
+        store_path = Path(store_path)
+        urls = self._get_urls()
+        make_dir(store_path)        
+        timeout = (3, 30)
+        sessions = ['session1', 'session2']
+        for i, sess in enumerate(sessions):            
+            make_dir(store_path / sess)  
+            download_file(urls[sess], store_path / sess, timeout=timeout)    
+    
+    def already_exists(self, folder):
+        """Check if the dataset already exists in the specified folder.
+        Parameters
+        ---------- 
+        folder : str
+            folder path where to check for dataset existence
+        Returns
+        -------
+        bool
+            True if dataset already exists, False otherwise
+        """
+        sessions = ['session1', 'session2']
+        folder = Path(folder)
+        files_count = 0
+        for sess in sessions:
+            files_count += count_files_in_folder(folder / sess)
+        
+        if files_count >= 108:
+            return True
+        return False
+
+    def _get_urls(self):
+        """Get urls for downloading raw data.
+        """
+        urls = {}
+        sessions = ['session1', 'session2']
+        for i, sess in enumerate(sessions):            
+            tmp = []
+            for subj in range(1, 55):
+                tmp.append(f"{self.url}/{sess}/s{subj}/sess{i+1:02}_subj{subj:02}_EEG_ERP.mat")
+            urls[sess] = tmp
+        return urls
+    
+    
     @staticmethod
     def _position_to_event(position):
         """
