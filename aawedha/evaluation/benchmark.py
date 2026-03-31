@@ -1,6 +1,10 @@
+from aawedha.paradigms.utils_paradigms import phrase_from_dataset
+from aawedha.evaluation.evaluation_utils import aggregate_results
 from aawedha.evaluation.checkpoint import CheckPoint
 from aawedha.evaluation.base import Evaluation
 from aawedha.io.base import DataSet
+import numpy as np
+import torch
 import abc
 
 
@@ -158,14 +162,14 @@ class BenchMark(Evaluation):
         
         return operations, pointer
     
-    def _eval_paradigm_metrics(self, probs, op):
+    def _eval_paradigm_metrics(self, perf, op):
         """Evaluate paradigm specific metrics like spelling rate
         for ERP based experiments.
 
         Parameters
         ----------
-        probs : ndarray : [batch, N] 
-            model's output/probabilities of classes.
+        perf : dict of metrics  
+            performance of an evaluation on the dataset.
         op : int
             Fold/subject index to be evaluated.
 
@@ -177,8 +181,52 @@ class BenchMark(Evaluation):
         pm = {}
         if self.settings.paradigm_metrics:
             for metric in self.settings.paradigm_metrics:
-                pm[metric] = self.settings.paradigm_metrics[metric](probs, op, self.dataset) 
-        return pm        
+                if metric == "itr":
+                    continue # postpone itr calculation after accuracy/spelling rate assignment
+                pm[metric] = self.settings.paradigm_metrics[metric](perf["probs"], op, self.dataset) 
+        # 
+        if "itr" in self.settings.paradigm_metrics:
+            if "spelling_rate" in self.settings.paradigm_metrics:
+                p = pm["spelling_rate"]
+            else:
+                p = perf["accuray"]
+            pm["itr"] = self.settings.paradigm_metrics["itr"](p, op, self.dataset)        
+        return pm     
+
+    def _metrcis_multiple_sequence(self, split_perf, op):
+        """Calculate evaluation metrics for ERP paradigm or
+        any paradigm that requires mutiple trials
+
+        Parameters
+        ----------
+        split_perf : dict
+            initial performance, contains total probabilities and y_test.
+        op : int
+            operation index, wether a subject or fold
+        Returns
+        -------
+        split_perf : dict
+            a dict of metric values for ERP paradigm following sequence repetition
+        """
+        perfs = []
+        probs = split_perf["probs"].squeeze()
+        sequence = self.dataset.paradigm.get_repetitions()
+        stimuli  = self.dataset.paradigm.get_stimuli()
+        phrase   = phrase_from_dataset(self.dataset, op)
+        trials   = len(probs) // len(phrase) # n_char_test 
+        for seq in range(1, sequence + 1):
+            trials_per_char = stimuli * seq      
+            seq_index = [np.arange(i, i+trials_per_char)  for i in range(0, len(probs), trials)]
+            seq_index = np.concatenate(seq_index)
+            y_test = torch.tensor(split_perf["Y_test"][seq_index].squeeze())
+            p_test = torch.tensor(probs[seq_index]) 
+            perfs.append(self.learner.model._compute_metrics({}, p_test, y_test))
+        
+        perfs = aggregate_results(perfs)
+        perfs["probs"] = split_perf["probs"]
+        perfs["confusion"] = split_perf["confusion"]
+        perfs["viz"] = split_perf["viz"]
+        return perfs
 
     @abc.abstractmethod
     def _eval_operation(self, op):

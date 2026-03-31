@@ -149,6 +149,17 @@ class DataSet(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_urls(self):
+        """Fetch raw dataset files URL
+
+        Returns
+        -------
+        list of str
+            list of urls for raw dataset files
+        """
+        pass
+    
+    @abstractmethod
     def _get_paradigm(self):
         """Get datasets experimental paradigm
 
@@ -587,7 +598,11 @@ class DataSet(metaclass=ABCMeta):
         bool
             True if dataset exists, False otherwise.
         """
-        remote_size = remote_dataset_size(self.url)
+        urls = self.get_urls() 
+        # flatten urls list if it is a list of lists
+        if isinstance(urls[0], list):
+            urls = [item for sublist in urls for item in sublist]
+        remote_size = remote_dataset_size(urls)
         return folder_full(folder, remote_size)
     
     

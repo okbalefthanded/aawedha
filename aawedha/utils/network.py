@@ -1,3 +1,4 @@
+from pathlib import Path
 from io import BytesIO
 from tqdm import tqdm
 import requests
@@ -6,9 +7,129 @@ import pycurl
 import glob
 import os
 
+def download_file(
+    url: str | list[str],
+    folder: str | None = None,
+    timeout: tuple[int, int] = (3, 5),
+    n_chunk: int = 1000,
+    overwrite: bool = False,
+    resume: bool = True,
+) -> list[Path]:
+    """Download file(s) from url and store in folder.
+
+    Parameters
+    ----------
+    url : str | list[str]
+        File link or list of file links.
+    folder : str, optional
+        Folder path where to save file(s). Defaults to current working directory.
+    timeout : tuple[int, int], optional
+        (connect, read) timeout in seconds. Default is (3, 5).
+    n_chunk : int, optional
+        Streaming chunk count multiplier (chunk_size = n_chunk * 8192). Default is 1000.
+    overwrite : bool, optional
+        If True, re-download even if file exists. Default is False.
+    resume : bool, optional
+        If True, resume partially downloaded files. Default is True.
+
+    Returns
+    -------
+    list[Path]
+        List of paths to downloaded files.
+
+    Raises
+    ------
+    requests.HTTPError
+        If the server returns an error status code.
+    OSError
+        If the folder cannot be created or the file cannot be written.
+    """
+    urls = [url] if isinstance(url, str) else url
+    block_size = 8192
+    chunk_size = n_chunk * block_size
+    downloaded_files: list[Path] = []
+
+    # Create folder if it doesn't exist
+    output_dir = Path(folder) if folder else Path.cwd()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with requests.Session() as session:
+        for u in urls:
+            fname = output_dir / Path(u.split("?")[0].split("/")[-1])  # strip query params from filename
+
+            # --- Skip if already fully downloaded ---
+            if fname.exists() and not overwrite:
+                existing_size = fname.stat().st_size
+                try:
+                    head = session.head(u, timeout=timeout, allow_redirects=True)
+                    head.raise_for_status()
+                    remote_size = int(head.headers.get("content-length", -1))
+                    if remote_size < 0 or existing_size == remote_size:
+                        print(f" Already downloaded: {fname}")
+                        downloaded_files.append(fname)
+                        continue
+                except requests.RequestException:
+                    # Can't verify remote size — skip conservatively
+                    print(f" Already exists (could not verify size): {fname}")
+                    downloaded_files.append(fname)
+                    continue
+
+            # --- Resumable download support ---
+            resume_header = {}
+            initial_pos = 0
+            write_mode = "wb"
+
+            if resume and fname.exists() and not overwrite:
+                initial_pos = fname.stat().st_size
+                resume_header = {"Range": f"bytes={initial_pos}-"}
+                write_mode = "ab"
+                print(f" Resuming {fname.name} from byte {initial_pos:,}")
+
+            # --- Fetch ---
+            try:
+                resp = session.get(u, stream=True, timeout=timeout, headers=resume_header)
+                resp.raise_for_status()
+            except requests.HTTPError as e:
+                print(f" HTTP error for {u}: {e}")
+                continue
+            except requests.ConnectionError as e:
+                print(f" Connection error for {u}: {e}")
+                continue
+            except requests.Timeout:
+                print(f" Timed out connecting to {u}")
+                continue
+
+            total = int(resp.headers.get("content-length", 0)) + initial_pos
+
+            print(f"⬇ Downloading {u}\n  → {fname}  ({total / 1024**2:.1f} MB)")
+
+            try:
+                with (
+                    open(fname, write_mode) as f,
+                    tqdm(
+                        desc=fname.name,
+                        total=total,
+                        initial=initial_pos,
+                        unit="iB",
+                        unit_scale=True,
+                        unit_divisor=1024,
+                        dynamic_ncols=True,
+                    ) as bar,
+                ):
+                    for data in resp.iter_content(chunk_size=chunk_size):
+                        size = f.write(data)
+                        bar.update(size)
+            except OSError as e:
+                print(f"✘ Failed to write {fname}: {e}")
+                continue
+
+            downloaded_files.append(fname)
+            print(f" Saved: {fname}")
+
+    return downloaded_files
 
 # based on gist: https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51
-def download_file(url, folder=None, timeout=((3, 5)), n_chunk=1000):
+def download_file_legacy(url, folder=None, timeout=((3, 5)), n_chunk=1000):
     """Download file from url and stored in folder.
 
     Parameters
@@ -186,7 +307,7 @@ def download_pycurl(url, output_filename):
         c.close()
 
 
-def remote_dataset_size(url):
+def remote_dataset_size(urls):
     """Get the size of a remote dataset file.
 
     Parameters
@@ -201,14 +322,15 @@ def remote_dataset_size(url):
     int
         size of the remote file in bytes.
     """
+    size = 0
     with requests.Session() as session:
-        resp = session.get(url, stream=True)
-        if resp.status_code == 200:
-            return int(resp.headers.get('content-length', 0))
-        else:
-            print(f"Failed to retrieve size for {url}, status code: {resp.status_code}")
-            return 0
-
+        for url in urls:
+            resp = session.get(url, stream=True)
+            if resp.status_code == 200:
+                size += int(resp.headers.get('content-length', 0))
+            else:
+                print(f"Failed to retrieve size for {url}, status code: {resp.status_code}")       
+    return size
 
 def check_size(ftp, path, remote_folder):
     """Compare size of local file with remote one, used to re-download a file

@@ -38,13 +38,31 @@ class ERP(Paradigm):
     Methods
     -------
     """
-
-    def __init__(self, title='ERP', control='Sync', stimulation=100,
-                 break_duration=100, repetition=10, online_repetition=None, stimuli=12, phrase='12345',
-                 stim_type='flash', flashing_mode='SC', speller=[]):
-        super(ERP, self).__init__(title, control, stimulation, break_duration,
+    def __init__(self, 
+                 title='ERP', 
+                 control='Sync', 
+                 stimulation=100,
+                 break_duration=100, 
+                 repetition=10, 
+                 cue=0, 
+                 online_repetition=None, 
+                 stimuli=12, 
+                 phrase='12345',
+                 stim_type='flash', 
+                 flashing_mode='SC', 
+                 speller=[]):
+        super(ERP, self).__init__(title, control, stimulation, cue, break_duration,
                                   repetition, stimuli, stim_type, phrase)
         self.online_repetition = online_repetition
-        self.flashing_mode = flashing_mode
-        self.speller = speller
+        self.flashing_mode     = flashing_mode
+        self.speller = speller    
+
+    def get_repetitions(self):
+        sequence = self.repetition
+        if hasattr(self, "online_repetition"):
+            if self.online_repetition:
+                sequence = self.online_repetition
+        return sequence
     
+    def one_trial_duration(self):
+        return (self.cue + (self.stimulation + self.break_duration  * self.stimuli)) / 1000

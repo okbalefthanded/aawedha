@@ -110,8 +110,15 @@ class TorchModel(nn.Module):
         if verbose == 2:
             progress = pkbar.Kbar(target=len(train_loader), width=25, always_stateful=True)
 
-        hist = self._fit_loop(train_loader, validation_data, has_validation,
-                              epochs, batch_size, callbacks, hist, progress, verbose)              
+        hist = self._fit_loop(train_loader, 
+                              validation_data, 
+                              has_validation,
+                              epochs, 
+                              batch_size, 
+                              callbacks, 
+                              hist, 
+                              progress, 
+                              verbose)              
         
         history['history'] = hist
         return history

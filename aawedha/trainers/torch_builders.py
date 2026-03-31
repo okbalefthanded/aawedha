@@ -45,13 +45,15 @@ losses = {
     }
 
 available_metrics = {
+    'categorical_accuracy': CategoricalAccuracy,
     'accuracy': torchmetrics.Accuracy,
     'precision': torchmetrics.Precision,
     'recall': torchmetrics.Recall,
     'auc': torchmetrics.AUROC,
     'ece': torchmetrics.CalibrationError,
     'mcc': torchmetrics.MatthewsCorrCoef,
-    'categorical_accuracy': CategoricalAccuracy
+    "ap": torchmetrics.AveragePrecision, # AUPRC
+    "f1": torchmetrics.F1Score,    
     }
 
 custom_opt = {
@@ -66,8 +68,7 @@ custom_opt = {
     "AdamWSF": AdamWScheduleFree,
     "CAdamW": CAdamW,
     "CLion": CLion,
-    "Adopt": ADOPT
-               
+    "Adopt": ADOPT               
 }
 
 wrapped_opt = {

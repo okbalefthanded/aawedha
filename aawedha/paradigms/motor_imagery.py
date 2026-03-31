@@ -42,11 +42,12 @@ class MotorImagery(Paradigm):
                  control='Sync',
                  stimulation=3000,
                  break_duration=2000,
+                 cue=0,
                  repetition=72,
                  stimuli=4,
                  phrase=None,
                  stim_type='Arrow Cue/Beep'
                  ):
         super().__init__(title, control, stimulation,
-                         break_duration, repetition,
+                         cue, break_duration, repetition,
                          stimuli, stim_type, phrase)

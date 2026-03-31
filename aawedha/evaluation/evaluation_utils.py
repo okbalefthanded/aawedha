@@ -38,7 +38,7 @@ def metrics_binary():
     list
         a list of metrics used for Binary classifation.
     """
-    return ['accuracy', 'precision', 'recall', 'auc', 'ece', 'mcc']
+    return ['accuracy', 'precision', 'recall', 'auc', 'ece', 'mcc', 'ap', 'f1']
 
 def class_weights(y):
     """Calculates inverse of ratio of class' examples in train dataset
@@ -262,13 +262,14 @@ def measure_performance(Y_test, probs, perf, metrics_names):
         if probs.shape[1] > 1:
             probs = probs[:, 1]
         fp_rate, tp_rate, _ = roc_curve(Y_test, probs)
-        viz = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
+        viz    = {'fp_threshold': fp_rate, 'tp_threshold': tp_rate}
         results['viz'] = viz
         preds = np.zeros(len(probs))
         preds[probs.squeeze() > .5] = 1.
     else:
         preds = probs.argmax(axis=-1)
-    results['probs'] = probs
+    
+    results['probs']     = probs
     results['confusion'] = confusion_matrix(Y_test, preds)
     return results
 

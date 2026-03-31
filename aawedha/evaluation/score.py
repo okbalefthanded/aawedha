@@ -15,7 +15,7 @@ class Score(object):
 			metrics names
 		"""
 		self.results = {metric: [] for metric in metrics}
-		self.results['probs'] = []
+		self.results['probs']     = []
 		self.results['confusion'] = []
 
 	def update(self, results):
@@ -56,8 +56,7 @@ class Score(object):
 		-------
 		res : dict
 			updated dictionary with metrics mean fields.
-		"""
-		
+		"""		
 		metrics = list(res.keys())
 
 		if classes == 2:
@@ -66,7 +65,10 @@ class Score(object):
 		for metric in metrics:
 			if metric == 'probs' or metric == 'confusion':
 				continue
-			res[metric] = np.array(res[metric])
+			res[metric] = np.array(res[metric]) # FIXME
+			if res[metric].ndim == 3:
+				if res[metric].shape[1] == 1 and res[metric].shape[2] == 1:
+					res[metric] = res[metric].squeeze(axis=-1)
 			res[metric + '_mean'] = res[metric].mean()
 			res[metric + '_mean_per_fold'] = res[metric].mean(axis=0)
 			if np.array(res[metric]).ndim == 2:

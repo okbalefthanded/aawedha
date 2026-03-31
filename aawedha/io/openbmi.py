@@ -249,7 +249,7 @@ class OpenBMISSVEP(DataSet):
         """
         # urls = []
         store_path = Path(store_path)
-        urls = self._get_urls()
+        urls = self.get_urls()
         make_dir(store_path)        
         timeout = (3, 30)
         sessions = ['session1', 'session2']
@@ -371,8 +371,8 @@ class OpenBMIERP(DataSet):
         self.test_epochs = []
         self.test_y = []
         self.test_events = []
-        self.sessions = 1980  # index of last trial in a session
-        self.test_sessions = 2160  # index of last trial in a session
+        # self.sessions = 1980  # index of last trial in a session
+        # self.test_sessions = 2160  # index of last trial in a session
         self.random_sequence = None
 
     def generate_set(self, load_path=None,
@@ -386,6 +386,7 @@ class OpenBMIERP(DataSet):
                      fname=None,
                      channels=None,
                      downsample=None,
+                     session=1,
                      ):
         """Main method for creating and saving DataSet objects and files:
             - sets train and test (if present) epochs and labels
@@ -420,26 +421,26 @@ class OpenBMIERP(DataSet):
         downsample: int, optional
             down-sampling factor
             default : None
+        session: int | str, optional
+            session number(s) to be included in the dataset, default 1 (only session1). If 'all', both sessions will be included.
         """
         if download:
             self.download_raw(load_path)
 
         if downsample:
             self.fs = self.fs // int(downsample)
-
+        
         epochs, y, events = self.load_raw(load_path, 'train', epoch,
                                           band, order, channels, baseline,
-                                          downsample                        
+                                          downsample, session                        
                                           )
         self.epochs = epochs
         self.y = y
         self.events = events
 
-
-
         epochs, y, events = self.load_raw(load_path, 'test', epoch,
                                           band, order, channels, baseline,
-                                          downsample                                       
+                                          downsample, session                                       
                                           )
         self.test_epochs = epochs
         self.test_y = y
@@ -450,17 +451,19 @@ class OpenBMIERP(DataSet):
 
         self.subjects = self._get_subjects(n_subjects=54)
         self.paradigm = self._get_paradigm()
-        if save:
-            self.save_set(save_folder, fname)
+       
         random_sequence_path = f"{load_path}/random_cell_order.mat"
         if os.path.isfile(random_sequence_path):
             self.random_sequence = loadmat(random_sequence_path)['rc_order'].squeeze()
         else:
             warnings.warn("Random sequence file not found. Add it later!.")
 
+        if save:
+            self.save_set(save_folder, fname)
+
     def load_raw(self, path=None, mode='', epoch_duration=[0., .7],
                  band=[1., 10.], order=2, ch=None, baseline=0.3,
-                 downsample=None
+                 downsample=None, session=1,
                  ):
         """Read and process raw data into structured arrays
 
@@ -501,7 +504,8 @@ class OpenBMIERP(DataSet):
         if downsample:
             stride = int(downsample)
 
-        sessions = ['session1', 'session2']
+        # sessions = ['session1', 'session2']
+        sessions = [f"session{session}"]
         n_subjects = 54
         if isinstance(epoch_duration, list):
             epoch_duration = (np.array(epoch_duration) * self.fs).astype(int)
@@ -523,8 +527,12 @@ class OpenBMIERP(DataSet):
                 # eeg = bandpass(eeg, band, self.fs, order)
                 cnt = bandpass(data['x'][0][0][::stride, ch_index], band, self.fs, order)                
                 mrk = data['t'][0][0].squeeze() // stride
-                eeg = eeg_epoch(cnt, epoch_duration, mrk,
-                                self.fs, baseline_correction=True, baseline=baseline)
+                eeg = eeg_epoch(cnt, 
+                                epoch_duration, 
+                                mrk,
+                                self.fs, 
+                                baseline_correction=True, 
+                                baseline=baseline)
                 y = data['y_dec'][0][0].squeeze().astype(int)
                 y[y==2] = 0
                 ev = [elm.item() for elm in data['y_class'][0][0].squeeze().tolist()]                
@@ -604,7 +612,7 @@ class OpenBMIERP(DataSet):
             return True
         return False
 
-    def _get_urls(self):
+    def get_urls(self):
         """Get urls for downloading raw data.
         """
         urls = {}

@@ -15,7 +15,7 @@ class Essex(DataSet):
     """P300 Amplitude Dataset
 
     [1] L. Citi, R. Poli, C. Cinel, Documenting, modelling and exploiting P300 amplitude 
-    changes due to variable target delays in Donchin’s speller, J. Neural Eng. 7 (2010). 
+    changes due to variable target delays in Donchin's speller, J. Neural Eng. 7 (2010). 
     doi:10.1088/1741-2560/7/5/056006.
     """
     def __init__(self):
@@ -33,11 +33,11 @@ class Essex(DataSet):
                          doi='http://dx.doi.org/10.1088/1741-2560/7/5/056006',
                          url="https://archive.physionet.org/pn4/erpbci"
                          )
-        self.phrase = []
+        self.phrase  = []
         self.flashes = []
 
     def generate_set(self, load_path=None, download=False, channels=None, epoch=[0., .7], 
-                     band=[1.0, 10.0], order=2,  downsample=None, 
+                     band=[1.0, 10.0], order=2, baseline=0.2, downsample=None, 
                      save=True, save_folder=None, fname=None,
                      ):
         """Main method for creating and saving DataSet objects and files:
@@ -82,7 +82,7 @@ class Essex(DataSet):
 
         self.epochs, self.y, events, phrase = self.load_raw(load_path, channels,
                                                     epoch, band, order, 
-                                                    downsample
+                                                    baseline, downsample
                                                     )
         if channels:
             self.ch_names = [self.ch_names[ch] for ch in self._get_channels(channels)]
@@ -95,7 +95,8 @@ class Essex(DataSet):
             self.save_set(save_folder, fname)        
 
     def load_raw(self, path=None, channels=None, epoch=[0., .7], 
-                     band=[1.0, 5.0], order=2,  downsample=None):
+                     band=[1.0, 5.0], order=2,  baseline=0.2, 
+                     downsample=None):
         """Read and process raw data into structured arrays
 
         Parameters
@@ -139,6 +140,7 @@ class Essex(DataSet):
         for subj in subjects:
             if subj < 10:
                 subj = '0'+str(subj)
+            print(f"Loading files for subj {subj}")
             raw_names = sorted(glob.glob(f"{path}/s{subj}/*.edf"))
             raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_names])
             s = pd.Series(raw.annotations.description)            
@@ -147,7 +149,7 @@ class Essex(DataSet):
             # FROM SUBJECT 3, ANNOTATIONS DON'T CONTAIN #start
             # THE DATE OF RECORDING REPLACES #start
             # AND CONTAIN A NEW count: #counted20of20         
-            #starts = s[s.str.startswith("#start")]            
+            #  starts = s[s.str.startswith("#start")]            
             # targets = s[s.str.startswith("#Tgt")].str.split("_")
             # targets = [tar[0][-1] for tar in targets]            
             # starts = s[s.str.startswith("#start")]
@@ -157,7 +159,7 @@ class Essex(DataSet):
             counts = s[s.str.startswith("#counted")]
             if counts.empty:
                 start_index = np.where("#start" == raw.annotations.description)
-                end_index = np.where("#end" == raw.annotations.description)
+                end_index   = np.where("#end" == raw.annotations.description)
                 diff = (end_index[0]- start_index[0] -1) / 6
                 counts = diff.tolist()
             else:
@@ -191,8 +193,8 @@ class Essex(DataSet):
 
             # epos = Epochs(raw, events, ev_id, epoch[0], epoch[1], proj=True, picks=picks,
             #               baseline=(-0.2, 0), preload=True)
-            epos = Epochs(raw, events, ev_id, -0.2, epoch[1], proj=True, picks=picks,
-                           baseline=(-0.2, 0), preload=True)
+            epos = Epochs(raw, events, ev_id, -baseline, epoch[1], proj=True, picks=picks,
+                           baseline=(-baseline, 0), preload=True)
             epos.crop(epoch[0], epoch[1])
             if downsample:
                 epos.decimate(downsample)
@@ -270,6 +272,18 @@ class Essex(DataSet):
     def get_path(self):
         NotImplementedError
 
+    def get_urls(self):
+        """Return the list of urls for each subject files.
+
+        Returns
+        -------
+        list of lists
+            each list contains subject file urls
+        """
+        record_file = f"{self.url}/RECORDS"
+        download_file(record_file, ".")                
+        return self._get_files_urls(".")               
+
     def _get_files_urls(self, store_path):
         """Return each subject files url by reading RECORDS file.
 
@@ -287,13 +301,13 @@ class Essex(DataSet):
             recs = f.read()
         files = recs.split('\n')
         urls = []
-        for i in range(1,13):
+        for i in range(1, 13):
             tmp = []
+            if i < 10:
+                ptrn = f"s0{i}"
+            else:
+                ptrn = f"s{i}"                
             for f in files:
-                if i < 10:
-                    ptrn = f"s0{i}"
-                else:
-                    ptrn = f"s{i}"
                 if f.startswith(ptrn):
                     tmp.extend([f"{self.url}/{f}", f"{self.url}/{f}.event"])                
             urls.append(tmp)

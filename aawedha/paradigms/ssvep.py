@@ -43,11 +43,11 @@ class SSVEP(Paradigm):
     -------
     """
 
-    def __init__(self, title='SSVEP', control='Sync', stimulation=4000,
+    def __init__(self, title='SSVEP', control='Sync', stimulation=4000, cue=0,
                  break_duration=4000, repetition=10, stimuli=4, phrase='1234',
                  stim_type='ON_OFF', frequencies=['7.5', '8.57', '10', '12'],
                  phase=None, filename=None):
-        super().__init__(title, control, stimulation,
+        super().__init__(title, control, stimulation, cue,
                          break_duration, repetition,
                          stimuli, stim_type, phrase, filename)
         self.frequencies = frequencies

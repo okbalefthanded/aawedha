@@ -1,8 +1,23 @@
 from aawedha.evaluation.evaluation_utils import positive_class_prob
 from pyLpov.utils.utils import select_target
+from pyLpov.utils.utils import itr
 from sklearn.metrics import accuracy_score
 import numpy as np
 
+def phrase_from_dataset(dataset, op):
+    if hasattr(dataset, 'test_phrase'):
+        phrase = dataset.test_phrase[op]
+    else:
+        if len(dataset.paradigm.phrase) > 1:
+            phrase = dataset.paradigm.phrase[1]
+        else:
+            phrase = dataset.paradigm.phrase[0]
+    is_uniform = True
+    # TODO: check for dataset with no test epochs
+    if hasattr(dataset, "test_epochs"):
+        lengths = [epoch.shape[-1] for epoch in dataset.test_epochs]
+        is_uniform = np.unique(lengths).size == 1    
+    return phrase, is_uniform
 
 def select_decision(scores, events, paradigm):
     """Selected spelled character in a trial
@@ -24,18 +39,21 @@ def select_decision(scores, events, paradigm):
     Raises
     ------
     NotImplementedError
-        _description_
-    NotImplementedError
-        _description_
+
     """
-    if paradigm.flashing_mode == 'SC':
+    if paradigm.flashing_mode.lower() == 'sc':
         command, _ = select_target(scores, events, paradigm.speller)
-    elif paradigm.flashing_mode == 'RC':
+    elif paradigm.flashing_mode.lower() == 'rc':
         # TODO
         raise NotImplementedError
-    elif paradigm.flashing_mode == 'RSP':
+    elif paradigm.flashing_mode.lower() == 'rsp':
         # TODO
         raise NotImplementedError
+    elif paradigm.flashing_mode.lower() == "mvep_bidir":
+        # TODO
+        raise NotImplementedError
+    else:
+        raise ValueError("Unknown Flashing Mode")
     return command
 
     
@@ -56,16 +74,10 @@ def spelling_rate(preds, op, dataset):
     spelling rate:
         flaot : percentage of correct spelling
     """
-    if hasattr(dataset, 'test_phrase'):
-        phrase = dataset.test_phrase[op]
-    else:
-        if len(dataset.paradigm.phrase) > 1:
-            phrase = dataset.paradigm.phrase[1]
-        else:
-            phrase = dataset.paradigm.phrase[0]
+    phrase, is_uniform = phrase_from_dataset(dataset, op)
     events = dataset.test_events[op] 
-    # n_char = len(phrase)
-    if hasattr(dataset, 'test_flashes'):
+    
+    if hasattr(dataset, 'test_flashes') and not is_uniform:
         if dataset.test_flashes.shape[1] == 1:
             flashes = dataset.test_flashes[0]
         else:
@@ -73,30 +85,36 @@ def spelling_rate(preds, op, dataset):
         decision = decision_flexible_trials(preds, dataset, events, phrase, flashes) 
     else:
         decision = decision_fixed_trials(preds, dataset, events, phrase)
-    
-    return accuracy_score(phrase, decision)*100
 
+    if len(decision) == 1:
+        # singla trial ERP dataset
+        return accuracy_score(phrase, decision.pop())*100
+    else:
+        # multiple trials ERP dataset
+        return [accuracy_score(phrase, d)*100 for d in decision]
 
 def decision_fixed_trials(preds, dataset, events, phrase):
-    n_char = len(phrase)
-    trials = len(preds) // n_char
+    sequence = dataset.paradigm.get_repetitions()
+    stimuli  = dataset.paradigm.get_stimuli()  
+    n_char   = len(phrase)
+    trials   = len(preds) // n_char
     iterations = range(0, len(preds), trials)
     decision = []
-    counter = 0
-    stimuli = dataset.paradigm.stimuli
-
+    counter  = 0
     scores = positive_class_prob(preds)
-
-    for j in iterations:
-        idx = range(j, j+trials)        
-        if len(idx) > stimuli: # single trial
-            p = scores[j:j+stimuli]
-            events_per_char = events[j:j+stimuli]
-        else:
-            p = scores[idx]
-            events_per_char = events[idx]
-        # events_per_char = events[idx]
-        decision.append(select_decision(p, events_per_char, dataset.paradigm))
+    for seq in range(1, sequence + 1):
+        seq_decision = []
+        for j in iterations:
+            # idx = range(j, j+trials)        
+            # if len(idx) > stimuli: # single trial
+            #     p = scores[j:j+stimuli]
+            #     events_per_char = events[j:j+stimuli]
+            # else:
+            p = scores[j:j+(seq*stimuli)]
+            events_per_char = events[j:j+(seq*stimuli)]
+            # print(p.shape, events_per_char.shape)
+            seq_decision.append(select_decision(p, events_per_char, dataset.paradigm))
+        decision.append(seq_decision)
         counter += 1
     
     return decision
@@ -123,6 +141,35 @@ def decision_flexible_trials(preds, dataset, events, phrase, flashes):
     return decision
 
 
+def itr_score(score, op, dataset):
+    """Calculate the ITR for All paradigms
+
+    Parameters
+    ----------
+    score : 1d or 2d array
+        spelling rate if paradigm is ERP, accuracy rate otherwise.
+    op : int
+        operation index, subject/fold index in dataset to test
+    dataset : DataSet instance
+        dataset for train/test
+
+    Returns
+    -------
+    spelling rate:
+        flaot : percentage of correct spelling
+    """
+    dur      = dataset.paradigm.one_trial_duration()    
+    sequence = dataset.paradigm.get_repetitions()
+    n = dataset.paradigm.stimuli
+    t = dur * sequence
+    p = score / 100 if score >= 1 else score 
+    if isinstance(p, np.ndarray):        
+        t = [dur*seq for seq in range(1, sequence + 1)]
+        return [itr(n, pi, ti) for pi, ti in zip(p, t)]
+    else:
+        return itr(n, p, t)
+
 paradigm_metrics = {
-    'spelling_rate': spelling_rate
+    'spelling_rate': spelling_rate,
+    'itr': itr_score,
 }

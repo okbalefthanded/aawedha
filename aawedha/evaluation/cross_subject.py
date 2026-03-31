@@ -121,6 +121,7 @@ class CrossSubject(BenchMark):
         split = self._split_set(op)
         rets  = self._eval_split(split)
         # Save model ???
+        # TODO: add paradigm metrics evaluation 
         del split 
         # self.learner.reset_weights()
         return rets

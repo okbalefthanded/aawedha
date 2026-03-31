@@ -244,7 +244,7 @@ class Learner:
         if classes == 2:
             metrics = metrics_binary()
         else:
-            metrics = ['accuracy']
+            metrics = ['accuracy'] # how about more metrics than accuracy ?
 
         return metrics
 

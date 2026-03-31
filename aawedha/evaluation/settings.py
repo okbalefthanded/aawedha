@@ -8,12 +8,12 @@ class Settings:
     def __init__(self, partition=None, folds=None, 
                  verbose=0, current=0, debug=False):
         self.partition = partition
-        self.folds = folds
-        self.verbose = verbose
-        self.current = current
-        self.debug = debug
-        self.nfolds = 0
-        self.fit_config = {}
+        self.folds     = folds
+        self.verbose   = verbose
+        self.current   = current
+        self.debug     = debug
+        self.nfolds    = 0
+        self.fit_config       = {}
         self.paradigm_metrics = {}
 
     def get_fit_configs(self):

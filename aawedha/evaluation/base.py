@@ -127,9 +127,18 @@ class Evaluation:
 
     """
 
-    def __init__(self, dataset=None, model=None, model_config=None, partition=None, 
-                 folds=None, verbose=2, normalize=True, log=False,   
-                 log_level='debug', log_name=None, debug=False):
+    def __init__(self, 
+                 dataset=None, 
+                 model=None, 
+                 model_config=None, 
+                 partition=None, 
+                 folds=None, 
+                 verbose=2, 
+                 normalize=True, 
+                 log=False,   
+                 log_level='debug', 
+                 log_name=None, 
+                 debug=False):
         """
         """
         self.dataset  = dataset
@@ -471,13 +480,10 @@ class Evaluation:
                                    callbacks=clbs)
         
         if isinstance(X_test, np.ndarray):
-            probs = self.learner.predict(X_test)
-            perf  = self.learner.evaluate(X_test, 
-                                          Y_test, 
-                                          batch_size=batch, 
-                                          return_dict=True, 
-                                          verbose=0)  
-            # 
+            # do we add the ERP specific eval here ? 
+            # lack of events here, but they are not required 
+            # we only need the sequence repeition info from paradigm
+            probs, perfs = self._calculate_performance(X_test, Y_test, batch)
             # perf['char_rate'] = char_rate()      
         return history, probs, perf
 
@@ -500,16 +506,42 @@ class Evaluation:
         #
         cws = class_weights(Y_train)
         # evaluate model on subj on all folds
-        model_history, probs, perf = self._eval_model(X_train, Y_train,
-                                                           X_val, Y_val,
-                                                           X_test, Y_test,
-                                                           cws)
+        model_history, probs, perf = self._eval_model(X_train, 
+                                                      Y_train,
+                                                      X_val, 
+                                                      Y_val,
+                                                      X_test, 
+                                                      Y_test,
+                                                      cws)
         
         self.learner.history.append(model_history)
 
         if isinstance(X_test, np.ndarray):            
             eval_perf = measure_performance(Y_test, probs, perf, self.learner.model.metrics_names)        
-        return eval_perf       
+        return eval_perf
+
+    def _calculate_performance(self, X_test, Y_test, batch=32):
+        perf = []
+        paradigm = self.dataset.paradigm.get_name()
+        probs    = self.learner.predict(X_test)
+        '''
+        if paradigm == "ERP":
+            sequence    = self.dataset.paradigm.get_repetitions()
+            stimuli     = self.dataset.paradigm.get_stimuli()
+            n_char_test = self.dataset.paradigm.get_phrase()
+            trials   = len(probs) // n_char_test 
+            for seq in range(1, sequence + 1):
+                trials_per_char = stimuli * seq      
+                seq_index = [np.arange(i, i+trials_per_char)  for i in range(0, len(probs), trials)]
+                seq_index = np.concatenate(seq_index)            
+        else:
+        '''
+        perf  = self.learner.evaluate(X_test, 
+                                          Y_test, 
+                                          batch_size=batch, 
+                                          return_dict=True, 
+                                          verbose=0)  
+        return probs, perf       
 
     def _get_fit_configs(self):
         """Returns fit configurations as tuple

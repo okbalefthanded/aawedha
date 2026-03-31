@@ -229,7 +229,6 @@ def folder_full(folder_path, content_size):
         folder_size = get_folder_size_scandir(folder_path)
         return folder_size >= content_size
     else:
-        # if folder does not exist, it is not full
         return False
 
 def get_folder_size_scandir(path='.'):

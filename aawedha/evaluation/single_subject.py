@@ -145,20 +145,22 @@ class SingleSubject(BenchMark):
         subj_results = []
         
         folds_range = range(self.settings.nfolds)
-
+        paradigm = self.dataset.paradigm.get_name() 
         for fold in folds_range:
             split = self._split_set(x, y, op, fold, indie)
             split_perf = self._eval_split(split)
             # Save model ???
+            # test if paradigm is erp and calculate metrics per sequence ?                  
+            if paradigm == "ERP":
+                split_perf["Y_test"] = split['Y_test']
+                split_perf = self._metrcis_multiple_sequence(split_perf, op)
             if self.settings.paradigm_metrics:
-                # TODO
-                paradigm_perf = self._eval_paradigm_metrics(split_perf['probs'], op)
+                paradigm_perf = self._eval_paradigm_metrics(split_perf, op)
                 for m in paradigm_perf:
                     split_perf[m] = paradigm_perf[m]
             subj_results.append(split_perf)
             del split
             # self.learner.reset_weights() # uncessary, the reset_weights is called in _eval_model()
-
         subj_results = aggregate_results(subj_results)
         return subj_results
 
