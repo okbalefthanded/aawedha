@@ -300,20 +300,24 @@ def aggregate_results(res):
     return results
 
 def save_metric_csv(result, rows, columns, fname, index):
-    acc = result.round(3)
+    round_number = 4
+    acc = result.round(round_number)
     if acc.ndim == 1:
         acc_mean = acc
-        std = result.std().round(3)
+        std = result.std().round(round_number)
         std = np.tile(std, len(rows) - 1)
     else:
-        acc_mean = result.mean(axis=1).round(3)
-        std = result.std(axis=1).round(3) 
-    sem = np.round(std / np.sqrt(len(result)), 3)
+        acc_mean = result.mean(axis=1).round(round_number)
+        std = result.std(axis=1).round(round_number) 
+    
+    sem = np.round(std / np.sqrt(len(result)), round_number)
     values = np.column_stack((acc, acc_mean, std, sem))
-    values = np.vstack((values, values.mean(axis=0).round(3)))
+    values = np.vstack((values, values.mean(axis=0).round(round_number)))
+    
     df = pd.DataFrame(data=values, index=rows, columns=columns)
     df.index.name = index
     df.to_csv(fname, encoding='utf-8')
+    
     print(f"Results saved as CSV in: {fname}")
 
 def predict_trial(epochs, y, desc, model, n_char, commands):

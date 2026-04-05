@@ -72,7 +72,7 @@ def spelling_rate(preds, op, dataset):
     Returns
     -------
     spelling rate:
-        flaot : percentage of correct spelling
+        flaot / list : percentage of correct spelling
     """
     phrase, is_uniform = phrase_from_dataset(dataset, op)
     events = dataset.test_events[op] 
@@ -91,7 +91,7 @@ def spelling_rate(preds, op, dataset):
         return accuracy_score(phrase, decision.pop())*100
     else:
         # multiple trials ERP dataset
-        return [accuracy_score(phrase, d)*100 for d in decision]
+        return np.array([accuracy_score(phrase, d)*100 for d in decision])
 
 def decision_fixed_trials(preds, dataset, events, phrase):
     sequence = dataset.paradigm.get_repetitions()
@@ -162,10 +162,10 @@ def itr_score(score, op, dataset):
     sequence = dataset.paradigm.get_repetitions()
     n = dataset.paradigm.stimuli
     t = dur * sequence
-    p = score / 100 if score >= 1 else score 
+    p = score / 100 if np.any(score > 1)  else score 
     if isinstance(p, np.ndarray):        
         t = [dur*seq for seq in range(1, sequence + 1)]
-        return [itr(n, pi, ti) for pi, ti in zip(p, t)]
+        return np.array([itr(n, pi, ti) for pi, ti in zip(p, t)])
     else:
         return itr(n, p, t)
 

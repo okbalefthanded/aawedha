@@ -521,26 +521,13 @@ class Evaluation:
         return eval_perf
 
     def _calculate_performance(self, X_test, Y_test, batch=32):
-        perf = []
-        paradigm = self.dataset.paradigm.get_name()
-        probs    = self.learner.predict(X_test)
-        '''
-        if paradigm == "ERP":
-            sequence    = self.dataset.paradigm.get_repetitions()
-            stimuli     = self.dataset.paradigm.get_stimuli()
-            n_char_test = self.dataset.paradigm.get_phrase()
-            trials   = len(probs) // n_char_test 
-            for seq in range(1, sequence + 1):
-                trials_per_char = stimuli * seq      
-                seq_index = [np.arange(i, i+trials_per_char)  for i in range(0, len(probs), trials)]
-                seq_index = np.concatenate(seq_index)            
-        else:
-        '''
+        perf  = []
+        probs = self.learner.predict(X_test)
         perf  = self.learner.evaluate(X_test, 
-                                          Y_test, 
-                                          batch_size=batch, 
-                                          return_dict=True, 
-                                          verbose=0)  
+                                      Y_test, 
+                                      batch_size=batch, 
+                                      return_dict=True, 
+                                      verbose=0)  
         return probs, perf       
 
     def _get_fit_configs(self):
@@ -725,7 +712,7 @@ class Evaluation:
         msg += f" Training stopped at epoch: {epochs}"
         self.logger.log(msg)    
     
-    def _post_operations(self, savecsv=False, csvfolder=None):
+    def _post_operations(self, savecsv=False, csvfolder=None, dfname=None):
         """Log results and save them as a pandas DataFrame 
 
         Parameters
@@ -734,41 +721,40 @@ class Evaluation:
             if True, save results as a pandas DataFrame in a csv file. By default False
         csvfolder : str, optional
             folder path where to save results, by default None
+        dfname : str, optional
+            general name for csv files to be saved., Default None
         """
         if self.log:
             self.logger.log_results(self.score)
 
         if savecsv:
             if self.score.results:
-                self._savecsv(csvfolder)
+                self._savecsv(csvfolder, dfname)
         
-    def _savecsv(self, folder=None):
+    def _savecsv(self, folder=None, dfname=None):
         """Save evaluation results in a CSV file as Pandas DataFrame
 
         Parameters
         ----------
         folder : str
             results files will be stored inside folder, if None, a default folder inside aawedha is used.
+        dfname : str
+            geenral name to be applied to csv metrics files. default None.
         """        
         if not folder:
-            root = cwd()
+            root   = cwd()
             folder = f'{root}/results'
             
-        # if not os.path.isdir(folder):
-        #     os.mkdir(folder)  
         make_dir(folder)          
 
         metrics = list(self.score.results)
         [metrics.remove(elem) for elem in ["probs", "confusion"]]
-        m = [met  for met in metrics if "mean" not in met]
+        m = [met for met in metrics if "mean" not in met]
         metrics = m
+        #
         subjects = range(self._get_n_subjects())
         rows = [f'S{s+1}' for s in subjects]
         rows.append('Avg')
-        if isinstance(self.dataset, DataSet):
-            dataset = self.dataset.title
-        else:
-            dataset = self.target.title
         
         evl = self.__class__.__name__
         columns = []
@@ -786,12 +772,40 @@ class Evaluation:
             columns = [f'Fold {fld+1}' for fld in range(nfolds)]
 
         columns.extend(['Avg', 'Std', 'Sem'])
-        date = time_now()
-        results = self.score.results
-        model   = self.learner.name
+        results  = self.score.results
+        paradigm = self.dataset.paradigm.get_name() 
         for metric in metrics:
             if metric == 'viz':
                 continue
             index_name = f"{self.learner.model.name} / {metric}"
-            fname = f"{folder}/{evl}_{dataset}_{model}_{metric}_{date}.csv"
-            save_metric_csv(results[metric], rows, columns, fname, index_name)
+            fname = self._get_df_name(metric, folder, dfname)
+            if paradigm.lower() == "erp":
+                self._save_single_metric(results[metric], rows, columns, fname, index_name)
+            else:       
+                save_metric_csv(results[metric], rows, columns, fname, index_name)
+               
+    def _save_single_metric(self, metric, rows, columns, dfname, index_name):        
+        
+        sequence = self.dataset.paradigm.get_repetitions()
+        for seq in range(1, sequence + 1):
+            # name = self._get_df_name(metric, dfname)
+            parts = dfname.split(".csv")
+            name  = f"{parts[0]}_seq{seq}.csv"
+            if metric.ndim == 2: # single trial, subj x fold
+                save_metric_csv(metric, rows, columns, name, index_name)
+            else:
+                save_metric_csv(metric[:, :, seq-1], rows, columns, name, index_name) # subj x fold x sequence
+
+    def _get_df_name(self, metric, folder, dfname):
+        if isinstance(self.dataset, DataSet):
+            dataset = self.dataset.title
+        else:
+            dataset = self.target.title # FIXME: CrossSet
+        date  = time_now()
+        evl   = self.__class__.__name__
+        model = self.learner.name
+        if not dfname:
+            dfname = rf"{folder}/{evl}_{dataset}_{model}_{metric}_{date}.csv"
+        else:
+            dfname = rf"{folder}/{dfname}.csv"
+        return dfname  

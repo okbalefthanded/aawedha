@@ -438,7 +438,9 @@ class EPFL(DataSet):
         Paradigm instance.
         """
         return ERP(title='ERP_EPFL', stimulation=100,
-                   break_duration=300, repetition=20,
+                   break_duration=300, 
+                   cue=0,
+                   repetition=20,
                    stimuli=6, phrase='',
                    flashing_mode='SC',
                    speller=['1','2', '3','4','5','6'])

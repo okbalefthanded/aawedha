@@ -11,8 +11,13 @@ import abc
 class BenchMark(Evaluation):
     
     #pylint: disable=too-many-arguments
-    def run_evaluation(self, selection=None, pointer=None, check=False,
-                        savecsv=False, csvfolder=None):
+    def run_evaluation(self, 
+                       selection=None, 
+                       pointer=None, 
+                       check=False,
+                       savecsv=False, 
+                       csvfolder=None,
+                       dfname=None):
         """Perform evaluation on each subject
 
         Parameters
@@ -49,7 +54,7 @@ class BenchMark(Evaluation):
             classes = self.target.get_n_classes()
 
         self.score.results_reports(eval_results, classes, {self._eval_type(): list(operations)})        
-        self._post_operations(savecsv, csvfolder)
+        self._post_operations(savecsv, csvfolder, dfname)
 
         return self
 

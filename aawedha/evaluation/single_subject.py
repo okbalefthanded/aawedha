@@ -141,11 +141,10 @@ class SingleSubject(BenchMark):
                 # self.n_subjects = self._fuse_data()
 
         x, y = self._get_data_pair(op)
-
-        subj_results = []
-        
+        subj_results = []        
         folds_range = range(self.settings.nfolds)
         paradigm = self.dataset.paradigm.get_name() 
+        
         for fold in folds_range:
             split = self._split_set(x, y, op, fold, indie)
             split_perf = self._eval_split(split)
