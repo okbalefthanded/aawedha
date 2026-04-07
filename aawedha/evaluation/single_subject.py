@@ -142,7 +142,7 @@ class SingleSubject(BenchMark):
 
         x, y = self._get_data_pair(op)
         subj_results = []        
-        folds_range = range(self.settings.nfolds)
+        folds_range  = range(self.settings.nfolds)
         paradigm = self.dataset.paradigm.get_name() 
         
         for fold in folds_range:

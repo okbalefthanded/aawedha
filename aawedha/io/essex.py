@@ -36,9 +36,18 @@ class Essex(DataSet):
         self.phrase  = []
         self.flashes = []
 
-    def generate_set(self, load_path=None, download=False, channels=None, epoch=[0., .7], 
-                     band=[1.0, 10.0], order=2, baseline=0.2, downsample=None, 
-                     save=True, save_folder=None, fname=None,
+    def generate_set(self, 
+                     load_path=None, 
+                     download=False, 
+                     channels=None, 
+                     epoch=[0., .7], 
+                     band=[1.0, 10.0], 
+                     order=2, 
+                     baseline=0.2, 
+                     downsample=8, 
+                     save=True, 
+                     save_folder=None, 
+                     fname=None,
                      ):
         """Main method for creating and saving DataSet objects and files:
             - sets train and test (if present) epochs and labels
@@ -92,11 +101,18 @@ class Essex(DataSet):
         self.events = events
         self.phrase = phrase
         if save:
-            self.save_set(save_folder, fname)        
+            self.save_set(save_folder, fname)       
+        
+        return self 
 
-    def load_raw(self, path=None, channels=None, epoch=[0., .7], 
-                     band=[1.0, 5.0], order=2,  baseline=0.2, 
-                     downsample=None):
+    def load_raw(self, 
+                 path=None, 
+                 channels=None, 
+                 epoch=[0., .7], 
+                 band=[1.0, 5.0], 
+                 order=2,  
+                 baseline=0.2, 
+                 downsample=None):
         """Read and process raw data into structured arrays
 
         Parameters
@@ -155,7 +171,7 @@ class Essex(DataSet):
             # starts = s[s.str.startswith("#start")]
             #if starts.size == 0:
             starts = s[s.str.startswith("#Tgt")]
-            ends = s[s.str.startswith("#end")]
+            ends   = s[s.str.startswith("#end")]
             counts = s[s.str.startswith("#counted")]
             if counts.empty:
                 start_index = np.where("#start" == raw.annotations.description)
@@ -178,9 +194,9 @@ class Essex(DataSet):
             else:
                 # subjects: 1 to 5
                 events, _ = events_from_annotations(raw, event_id=ev_id)            
-            r = [ev_id[key] if key in ev_id else key for key in raw.annotations.description]
+            r  = [ev_id[key] if key in ev_id else key for key in raw.annotations.description]
             ss = pd.Series(r)
-            y = self._get_labels(targets, ss, starts, ends, ev_id)
+            y  = self._get_labels(targets, ss, starts, ends, ev_id)
             if channels:
                 eeg_channels = channels
             else:
@@ -263,12 +279,23 @@ class Essex(DataSet):
         return np.hstack(y)
     
     def _get_paradigm(self):
-        return ERP(title='Essex_P300', stimulation=100,
-                   break_duration=50, repetition=20,
-                   stimuli=12, phrase='',
+        return ERP(title='Essex_P300', 
+                   stimulation=100,
+                   break_duration=50,
+                   cue=0,
+                   repetition=20,
+                   stimuli=12, 
+                   phrase='',
                    flashing_mode='RC',
-                   speller=[])
-    
+                   speller=[['A', 'G', 'M', 'S', 'Y', '5'],
+                            ['B', 'H', 'N', 'T', 'Z', '6'],
+                            ['C', 'I', 'O', 'U', '1', '7'],
+                            ['D', 'J', 'P', 'V', '2', '8'],
+                            ['E', 'K', 'Q', 'W', '3', '9'],
+                            ['F', 'L', 'R', 'X', '4', '_'],
+                            ])
+
+
     def get_path(self):
         NotImplementedError
 

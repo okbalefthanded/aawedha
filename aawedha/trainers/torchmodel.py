@@ -84,7 +84,8 @@ class TorchModel(nn.Module):
         return_metrics = self._compute_metrics(return_metrics, outputs, labels)
         return return_metrics
 
-    def fit(self, x, y=None, 
+    def fit(self, x, 
+            y=None, 
             batch_size=32, 
             epochs=100, 
             verbose=2, 

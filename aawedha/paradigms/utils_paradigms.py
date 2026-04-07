@@ -8,15 +8,19 @@ def phrase_from_dataset(dataset, op):
     if hasattr(dataset, 'test_phrase'):
         phrase = dataset.test_phrase[op]
     else:
-        if len(dataset.paradigm.phrase) > 1:
+        if hasattr(dataset, "phrase"):
+            pass
+        elif len(dataset.paradigm.phrase) > 1:
             phrase = dataset.paradigm.phrase[1]
         else:
             phrase = dataset.paradigm.phrase[0]
     is_uniform = True
     # TODO: check for dataset with no test epochs
     if hasattr(dataset, "test_epochs"):
-        lengths = [epoch.shape[-1] for epoch in dataset.test_epochs]
-        is_uniform = np.unique(lengths).size == 1    
+        lengths    = [epoch.shape[-1] for epoch in dataset.test_epochs]
+        is_uniform = np.unique(lengths).size == 1
+    else:
+        pass # TODO: check the partition ?    
     return phrase, is_uniform
 
 def select_decision(scores, events, paradigm):

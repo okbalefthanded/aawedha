@@ -15,7 +15,6 @@ from aawedha.evaluation.score import Score
 from aawedha.utils.utils import time_now
 from aawedha.utils.logger import Logger
 from aawedha.io.base import DataSet
-import pandas as pd
 import numpy as np
 import datetime
 import abc
@@ -483,7 +482,7 @@ class Evaluation:
             # do we add the ERP specific eval here ? 
             # lack of events here, but they are not required 
             # we only need the sequence repeition info from paradigm
-            probs, perfs = self._calculate_performance(X_test, Y_test, batch)
+            probs, perf = self._calculate_performance(X_test, Y_test, batch)
             # perf['char_rate'] = char_rate()      
         return history, probs, perf
 
