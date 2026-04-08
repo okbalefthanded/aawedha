@@ -4,14 +4,13 @@ from aawedha.trainers.torch_builders import build_callbacks
 from aawedha.trainers.torch_builders import build_scheduler
 from aawedha.trainers.torch_builders import get_optimizer
 from aawedha.trainers.torch_builders import get_metrics
-from aawedha.models.precisebn import update_bn_stats
+# from aawedha.models.precisebn import update_bn_stats
 from aawedha.trainers.torch_builders import get_loss
 from aawedha.evaluation.evaluation_utils import fit_scale
 from aawedha.evaluation.evaluation_utils import transform_scale
 from aawedha.trainers.torchdata import data_shapes
 from aawedha.trainers.torchdata import make_loader
 from aawedha.loss.smooth_loss import SmoothLoss
-# from torchsummary import summary
 from torchinfo import summary
 from copy import deepcopy
 import torch.optim.lr_scheduler as lrs
@@ -166,7 +165,7 @@ class TorchModel(nn.Module):
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
             
             # Precise BN??
-            update_bn_stats(self.module, tmp_loader, num_iters=1, progress=None)
+            # update_bn_stats(self.module, tmp_loader, num_iters=1, progress=None)
             
             # evaluate validation data
             val_metrics = None

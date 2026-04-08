@@ -1,3 +1,6 @@
+#
+import warnings
+#
 from aawedha.evaluation.evaluation_utils import create_split, class_min_zero
 from aawedha.evaluation.benchmark import BenchMark
 import numpy as np
@@ -40,14 +43,22 @@ class CrossSubject(BenchMark):
             cross-subject evaluation, False otherwise
             default : True
         """
+        self.settings.nfolds = nfolds
         if self._assert_partition(excl):
             raise Exception(
                 f'Parition exceeds subjects count, use a different parition')
-
+        if not self.settings.partition:
+            # 
+            warnings.warn("Empty partition passed. Will set a default one. One subject for test and the rest for training.") 
+            self.settings.partition = [self.n_subjects - 1, 1]   
+        
         train_phase, val_phase, test_phase = self._phases_partiton()
-        self.settings.nfolds = nfolds
-        self.settings.folds  = self.get_folds(nfolds, train_phase, val_phase, 
-                                             test_phase, exclude_subj=excl)
+        
+        self.settings.folds  = self.get_folds(nfolds, 
+                                              train_phase, 
+                                              val_phase, 
+                                              test_phase, 
+                                              exclude_subj=excl)
         return self
 
     def get_folds(self, nfolds, tr, vl, ts, exclude_subj=True):
@@ -120,8 +131,18 @@ class CrossSubject(BenchMark):
         """
         split = self._split_set(op)
         rets  = self._eval_split(split)
+        paradigm = self.dataset.paradigm.get_name() 
+        
+        if paradigm.lower() == "erp":
+            rets["Y_test"] = split['Y_test']
+            rets = self._metrcis_multiple_sequence(rets, op)
+
+        if self.settings.paradigm_metrics:
+            paradigm_perf = self._eval_paradigm_metrics(rets, op)
+            for m in paradigm_perf:
+                rets[m] = paradigm_perf[m]  
+        
         # Save model ???
-        # TODO: add paradigm metrics evaluation 
         del split 
         # self.learner.reset_weights()
         return rets
@@ -199,7 +220,10 @@ class CrossSubject(BenchMark):
         return X, Y
 
     def _total_operations(self):
-        return len(self.settings.folds)
+        if self.settings.partition:
+            return len(self.settings.folds)
+        else:
+            return self.n_subjects
 
     def _eval_type(self):
         return "Fold"

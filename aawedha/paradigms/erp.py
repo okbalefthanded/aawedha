@@ -65,4 +65,4 @@ class ERP(Paradigm):
         return sequence
     
     def one_trial_duration(self):
-        return (self.cue + (self.stimulation + self.break_duration  * self.stimuli)) / 1000
+        return (self.cue + ((self.stimulation + self.break_duration)  * self.stimuli)) / 1000

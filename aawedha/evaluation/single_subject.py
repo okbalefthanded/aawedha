@@ -23,7 +23,7 @@ class SingleSubject(BenchMark):
 
     def generate_split(self, nfolds=30, strategy='Kfold'):
         """Generate cross-validation folds following a cross-validation
-        strategy from { Kfold | Stratified } #ShuffleSplit
+        strategy from { Kfold | Stratified } # ShuffleSplit
 
         Parameters
         ----------
@@ -39,8 +39,12 @@ class SingleSubject(BenchMark):
         if self.settings.partition:
             train_phase, val_phase, test_phase, n_trials = self._phases_partition()
         
-            self.settings.folds = self.get_folds(nfolds, n_trials, train_phase,
-                                    val_phase, test_phase, strategy)
+            self.settings.folds = self.get_folds(nfolds, 
+                                                 n_trials, 
+                                                 train_phase,
+                                                 val_phase, 
+                                                 test_phase,
+                                                 strategy)
         return self
             
     def get_folds(self, nfolds=4, n_trials=0, tr=0, vl=0, ts=0, stg='Kfold'):
@@ -113,8 +117,8 @@ class SingleSubject(BenchMark):
         part = np.round(n_trials / np.sum(self.settings.partition)).astype(int)
         #
         train_phase = train_phase * part
-        val_phase = val_phase * part
-        test_phase = test_phase * part
+        val_phase   = val_phase * part
+        test_phase  = test_phase * part
         return train_phase, val_phase, test_phase, n_trials
     
     def _eval_operation(self, op):

@@ -5,8 +5,12 @@ from aawedha.paradigms.utils_paradigms import paradigm_metrics
 class Settings:
 
     #pylint: disable=too-many-arguments
-    def __init__(self, partition=None, folds=None, 
-                 verbose=0, current=0, debug=False):
+    def __init__(self, 
+                 partition=None, 
+                 folds=None, 
+                 verbose=0, 
+                 current=0, 
+                 debug=False):
         self.partition = partition
         self.folds     = folds
         self.verbose   = verbose
