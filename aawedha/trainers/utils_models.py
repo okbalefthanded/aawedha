@@ -1,5 +1,6 @@
 from aawedha.trainers.torch_builders import losses
 from aawedha.utils.utils import get_device
+from aawedha.io.io_utils import load_yaml
 from timeit import default_timer as timer
 from inspect import getfullargspec
 from datetime import timedelta
@@ -143,3 +144,21 @@ def is_a_loss(mod):
         True if the module is a loss, False otherwise.
     """
     return any([isinstance(mod, loss) for _, loss in losses.items()])
+
+def model_name(model_config):
+    """Read model name from yaml config files
+
+    Parameters
+    ----------
+    model_config : str | dict
+        path to configuration yaml file or a dict of configurations.
+
+    Returns
+    -------
+    str
+       Model's name
+    """
+    if type(model_config) == str:
+      model_config = load_yaml(model_config)
+    name = model_config['model']['name']
+    return name
