@@ -39,6 +39,7 @@ losses = {
     'auc_margin' : AUCMLoss,
     "smooth_loss": SmoothLoss,
     "center_loss" : CenterLoss,
+    "balanced_loss": tl.ClassBalancedWrapper,
     # TODO: MSE/MAE
     "mse": nn.MSELoss,
     "mae": nn.L1Loss
@@ -224,13 +225,19 @@ def get_loss(loss, features_dim=None):
         params  = loss[1]
         return losses[loss_id](**params)
     elif isinstance(loss, dict):
-        # loss = [losses[loss_id](**params) for loss_id, params in loss.items()]         
+        # loss = [losses[loss_id](**params) for loss_id, params in loss.items()]   
+        # TODO: add Class-Balanced Loss      
         ls = []
         for loss_id, params in loss.items():
             loss_args = getfullargspec(losses[loss_id].__init__)[0]
             if "feat_dim" in loss_args:
                 params.update({"feat_dim": features_dim})                
-            ls.append(losses[loss_id](**params))
+            if loss_id == "balanced_loss":
+                l = get_loss(loss["balanced_loss"]["criterion"], features_dim)
+            else:
+                l = losses[loss_id](**params)
+            ls.append(l) 
+        # 
         if len(ls) > 1:
             return ls
         else:
@@ -265,7 +272,6 @@ def get_metrics(metrics, classes):
         else:
             selected_metrics.append(metric)
     return selected_metrics
-
 
 def build_scheduler(data_loader, optimizer, scheduler):
     params_args = {'OneCycleLR': 'steps_per_epoch',
@@ -310,8 +316,7 @@ def schedule_name(sched_id):
     if sched_id.lower() !='cosinewr':   
         return f"{sched_id}LR"    
     else:
-        return "CosineAnnealingWarmRestarts"  
-
+        return "CosineAnnealingWarmRestarts" 
 
 def build_scheduler_legacy(data_loader, optimizer, scheduler):
     params_args = {'OneCycleLR': 'steps_per_epoch',

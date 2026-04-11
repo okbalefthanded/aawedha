@@ -1,11 +1,13 @@
+
 from typing import Any, List, Optional, Union
 from torch.nn import functional as F
 from torch import Tensor
 from torch import nn
 from copy import deepcopy
 import torch 
+from warnings import deprecated
 
-# base on:
+# based on:
 # https://github.com/frgfm/Holocron/blob/main/holocron/nn/modules/loss.py
 
 def poly_loss(
@@ -83,7 +85,7 @@ class _Loss(nn.Module):
             raise NotImplementedError("argument reduction received an incorrect input")
         self.reduction = reduction
 
-
+@deprecated("Use the torch_loss module")
 class PolyLoss(_Loss):
     """Implements the Poly1 loss from `"PolyLoss: A Polynomial Expansion Perspective of Classification Loss
     Functions" <https://arxiv.org/pdf/2204.12511.pdf>`_.

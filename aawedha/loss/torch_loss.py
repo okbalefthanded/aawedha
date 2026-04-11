@@ -4,6 +4,7 @@ from torch import Tensor
 from torch import nn
 from copy import deepcopy
 import torch 
+from typing import Any, cast
 
 
 class _Loss(nn.Module):
@@ -136,3 +137,41 @@ class FocalPolyLoss(_Loss):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(alpha={self.alpha}, gamma={self.gamma}, eps={self.eps}, reduction='{self.reduction}')"
+    
+
+class ClassBalancedWrapper(nn.Module):
+    r"""Implementation of the class-balanced loss as described in ["Class-Balanced Loss Based on Effective Number
+    of Samples"](https://arxiv.org/pdf/1901.05555.pdf).
+
+    Given a loss function $\mathcal{L}$, the class-balanced loss is described by:
+
+    $$
+    CB(p, y) = \frac{1 - \beta}{1 - \beta^{n_y}} \mathcal{L}(p, y)
+    $$
+
+    where $p$ is the predicted probability for class $y$, $n_y$ is the number of training
+    samples for class $y$, and $\beta$ is exponential factor.
+
+    Args:
+        criterion: loss module
+        num_samples: number of samples for each class
+        beta: rebalancing exponent
+    """
+
+    def __init__(self, criterion: nn.Module, num_samples: Tensor, beta: float = 0.99) -> None:
+        super().__init__()
+        self.criterion = criterion
+        self.beta: float = beta
+        cb_weights = (1 - beta) / (1 - beta**num_samples)
+        if self.criterion.weight is None:
+            # self.criterion.weight: Tensor | None = cb_weights
+            self.criterion.weight = cb_weights
+        else:
+            self.criterion.weight *= cb_weights.to(device=self.criterion.weight.device)  # ty: ignore[invalid-argument-type,possibly-missing-attribute]
+
+    def forward(self, x: Tensor, target: Tensor) -> Tensor:
+        return cast(Tensor, self.criterion.forward(x, target))
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.criterion.__repr__()}, beta={self.beta})"
+

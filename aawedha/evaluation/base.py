@@ -520,7 +520,6 @@ class Evaluation:
         return eval_perf
 
     def _calculate_performance(self, X_test, Y_test, batch=32):
-        perf  = []
         probs = self.learner.predict(X_test)
         perf  = self.learner.evaluate(X_test, 
                                       Y_test, 
@@ -806,5 +805,5 @@ class Evaluation:
         if not dfname:
             dfname = rf"{folder}/{evl}_{dataset}_{model}_{metric}_{date}.csv"
         else:
-            dfname = rf"{folder}/{dfname}.csv"
+            dfname = rf"{folder}/{dfname}_{metric}_{date}.csv"
         return dfname  

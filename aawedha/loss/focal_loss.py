@@ -3,8 +3,8 @@ from torch.nn import functional as F
 from torch import Tensor
 from torch import nn
 import torch 
-
-# base on:
+from warnings import deprecated
+# based on:
 # https://github.com/frgfm/Holocron/blob/main/holocron/nn/modules/loss.py
 # https://github.com/pytorch/vision/blob/main/torchvision/ops/focal_loss.py
 
@@ -114,6 +114,8 @@ class _Loss(nn.Module):
             raise NotImplementedError("argument reduction received an incorrect input")
         self.reduction = reduction
 
+
+@deprecated("Use new_function() instead")
 class FocalLoss(_Loss):
     """
     """
