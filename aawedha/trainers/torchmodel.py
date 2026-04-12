@@ -61,6 +61,7 @@ class TorchModel(nn.Module):
                               classes=classes, 
                               callbacks=callbacks)
 
+    @torch.compile
     def train_step(self, data):
         """
         """
@@ -168,6 +169,8 @@ class TorchModel(nn.Module):
             # update_bn_stats(self.module, tmp_loader, num_iters=1, progress=None)
             
             # evaluate validation data
+            self.module.compile(mode="default")
+
             val_metrics = None
             if has_validation:
                 val_metrics = self.evaluate(validation_data, batch_size=batch_size, shuffle=False)
@@ -205,6 +208,7 @@ class TorchModel(nn.Module):
             x = self.normalize(x)
         
         self.module.eval()
+        
         if hasattr(self.optimizer, "eval"): # for shcedule-free optimizers
             self.optimizer.eval()
         
@@ -221,7 +225,9 @@ class TorchModel(nn.Module):
         else:    
             return pred.cpu().detach().numpy()
 
-    def evaluate(self, x, y=None, 
+    def evaluate(self, 
+                 x, 
+                 y=None, 
                  batch_size=32, 
                  verbose=0, 
                  normalize=False, 
