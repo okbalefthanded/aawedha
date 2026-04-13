@@ -17,9 +17,18 @@ import torch.optim.lr_scheduler as lrs
 import torch.nn as nn
 import numpy as np
 import collections
+import functools
+import platform
 import torch
 import pkbar
+import os
 
+
+def linux_gpu_compile(func):
+    if platform.system() == 'Linux' and torch.cuda.is_available():
+        # Apply torch.compile if we are on Linux and a cuda GPU is available
+        return torch.compile(func)
+    return func
 
 class TorchModel(nn.Module):
 
@@ -61,7 +70,8 @@ class TorchModel(nn.Module):
                               classes=classes, 
                               callbacks=callbacks)
 
-    @torch.compile
+    # @torch.compile
+    @linux_gpu_compile
     def train_step(self, data):
         """
         """
@@ -169,8 +179,8 @@ class TorchModel(nn.Module):
             # update_bn_stats(self.module, tmp_loader, num_iters=1, progress=None)
             
             # evaluate validation data
-            self.module.compile(mode="default")
-
+            self._compile_for_eval()
+            
             val_metrics = None
             if has_validation:
                 val_metrics = self.evaluate(validation_data, batch_size=batch_size, shuffle=False)
@@ -322,11 +332,23 @@ class TorchModel(nn.Module):
                     self.metrics_names.append(str(m).lower()[:-2])       
 
     def set_device(self, device=None):
+        """Specifiy the device to be used for training and inference
+
+        Parameters
+        ----------
+        device : str, optional
+            name of device {'cpu', 'cuda'}, by default None
+
+        Raises
+        ------
+        NotImplementedError
+            Unsopported device passed to be used.
+        """
         devices = ['cuda', 'cpu']
         if device:
             if device not in devices:
                 raise NotImplementedError
-            self.device = device
+            self.device = torch.device(device)
         else:
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -512,6 +534,13 @@ class TorchModel(nn.Module):
         self.set_metrics_names(metrics)
         # transfer to device
         self._to_device()
+
+    def _compile_for_eval(self):
+        """Torch compile the model for inference
+        Supported only on Linux machines with a cuda GPU available.
+        """
+        if platform.system() == 'Linux' and torch.cuda.is_available():
+            self.module.compile(mode="default")
 
     def _to_device(self):
         """Transfer module, loss and metrics to compute device.

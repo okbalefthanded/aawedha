@@ -1,4 +1,3 @@
-from pynvml import *
 from aawedha.analysis.utils import isfloat
 from pathlib import Path
 import pandas as pd
@@ -9,6 +8,7 @@ import tarfile
 import random
 import torch
 import os
+
 
 
 def get_device(config=None):
@@ -32,11 +32,10 @@ def get_device(config=None):
 def get_gpu_name():
     """Returns the device (GPU) name
     """
-    nvmlInit()
-    handle = nvmlDeviceGetHandleByIndex(0)
-    name = nvmlDeviceGetName(handle)
-    nvmlShutdown()
-    return name
+    if torch.cuda.is_available():
+        return torch.cuda.get_device_name(0)
+    else:
+        raise RuntimeError("No CUDA supported GPU was found")    
 
 
 def log_to_csv(filepath, folder=''):

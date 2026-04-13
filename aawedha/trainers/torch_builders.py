@@ -13,8 +13,8 @@ from aawedha.loss.center_loss import CenterLoss
 from torch.optim.optimizer import Optimizer
 from schedulefree import AdamWScheduleFree
 from aawedha.optimizers.c_optim import CAdamW, CLion
-from aawedha.optimizers.ademamix import AdEMAMix
-from aawedha.optimizers.adopt import ADOPT
+# from aawedha.optimizers.ademamix import AdEMAMix
+# from aawedha.optimizers.adopt import ADOPT
 from aawedha.optimizers.aida import Aida
 from aawedha.optimizers.adan import Adan
 from aawedha.optimizers.agd import AGD
@@ -26,6 +26,7 @@ from libauc.optimizers import PESG
 from ranger21 import Ranger21
 from torch import optim
 from torch import nn
+import heavyball as hb
 import torchmetrics
 
 losses = {
@@ -65,11 +66,11 @@ custom_opt = {
     'Prodigy': Prodigy,
     'AGD': AGD,
     'Aida': Aida,
-    "AdeMaMix": AdEMAMix,
+   #  "AdEMAMix": AdEMAMix,
     "AdamWSF": AdamWScheduleFree,
     "CAdamW": CAdamW,
     "CLion": CLion,
-    "Adopt": ADOPT               
+   #  "Adopt": ADOPT               
 }
 
 wrapped_opt = {
@@ -88,27 +89,23 @@ def get_optimizer(optimizer, opt_params):
     Parameters
     ----------
     optimizer : str | set | dict
-        - optimizer name to be used with default parameters.
-        - optimizers name for multiple optimizers.
-        - optimizer name (s) and parameters.
-    opt_params : generator | list
+        - str:  optimizer name to be used with default parameters.
+        - set:  optimizers name for multiple optimizers.
+        - dict: optimizer name (s) and parameters.
+    opt_params : list 
         - Pytorch module (model) parameters to optimize.
-        - List of parameters to optimize when different optimizers are used 
+        - Other parameters to optimize when different optimizers are used 
          for different modules.
     Returns
     -------
     torch.optim instance
         optimizer object
     """
-    # if isinstance(opt_params, Generator):
-    #     params = {'params': opt_params}
-    # else:
-    #     params = [{"params": opt_params[0]}, {"loss_para"}]
-
     if isinstance(optimizer, str):
         return _get_optim(optimizer, {'params': opt_params[0]}) # hacky ??
     # set and dict for multiple losses with an optimizer each
     elif isinstance(optimizer, set):
+        # optimizers with default settings
         return [_get_optim(opt, {"params": prm}) for opt, prm in zip(optimizer, opt_params)]
     elif isinstance(optimizer, dict):
         optimizer = [_get_optim(opt, {"params": prm, **optimizer[opt]}) for opt, prm in zip(optimizer, opt_params)]
@@ -143,12 +140,20 @@ def _get_optim(opt_id, params):
     ModuleNotFoundError
         optimizer name is wrong or it is not implemented.
     """
-    available = list(optim.__dict__.keys())    
-    if opt_id in available:
+    # hb_opts = [o.lower() for o in hb.__all__]
+    native_available = list(optim.__dict__.keys())    
+    # TODO : freezing heavyball for the moment
+    # if opt_id.lower() in hb_opts:
+        # optimizers from HeavyBall
+    #     return getattr(hb, opt_id)(**params)
+    if opt_id in native_available:
+        # optimizers from PyTorch Optim
         return getattr(optim, opt_id)(**params)
     elif opt_id in custom_opt:
+        # optimizers from aawedha.optimizers
         return custom_opt[opt_id](**params)
     elif opt_id in wrapped_opt:
+        # Wrapped optimizers like SAM
         return _get_wrapped_optim(opt_id, params)
     else:
         raise ModuleNotFoundError
@@ -183,6 +188,7 @@ def opt_module(base_opt):
     module
         optimizer class module.
     """
+    # TODO: add HeavyBall optimizers
     base_opt_module = None
     if base_opt in list(optim.__dict__.keys()):
         base_opt_module = getattr(optim, base_opt)

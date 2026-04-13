@@ -13,7 +13,6 @@ torchinfo
 holocron
 libauc
 pytest
-pynvml
 requests
 tqdm
 pkbar

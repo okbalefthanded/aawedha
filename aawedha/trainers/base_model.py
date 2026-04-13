@@ -5,9 +5,14 @@ class Learner:
     """Wrapper class to unify training and inference operations for different
     Frameworks.
     """
-    def __init__(self, model=None, compiled=False, weights={},
-                config={}, history=[], normalize=True,
-                name=None):
+    def __init__(self, 
+                 model=None, 
+                 compiled=False, 
+                 weights={},
+                 config={}, 
+                 history=[], 
+                 normalize=True,
+                 name=None):
         """Constructor
         initiliaze Learner object with empty attributes.
         The object update will be made at compile method call.
