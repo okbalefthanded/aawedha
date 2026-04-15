@@ -62,6 +62,25 @@ class TorchModel(nn.Module):
                 scheduler=None, 
                 classes=2, 
                 callbacks=[]):
+        """Compiles training configuration
+
+        Parameters
+        ----------
+        optimizer : str | dict
+            optimizers configuration, by default 'Adam'
+        loss : str | dict, optional
+            loss configuration, by default None
+        metrics : list : str, optional
+            performance metrics evaluation, by default None
+        loss_weights : list : floats, optional
+            loss weights when using a combination of losses, by default None
+        scheduler : str | dict, optional
+            learning rate scheduler configuration, by default None
+        classes : int, optional
+            number of classes in dataset, by default 2
+        callbacks : list, optional
+            functions to be called during model.fit(), by default []
+        """
         self._compile_regular(optimizer=optimizer, 
                               loss=loss, 
                               metrics=metrics, 
@@ -430,7 +449,18 @@ class TorchModel(nn.Module):
         return x
 
     def normalize(self, x):
-        """
+        """Applies z-score normalization on input and returns 
+        normalized data 
+
+        Parameters
+        ----------
+        x : numpy ndarray
+            input to be normalized by the training data statistics (mean and variance)
+
+        Returns
+        -------
+        numpy ndarray
+            normalized data with same shape as input
         """
         return transform_scale(x, self.mu, self.sigma)
 
@@ -447,6 +477,7 @@ class TorchModel(nn.Module):
     def set_output_shape(self):
         """Setter for output shape attribute
         """
+        # TODO: make the output shape a Tensor shape: (N, C, H, W) or (N, C, D)
         # modules = list(self.module._modules.keys())
         # output_index = -2
         # if modules[-1] != 'loss':

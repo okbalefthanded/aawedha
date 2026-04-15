@@ -52,10 +52,8 @@ class Learner:
 
         Parameters
         ----------
-        model : {Keras Model, Pytorch nn Module}
+        model : Pytorch nn Module
             model object for training and evalution.
-        engine : {'keras', 'pytorch'}
-            model framework.
         """
         if not self.model:
             self.model = build_learner(self.config['compile'])
@@ -70,7 +68,7 @@ class Learner:
         Parameters
         ----------
         device : str
-            compute hardware: {CPU | GPU | TPU}
+            compute hardware: {CPU | GPU}
         classes : int
             number of classes in the dataset to be trained on
         """
@@ -80,8 +78,12 @@ class Learner:
         self._compile(khsara, optimizer, metrics, loss_weights, schedule, classes)
         self.compiled = True
 
-    def fit(self, x, y, batch_size, epochs,
-            verbose, validation_data, class_weight, 
+    def fit(self, x, y, 
+            batch_size, 
+            epochs,
+            verbose, 
+            validation_data, 
+            class_weight, 
             callbacks):
         """Trains the model with a similar Keras fit method.
 
@@ -111,9 +113,8 @@ class Learner:
 
         Returns
         -------
-        history : {Keras History object, dict} optional
+        history : dict, optional
             Record of training/validation metrics and loss values per epoch, by default []
-            - History object: if the model is a Keras Model object.
             - dict: if the model is a TorchModel object.
         """
         return self.model.fit(x=x, y=y, 
@@ -133,12 +134,41 @@ class Learner:
         Returns
         -------
         preds : ndarray
-            model predictionss"""
-        preds = []
+            model predictionss
+        """
         preds = self.model.predict(X, normalize=self.do_normalize)
         return preds
 
-    def evaluate(self, X, Y, batch_size=32, return_dict=True, verbose=0):
+    def evaluate(self, 
+                 X, 
+                 Y, 
+                 batch_size=32, 
+                 return_dict=True, 
+                 verbose=0):
+        """_summary_
+
+        Parameters
+        ----------
+        X : {Numpy Array, PyTorch DataLoader} 
+            Training data
+        Y : {Numpy Array, None}
+            Label data.
+            (None in case of X is PyTorch DataLoader)
+        batch_size : int
+            number of samples per one training step
+        return_dict : bool, optional (Keras legacy argument)
+            return results as a dict, by default True 
+        verbose : {0, 1, 2}
+            print training progress per step.
+            0 : silent
+            1 : progress bar
+            2 : one line per epoch
+
+        Returns
+        -------
+        dict
+            a dictionary of metrics results in the form {metric: value}
+        """
         perfs = {}
         perfs = self.model.evaluate(X, Y, 
                                      batch_size=batch_size, 
@@ -148,10 +178,19 @@ class Learner:
         return perfs
     
     def save(self, filepath):
+        """Save the TorchModel using its inner saving method save()
+
+        Parameters
+        ----------
+        filepath : str
+            path to store the model
+        """
         self.model.save(filepath)
 
     def reset_weights(self):
-        """Reset model weights to initial state"""
+        """Reset model weights to initial state
+        Uses the TorchModel set_weight() method
+        """
         # if not self.initial_weights: 
         #     self.initial_weights['model_weights'] = self.model.get_weights()
         # else:
@@ -162,14 +201,25 @@ class Learner:
     def get_compile_configs(self, device, classes):
         """Returns default model compile configurations as tuple
 
+        Parameters
+        ----------
+        device : str
+            compute hardware: {CPU | GPU}
+        classes : int
+            number of classes in the dataset to be trained on
+
         Returns
         -------
         khsara (loss in Arabic): str
             loss function optimized during training
-        opt : str
-            optimizer
-        mets : list : str | keras metrics
-            metrics
+        optimizer : str | dict
+            optimizer congfiguration to be built later
+        metrics : list : str 
+            metrics measuring the model's performance in evaluaion
+        loss_weights: list, (n_classes)
+            weight of each classes when using a combination of losses, None default 
+        schedule: str | dict
+            learning rate schedule configuration 
         """ 
         schedule, loss_weights = None, None
         if 'compile' in self.config:
@@ -210,19 +260,57 @@ class Learner:
         return X_train
 
     def normalize(self, x):
+        """Applies z-score normalization on input and returns 
+        normalized data 
+
+        Parameters
+        ----------
+        x : numpy ndarray
+            input to be normalized by the training data statistics 
+
+        Returns
+        -------
+        numpy ndarray
+            normalized data with same shape as input
+        """
         if self.do_normalize:
             return self.model.normalize(x)
 
     def output_shape(self):
+        """Reutns the model's output shape 
+
+        Returns
+        -------
+        int
+            dimension of last model's layer
+        """
         return self.model.output_shape    
 
     def _compile(self,
                  khsara, 
-                         optimizer, 
-                         metrics, 
-                         loss_weights, 
-                         schedule, 
-                         classes):
+                 optimizer, 
+                 metrics, 
+                 loss_weights, 
+                 schedule, 
+                 classes):
+        """Uses the model's inner method compile() to compile the model's
+        training configuration.
+
+        Parameters
+        ----------
+        khsara : str | dict
+           loss configuration
+        optimizer : str | dict
+            optimizer configuration
+        metrics : list : str
+            metrics names
+        loss_weights : list : floats
+            loss weight when using a combination of losses
+        schedule : dict
+            learning rate scheduler configuration
+        classes : int
+            number of classes in dataset
+        """
         self.model.compile(loss=khsara,
                             optimizer=optimizer,
                             metrics=metrics,
@@ -232,15 +320,32 @@ class Learner:
                             )                      
 
     def _fit_normalize_pytorch(self, X_train):
+        """Estimate mean and variance from training data and
+        normalize them.
+        Uses the model method set_scale()
+        Parameters
+        ----------
+        X_train : numpy ndarray
+            training data
+
+        Returns
+        -------
+        numpy ndarray
+            normalized training data
+        """
         return self.model.set_scale(X_train)
 
     def _get_metrics(self, classes):
         """Get a list of default suitable metrics for training according to the numbder
         of classes in dataset.
         
-        - Binary classification : Accuracy, AUC, True Positives, False Positives, True Negatives,
-            False Negatives, Precision, Recall.
+        - Binary classification : Accuracy, AUC, PR AUC, Precision, Recall. ECE, MCE, F1-Score
         - Multi Class : Accuracy only.
+
+        Parameters
+        ----------
+        classes : int
+            number of classes in the dataset
         
         Returns
         -------
@@ -249,7 +354,7 @@ class Learner:
         if classes == 2:
             metrics = metrics_binary()
         else:
-            metrics = ['accuracy'] # how about more metrics than accuracy ?
+            metrics = ['accuracy'] # how about more metrics than accuracy  for multiclass?
 
         return metrics
 
@@ -258,6 +363,11 @@ class Learner:
         
         - Binary Classification : binary_crossentropy
         - Multi Class : sparse_categorical_crossentropy | categorical_crossentropy
+
+        Parameters
+        ----------
+        classes : int
+            number of classes in the dataset
 
         Returns
         -------
@@ -274,6 +384,24 @@ class Learner:
     def _default_compile(self, classes):
         """Default model compile configuration, used when no compile
         config is passed to evaluation.
+        
+        - Loss: "binary_crossentropy" or "sparse_categorical_crossentropy"
+        - Optimizer : "adam"
+        - Metrics : binary metrics or "accuracy"       
+
+        Parameters
+        ----------
+        classes: int
+            number of classes in the dataset
+
+        Returns
+        ------
+        khsara (loss in Arabic): str
+            loss function optimized during training
+        optimizer : str ("adam")
+            default optimizer congfiguration to be built later
+        metrics : list : str 
+            metrics measuring the model's performance in evaluaion
         """
         khsara  = self._get_loss(classes)
         metrics = self._get_metrics(classes)
