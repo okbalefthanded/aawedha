@@ -21,9 +21,12 @@ def create_model_from_config(config, optional):
 
     Returns
     -------
-    Keras Model instance
+    nn.Module instance
     """
+    # TODO: add yaml config file loading
     cfg = deepcopy(config)
+    if "parameters" not in cfg:
+        cfg["parameters"] = {}
     mod = __import__(cfg['from'], fromlist=[cfg['name']])
     kwargs = getfullargspec(getattr(mod, cfg['name']).__init__)[0]
     missing_keys = ["nb_classes", "Chans", "Samples", "kernLength"]
@@ -39,6 +42,7 @@ def create_model_from_config(config, optional):
         params = {}
     instance = getattr(mod, cfg['name'])(**params)    
     return instance
+
 
 def load_model(filepath):
     """load classifier saved in filepath, a model can be either a H5 Keras model or

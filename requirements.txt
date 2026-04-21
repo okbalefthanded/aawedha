@@ -10,7 +10,7 @@ torch
 torchvision
 torchmetrics
 torchinfo
-holocron
+# holocron
 libauc
 pytest
 requests

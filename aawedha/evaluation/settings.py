@@ -1,4 +1,4 @@
-from aawedha.models.pytorch.torch_builders import build_callbacks
+from aawedha.trainers.torch_builders import build_callbacks
 from aawedha.paradigms.utils_paradigms import paradigm_metrics
 
 
