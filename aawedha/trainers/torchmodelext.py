@@ -95,3 +95,28 @@ class TorchModelExt(TorchModel):
                 tensor = features
             total_loss += loss_weight * loss(tensor, labels)   
         return total_loss 
+    
+
+# for optimizers strictly requiring closure (eg ADCL)
+class TorchModelClosure(TorchModel):
+    def train_step(self, data):
+        # get the inputs; data is a list of [inputs, labels]
+        inputs, labels = data[0].to(self.device), data[1].to(self.device)
+        step_output = None
+        # The closure function
+        def closure():
+            nonlocal step_output
+            self.optimizer.zero_grad()
+            step_output = self.module(inputs)
+            step_output = step_output.squeeze() #
+            
+            loss = self.loss(step_output, labels)
+            loss.backward()
+            return loss
+
+        loss = self.optimizer.step(closure)
+        if self._cyclical_scheduler():
+            self.update_scheduler()
+        return_metrics = {'loss': loss.item()}
+        return_metrics = self._compute_metrics(return_metrics, step_output, labels)       
+        return return_metrics

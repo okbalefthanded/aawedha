@@ -1,4 +1,4 @@
-from aawedha.trainers.torchmodelext import TorchModelExt
+from aawedha.trainers.torchmodelext import TorchModelExt, TorchModelClosure
 from aawedha.trainers.torchmodel import TorchModel
 from aawedha.trainers.torch_sam import SAMTorch
 from aawedha.trainers.torch_twa import TwaTrain
@@ -8,6 +8,7 @@ from aawedha.trainers.torch_swa import SWA
 train_strategy = {
     'regular':  TorchModel,
     'extended': TorchModelExt, # mutltple losses
+    'closure': TorchModelClosure, 
     # TODO: add hybrid generative-discirminative models
     'swa': SWA,
     'twa': TwaTrain,

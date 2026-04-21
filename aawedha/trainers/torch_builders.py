@@ -15,6 +15,7 @@ from schedulefree import AdamWScheduleFree
 from aawedha.optimizers.c_optim import CAdamW, CLion
 # from aawedha.optimizers.ademamix import AdEMAMix
 # from aawedha.optimizers.adopt import ADOPT
+from aawedha.optimizers.adcl import ADCL
 from aawedha.optimizers.aida import Aida
 from aawedha.optimizers.adan import Adan
 from aawedha.optimizers.agd import AGD
@@ -70,7 +71,9 @@ custom_opt = {
     "AdamWSF": AdamWScheduleFree,
     "CAdamW": CAdamW,
     "CLion": CLion,
-   #  "Adopt": ADOPT               
+   #  "Adopt": ADOPT         
+   # TODO: ADCL     
+   "Adcl" : ADCL, 
 }
 
 wrapped_opt = {
@@ -88,10 +91,11 @@ def get_optimizer(optimizer, opt_params):
 
     Parameters
     ----------
-    optimizer : str | set | dict
+    optimizer : str | set | dict | optim.Optimizer
         - str:  optimizer name to be used with default parameters.
         - set:  optimizers name for multiple optimizers.
         - dict: optimizer name (s) and parameters.
+        - Optimizer: a Pytorch optim instance
     opt_params : list 
         - Pytorch module (model) parameters to optimize.
         - Other parameters to optimize when different optimizers are used 
@@ -101,24 +105,39 @@ def get_optimizer(optimizer, opt_params):
     torch.optim instance
         optimizer object
     """
-    if isinstance(optimizer, str):
-        return _get_optim(optimizer, {'params': opt_params[0]}) # hacky ??
-    # set and dict for multiple losses with an optimizer each
-    elif isinstance(optimizer, set):
-        # optimizers with default settings
-        return [_get_optim(opt, {"params": prm}) for opt, prm in zip(optimizer, opt_params)]
-    elif isinstance(optimizer, dict):
-        optimizer = [_get_optim(opt, {"params": prm, **optimizer[opt]}) for opt, prm in zip(optimizer, opt_params)]
-        if len(optimizer) == 1:
-            return optimizer.pop()
-        else:
-            return optimizer
-    elif isinstance(optimizer, list) or isinstance(optimizer, Optimizer):
-        # params = {**params, **optimizer[1]}
-        # return _get_optim(optimizer[0], params)
+    # 1. Immediate exit for already initialized optimizers
+    if isinstance(optimizer, (Optimizer, list)):
         return optimizer
+
+    initialized_optimizers = []
+
+    # 2. Case: Single String (e.g., "Adam")
+    if isinstance(optimizer, str):
+        # Use indexing instead of .pop() to avoid mutating the input list
+        initialized_optimizers.append(
+            _get_optim(optimizer, {"params": opt_params[0]})
+        )
+
+    # 3. Case: Set of Strings (Default settings for multiple optimizers)
+    elif isinstance(optimizer, set):
+        for opt_name, prm in zip(optimizer, opt_params):
+            initialized_optimizers.append(
+                _get_optim(opt_name, {"params": prm})
+            )
+
+    # 4. Case: Dict of {name: settings} (Selected settings per optimizer)
+    elif isinstance(optimizer, dict):
+        for (opt_name, settings), prm in zip(optimizer.items(), opt_params):
+            # Ensure settings is a dict, then merge with params
+            params_dict = {"params": prm, **settings}
+            initialized_optimizers.append(
+                _get_optim(opt_name, params_dict)
+            )
     else:
-        return optimizer   
+        raise TypeError(f"Unsupported optimizer type: {type(optimizer)}")
+
+    # 5. Consistent Return Logic
+    return initialized_optimizers[0] if len(initialized_optimizers) == 1 else initialized_optimizers
 
 def _get_optim(opt_id, params):
     """optimizer creation function

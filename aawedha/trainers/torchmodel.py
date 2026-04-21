@@ -542,7 +542,8 @@ class TorchModel(nn.Module):
         # params_opt = [self.module.parameters()]
         # filter out non-grad parameters, use for composing different modules
         # in a single model. freezing after pretraining.
-        params_opt = [filter(lambda p: p.requires_grad, self.module.parameters())]  
+        # params_opt = [filter(lambda p: p.requires_grad, self.module.parameters())]  
+        params_opt = self._params_opt(optimizer)
         if isinstance(self.loss, list):
             for loss in self.loss:
                 if "extern_optim" in loss.__dict__.keys():
@@ -573,6 +574,33 @@ class TorchModel(nn.Module):
         if platform.system() == 'Linux' and torch.cuda.is_available():
             self.module.compile(mode="default")
 
+    def _params_opt(self, optimizer):
+        """Select the trainable parameters from the module
+        for the optimizer (s)
+        For some special cases like ADCL, the parameters are selected
+        following their names to set hyperparam for each tensor
+
+        Parameters
+        ----------
+        optimizer : str | dict
+            the optimizer in text format or as a dict
+
+        Returns
+        -------
+        list of params
+            
+        """
+        opt_id = optimizer if isinstance(optimizer, str) else list(optimizer).pop()
+        if opt_id != 'Adcl':
+            return [filter(lambda p: p.requires_grad, self.module.parameters())] 
+        else:
+            return [[{'params': self.module.get_parameter('conv.0.weight'), 'lr': 1e-2},
+        {'params': self.module.get_parameter('conv.0.bias'), 'lr': 1e-5},
+        {'params': self.module.get_parameter('output.1.weight'), 'lr': 1e-3},
+        {'params': self.module.get_parameter('output.1.bias'), 'lr': 1e-6}
+                ]]
+
+    
     def _to_device(self):
         """Transfer module, loss and metrics to compute device.
         """
