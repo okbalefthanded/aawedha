@@ -410,8 +410,14 @@ class Evaluation:
         self.learner.compile(device, classes)
         self.score.build(self.learner.model.metrics_names)
 
-    def _eval_model(self, X_train, Y_train, X_val,
-                    Y_val, X_test, Y_test, cws):
+    def _eval_model(self, 
+                    X_train, 
+                    Y_train, 
+                    X_val,
+                    Y_val, 
+                    X_test, 
+                    Y_test, 
+                    cws):
         """Train model on train/validation data and predict its output on test data
 
         Run model's fit() and predict() methods

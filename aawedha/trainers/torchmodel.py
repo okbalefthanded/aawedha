@@ -90,10 +90,11 @@ class TorchModel(nn.Module):
                               callbacks=callbacks)
 
     # @torch.compile
-    @linux_gpu_compile
+    # @linux_gpu_compile
     def train_step(self, data):
         """
         """
+        # torch.compiler.cudagraph_mark_step_begin()
         # get the inputs; data is a list of [inputs, labels]
         inputs, labels = data[0].to(self.device), data[1].to(self.device)
         # zero the parameter gradients
@@ -164,9 +165,10 @@ class TorchModel(nn.Module):
                   progress, 
                   verbose,
                   ):
+        
         # on_train_begin callbacks
-        if callbacks: [clbk.on_train_begin(self.module) for clbk in callbacks] 
-        tmp_loader = [train_loader.dataset.tensors[0].to(self.device)] # FIXME a hack for PreciseBN
+        if callbacks: [clbk.on_train_begin(model=self.module) for clbk in callbacks] 
+        # tmp_loader = [train_loader.dataset.tensors[0].to(self.device)] # FIXME a hack for PreciseBN
         for epoch in range(epochs):  # loop over the dataset multiple times
             running_loss = 0
             self.reset_metrics()
@@ -176,8 +178,7 @@ class TorchModel(nn.Module):
                 
             # on_epoch_begin callbacks
             if callbacks: [clbk.on_epoch_begin() for clbk in callbacks]
-            if verbose == 2:
-                print(f"Epoch {epoch+1}/{epochs}")
+            if verbose == 2: print(f"Epoch {epoch+1}/{epochs}")
             
             # train step
             for i, data in enumerate(train_loader, 0):
@@ -193,12 +194,10 @@ class TorchModel(nn.Module):
                 
                 if verbose == 2:
                     progress.update(i, values=[(k, return_metrics[k]) for k in return_metrics])
+            # end train step
             
             # Precise BN??
             # update_bn_stats(self.module, tmp_loader, num_iters=1, progress=None)
-            
-            # evaluate validation data
-            self._compile_for_eval()
             
             val_metrics = None
             if has_validation:
@@ -212,20 +211,31 @@ class TorchModel(nn.Module):
                 else:
                     progress.add(1)
             
-            # on_epoch_end callbacks
-            if callbacks: [clbk.on_epoch_end(self, train_loader, epoch, val_metrics) for clbk in callbacks]
-            
-            # update scheduler 
-            if not self._cyclical_scheduler():
-                self.update_scheduler()        
-            
             # update history
             for metric in return_metrics:
                 hist[metric].append(return_metrics[metric]) 
+
+            # on_epoch_end callbacks
+            # if callbacks: [clbk.on_epoch_end(self, train_loader, epoch, val_metrics) for clbk in callbacks]
+            if callbacks:
+                for clbk in callbacks:
+                    if not clbk.disable:
+                        clbk.on_epoch_end(self, train_loader, epoch, val_metrics)
+                        if hasattr(clbk, "stop_training"):
+                            if clbk.stop_training:
+                                break
+                                    
+            # update scheduler 
+            if not self._cyclical_scheduler():
+                self.update_scheduler()                       
+            # end of train loop
         
         # on_train_end callbacks
         if callbacks: [clbk.on_train_end(self, epoch) for clbk in callbacks]
         
+        # evaluate validation data
+        # self._compile_for_eval()
+
         return hist
 
     def predict(self, 
@@ -566,8 +576,10 @@ class TorchModel(nn.Module):
         self.set_metrics_names(metrics)
         # transfer to device
         self._to_device()
+        # TorchCompile
+        self._compile_module()
 
-    def _compile_for_eval(self):
+    def _compile_module(self):
         """Torch compile the model for inference
         Supported only on Linux machines with a cuda GPU available.
         """
@@ -599,7 +611,6 @@ class TorchModel(nn.Module):
         {'params': self.module.get_parameter('output.1.weight'), 'lr': 1e-3},
         {'params': self.module.get_parameter('output.1.bias'), 'lr': 1e-6}
                 ]]
-
     
     def _to_device(self):
         """Transfer module, loss and metrics to compute device.

@@ -26,6 +26,7 @@ ptwt
 pynvml
 pycurl
 einops
+heavyball
 git+https://github.com/okbalefthanded/Ranger21.git
 git+https://github.com/okbalefthanded/BCI-Baseline.git
 git+https://github.com/okbalefthanded/pyLpov.git@py3

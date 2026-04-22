@@ -7,12 +7,11 @@
 # Waytowich, N.R., Lawhern, V., Garcia, J.O., Cummings, J., Faller, J., Sajda, P. and Vettel, J.M. (2018) 
 # ‘Compact Convolutional Neural Networks for Classification of Asynchronous Steady-state Visual Evoked Potentials’,
 #  pp. 1–21. Available at: https://arxiv.org/pdf/1803.04566.pdf.
-from aawedha.models.pytorch.torch_inits import initialize_Glorot_uniform
-from aawedha.models.pytorch.torch_utils import LineardWithConstraint
-from aawedha.models.pytorch.torch_utils import Conv2dWithConstraint
-from aawedha.models.pytorch.torchdata import reshape_input
-from aawedha.models.pytorch.prec_conv import PreConv
-from antialiased_cnns import BlurPool
+from aawedha.trainers.torch_inits import initialize_Glorot_uniform
+from aawedha.trainers.torch_utils import LineardWithConstraint
+from aawedha.trainers.torch_utils import Conv2dWithConstraint
+from aawedha.trainers.torchdata import reshape_input
+from aawedha.models.prec_conv import PreConv
 from torch import flatten
 from torch import nn
 import torch.nn.functional as F
@@ -159,52 +158,3 @@ class EEGNetConvNorm(EEGNetTorchBase):
         initialize_Glorot_uniform(self)
 
 
-class EEGNetTorchBlur(EEGNetTorchBase):
-
-    def __init__(self, nb_classes=12, Chans=8, Samples=256,
-                 dropoutRate=0.5, kernLength=256, F1=96,
-                 D=1, F2=96, name="EEGNetTorchBlurPool"):
-
-        super().__init__(name=name)
-        self.conv1 = nn.Conv2d(1, F1, (1, kernLength), bias=False, padding='same')
-        self.bn1 = nn.BatchNorm2d(F1)
-        self.conv2 = Conv2dWithConstraint(F1, F1 * D, (Chans, 1), max_norm=1, bias=False, groups=F1, padding="valid")
-        self.bn2 = nn.BatchNorm2d(F1 * D)
-        self.pool1 = BlurPool(F1*D, stride=(1, 4))
-        self.drop1 = nn.Dropout(p=dropoutRate)
-        # https://discuss.pytorch.org/t/how-to-modify-a-conv2d-to-depthwise-separable-convolution/15843/7
-        self.conv_sep_depth = nn.Conv2d(F1 * D, F1 * D, (1, 16), bias=False, groups=F1 * D, padding="same")
-        self.conv_sep_point = nn.Conv2d(F1 * D, F2, (1, 1), bias=False, padding="valid")
-        self.bn3 = nn.BatchNorm2d(F2)
-        self.pool2 = BlurPool(F2, stride=(1, 8))
-        self.drop2 = nn.Dropout(p=dropoutRate)
-        self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
-
-        initialize_Glorot_uniform(self)
-
-
-class EEGNetBlurNorm(nn.Module):
-
-    def __init__(self, nb_classes=12, Chans=8, Samples=256,
-                 dropoutRate=0.5, kernLength=256, F1=96,
-                 D=1, F2=96, affine=True, bn=True,
-                 name="EEGNetBlurNorm"):
-
-        super().__init__()
-        self.name = name 
-        self.conv1 = PreConv(1, F1, (1, kernLength), bias=False, padding='same',
-                        affine=affine, bn=bn)
-        self.conv2 = PreConv(F1, F1 * D, (Chans, 1), bias=False, groups=F1, padding="valid",
-                             affine=affine, bn=bn)
-        self.pool1 = BlurPool(F1*D, stride=(1, 4))
-        self.drop1 = nn.Dropout(p=dropoutRate)
-        # https://discuss.pytorch.org/t/how-to-modify-a-conv2d-to-depthwise-separable-convolution/15843/7
-        self.conv_sep_depth = PreConv(F1 * D, F1 * D, (1, 16), bias=False, groups=F1 * D, 
-                                     padding="same", affine=False, bn=False)
-        self.conv_sep_point = nn.Conv2d(F1 * D, F2, (1, 1), bias=False, padding="valid")
-        self.bn3 = nn.BatchNorm2d(F2)
-        self.pool2 = BlurPool(F2, stride=(1, 8))
-        self.drop2 = nn.Dropout(p=dropoutRate)
-        self.dense = nn.Linear((F2 * (Samples // 32)), nb_classes)
-
-        initialize_Glorot_uniform(self)

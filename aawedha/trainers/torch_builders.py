@@ -4,6 +4,7 @@
 from inspect import getfullargspec
 import aawedha.loss.torch_loss as tl
 from aawedha.trainers.torch_callbacks import CallBack, ModelCheckPoint
+from aawedha.trainers.torch_callbacks import EarlyStopping
 from aawedha.metrics.torch_metrics import CategoricalAccuracy
 from aawedha.trainers.wasamtorch import WASAM
 from aawedha.trainers.samtorch import SAM
@@ -27,7 +28,7 @@ from libauc.optimizers import PESG
 from ranger21 import Ranger21
 from torch import optim
 from torch import nn
-import heavyball as hb
+# import heavyball as hb
 import torchmetrics
 
 losses = {
@@ -83,6 +84,7 @@ wrapped_opt = {
 
 available_callbacks = {
     'Modelcheckpoint':  ModelCheckPoint,
+    'EarlyStopping' :  EarlyStopping,  # TODO
     }
 
 
@@ -368,22 +370,38 @@ def build_scheduler_legacy(data_loader, optimizer, scheduler):
     else:
         ModuleNotFoundError
 
+
 def build_callbacks(callbacks_list):
+    """
+    Builds a list of callback instances from a dict of strings, dicts, or objects.
+    """
     clbks = []
-    # callback_instance = None
-    clbk_id = ""
+    
     for clbk in callbacks_list:
-        if isinstance(clbk, list):
-            # TODO
-            if clbk[0] in available_callbacks:
-                clbk_id = clbk[0]
-            # params = {'model': model, **clbk[1]}
-            params = {}
-            callback_instance = available_callbacks[clbk_id](**params)
+        # Case 1: Already an initialized Callback instance
+        if isinstance(clbk, CallBack):
+            clbks.append(clbk)
+            continue
+
+        # Case 2: A Dictionary (e.g., {"EarlyStopping": {"patience": 5}})
+        if isinstance(clbk, dict):
+            # Extract the name (key) and the parameters (value)
+            clbk_id, params = next(iter(clbk.items()))
+            if clbk_id in available_callbacks:
+                instance = available_callbacks[clbk_id](**params)
+                clbks.append(instance)
+            else:
+                raise ValueError(f"Callback '{clbk_id}' not found in available_callbacks")
+
+        # Case 3: A String (e.g., "ModelCheckpoint")
         elif isinstance(clbk, str):
-            # TODO
-            callback_instance = available_callbacks[clbk]()    
-        elif isinstance(clbk, CallBack):
-            callback_instance = clbk
-        clbks.append(callback_instance)
-    return clbks   
+            if clbk in available_callbacks:
+                instance = available_callbacks[clbk]()
+                clbks.append(instance)
+            else:
+                raise ValueError(f"Callback '{clbk}' not found in available_callbacks")
+        
+        else:
+            raise TypeError(f"Unsupported callback type: {type(clbk)}. Expected str, dict, or CallBack.")
+
+    return clbks
