@@ -527,13 +527,7 @@ class TorchModel(nn.Module):
         output_index = -2
         if modules[-1] != 'loss':
             output_index = -1
-        return modules[output_index]
-
-    def metrics_to(self, device=None):
-        if not device:
-            device = self.device
-        for metric in self.metrics_list:
-            metric.to(device)        
+        return modules[output_index]     
     
     def _compile_regular(self, 
                          optimizer='Adam', 
@@ -626,7 +620,12 @@ class TorchModel(nn.Module):
     def _compute_metrics(self, 
                          return_metrics, 
                          outputs, 
-                         labels):
+                         labels,
+                         compute_on_cpu=False):
+        
+        if compute_on_cpu:
+            self.metrics_to(device="cpu")
+
         with torch.no_grad():
             # if self._is_binary(labels):
             # torchmetrics requires sparse labels, some losses (eg polyLoss)
@@ -698,12 +697,24 @@ class TorchModel(nn.Module):
                 self._set_auroc_classes()
         else:
             self.input_shape = x.shape[1:]
-            train_loader = make_loader(x, y, batch_size, shuffle=shuffle, 
-                                            labels_type=labels_type) 
+            train_loader = make_loader(x, y, 
+                                       batch_size, 
+                                       shuffle=shuffle, 
+                                       labels_type=labels_type, 
+                                        is_training=True,
+                                        device=self.device.type) 
             if y.ndim > 1:
                 self._set_auroc_classes()
         
         return train_loader    
+    
+    def metrics_to(self, device=None):
+        if not device:
+            device = self.device
+        else:
+            device = torch.device(device)
+        for metric in self.metrics_list:
+            metric.to(device) 
     
     def _check_loss_weights(self, loss_weights):
         if isinstance(self.loss, list):

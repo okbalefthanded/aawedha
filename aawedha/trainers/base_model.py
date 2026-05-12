@@ -1,5 +1,6 @@
 from aawedha.evaluation.evaluation_utils import metrics_binary
 from aawedha.trainers.builder_model import build_learner
+import torch
 
 class Learner:
     """Wrapper class to unify training and inference operations for different
@@ -197,7 +198,6 @@ class Learner:
         #     self.model.set_weights(self.initial_weights['model_weights'])
         self.model.set_weights()
 
-
     def get_compile_configs(self, device, classes):
         """Returns default model compile configurations as tuple
 
@@ -285,6 +285,12 @@ class Learner:
             dimension of last model's layer
         """
         return self.model.output_shape    
+    
+    def get_device(self):
+        if self.model.device:
+            return self.model.device
+        else:
+            raise TypeError("The device for evaluation is not set yet")
 
     def _compile(self,
                  khsara, 

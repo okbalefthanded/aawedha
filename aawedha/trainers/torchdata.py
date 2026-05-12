@@ -1,5 +1,7 @@
+import os
 import numpy as np 
 import torch
+
 
 def data_shapes(x):
     if hasattr(x.dataset, 'tensors'):
@@ -15,7 +17,12 @@ def data_shapes(x):
     return input_shape, y_size
     
 
-def make_loader(x, y, batch_size=32, shuffle=True, labels_type=torch.long):
+def make_loader(x, y, 
+                batch_size=32, 
+                shuffle=True, 
+                labels_type=torch.long, 
+                is_training=False, 
+                device="cuda"):
     """
     """
     # why did we add this ??? [because of TorchMetrics]
@@ -23,10 +30,29 @@ def make_loader(x, y, batch_size=32, shuffle=True, labels_type=torch.long):
     #     y = np.expand_dims(y, axis=1)
     tensor_set = torch.utils.data.TensorDataset(torch.tensor(x, dtype=torch.float32), 
                                                 torch.tensor(y, dtype=labels_type))
-    loader = torch.utils.data.DataLoader(tensor_set, 
-                                         batch_size=batch_size, 
-                                         shuffle=shuffle)
-    return loader
+    
+    pin = True if device == "cude" else "cpu"
+    if is_training:
+        # Optimized settings for Training
+        return torch.utils.data.DataLoader(
+            tensor_set,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=os.cpu_count(),
+            pin_memory=pin,
+            persistent_workers=True,
+            prefetch_factor=2
+        )
+    else:
+        # Default settings for Testing/Validation
+        # We keep pin_memory=True if using GPU, as it's always faster
+        return torch.utils.data.DataLoader(
+            tensor_set, 
+            batch_size=batch_size, 
+            shuffle=False, 
+            num_workers=0, 
+            pin_memory=pin
+        )
 
 def reshape_input(x):
     """Reshape Torch Tensor from 3D to 4D:

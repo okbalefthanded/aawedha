@@ -192,9 +192,9 @@ class BenchMark(Evaluation):
         # 
         if "itr" in self.settings.paradigm_metrics:
             if "spelling_rate" in self.settings.paradigm_metrics:
-                p = pm["spelling_rate"]
+                p = pm["spelling_rate"] # ERP
             else:
-                p = perf["accuray"]
+                p = perf["accuray"] # other paradigms
             pm["itr"] = self.settings.paradigm_metrics["itr"](p, op, self.dataset)        
         return pm     
 
@@ -213,6 +213,7 @@ class BenchMark(Evaluation):
         split_perf : dict
             a dict of metric values for ERP paradigm following sequence repetition
         """
+        device = self.learner.get_device()
         perfs = []
         probs = split_perf["probs"].squeeze()
         sequence = self.dataset.paradigm.get_repetitions()
@@ -223,9 +224,10 @@ class BenchMark(Evaluation):
             trials_per_char = stimuli * seq      
             seq_index = [np.arange(i, i+trials_per_char)  for i in range(0, len(probs), trials)]
             seq_index = np.concatenate(seq_index)
-            y_test = torch.tensor(split_perf["Y_test"][seq_index].squeeze())
-            p_test = torch.tensor(probs[seq_index]) 
+            y_test = torch.tensor(split_perf["Y_test"][seq_index].squeeze(), device=device)
+            p_test = torch.tensor(probs[seq_index], device=device) 
             perfs.append(self.learner.model._compute_metrics({}, p_test, y_test))
+            self.learner.model.reset_metrics()
         
         perfs = aggregate_results(perfs)
         perfs["probs"] = split_perf["probs"]
